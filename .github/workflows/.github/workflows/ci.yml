@@ -1,0 +1,60 @@
+# name: Android Test Automation
+
+# on:
+#   push:
+#     branches:
+#       - main
+#   pull_request:
+
+# jobs:
+#   android-tests:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       # Checkout the repository
+#       - name: Checkout code
+#         uses: actions/checkout@v3
+
+#       # Set up Node.js
+#       - name: Set up Node.js
+#         uses: actions/setup-node@v3
+#         with:
+#           node-version: '18'
+
+#       # Install dependencies
+#       - name: Install dependencies
+#         run: npm install
+
+#       # Set up Android SDK and Emulator
+#       - name: Set up Android Emulator
+#         uses: reactivecircus/android-emulator-runner@v2
+#         with:
+#           api-level: 30
+#           target: google_apis
+#           arch: x86_64
+#           profile: Pixel_4
+#           emulator-options: "-no-window -no-snapshot"
+#           disable-animations: true
+
+#       # Wait for Emulator to boot
+#       - name: Wait for Android Emulator to boot
+#         run: adb wait-for-device
+
+#       # Debug Emulator
+#       - name: Debug Emulator
+#         run: adb devices
+
+#       # Install APK
+#       - name: Install APK
+#         run: adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
+
+#       # Run Tests
+#       - name: Run WebdriverIO Tests
+#         run: npm run test:ci
+
+#       # Upload Allure Results
+#       - name: Upload Allure Results
+#         uses: actions/upload-artifact@v3
+#         with:
+#           name: allure-results
+#           path: allure-results/

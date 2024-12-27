@@ -1,0 +1,29 @@
+node_modules/
+allure-results/
+screenshots/
+.env
+allure-report/
+# Ignore screenshots directory
+screenshots/
+
+# Ignore APK files
+
+.apk
+# Appium logs
+*.log
+appium.log
+*.trace
+
+# Node logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Dependencies
+node_modules/
