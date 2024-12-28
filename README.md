@@ -65,7 +65,9 @@ Ensure the following dependencies are installed on your machine:
 - **`wdio.conf.js`**: Main WebdriverIO configuration file.
 - **`wdio.local.conf.js`**: Configuration for local testing.
 - **`wdio.ci.conf.js`**: Configuration for CI testing.
-- **Test Scripts**: Located in the `test` directory.
+- **Test Scripts**: Located in the `test` directory. New specs should be added under the `test` folder.
+- **APK Files**: Place the APK to test under the `app` directory.
+- **Environment Variables**: Update the `.env` file with details such as `deviceName` and `platformVersion`.
 - **Allure Results**: Generated in the `allure-results` directory.
 - **Reports**: Saved in the `allure-report` directory.
 
