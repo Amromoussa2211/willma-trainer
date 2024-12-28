@@ -1,163 +1,134 @@
-README.md
-markdown
-Copy code
 # Android Test Automation Framework
 
-![WebdriverIO](https://img.shields.io/badge/WebdriverIO-v9.4.5-red)
-![Appium](https://img.shields.io/badge/Appium-v2.13.1-blue)
-![License](https://img.shields.io/badge/license-ISC-green)
-
 ## Overview
-`android-test-automation` is a **test automation framework** for Android applications, built using **WebdriverIO** and **Appium**. It enables efficient end-to-end testing of Android apps by leveraging the powerful features of WebdriverIO's robust framework and Appium's device automation capabilities.
+This project is a **Test Automation Framework** for Android applications, built using **WebdriverIO** and **Appium**. It supports both local and CI/CD testing workflows, integrates with **Allure Reporting**, and is designed to make automated testing of Android apps efficient and maintainable.
 
-This framework provides:
-- Easy-to-write, scalable test scripts
-- Comprehensive support for Android devices and emulators
-- Detailed test execution reports via **Allure**
+---
+
+## Features
+- **WebdriverIO Framework**: Provides a robust and scalable test framework.
+- **Appium Integration**: For automating Android application testing.
+- **Allure Reporting**: Generates detailed and visually appealing test reports.
+- **Environment Configuration**: Easily configurable for local and CI environments.
+- **Custom Scripts**: Simplified commands to run tests and generate reports.
 
 ---
 
 ## Prerequisites
+Ensure the following dependencies are installed on your machine:
 
-Before you begin, ensure your system meets the following requirements:
+1. **Node.js** (v14 or higher)
+   - Install from [Node.js official website](https://nodejs.org/)
 
-### 1. **System Requirements**
-- Operating System: macOS, Windows, or Linux
-- RAM: At least 4GB (8GB recommended)
+2. **Appium**
+   - Install globally:
+     ```bash
+     npm install -g appium
+     ```
 
-### 2. **Node.js and npm**
-- Install [Node.js](https://nodejs.org/) (version 16.x or later is recommended).
+3. **Java Development Kit (JDK)**
+   - Install JDK 8 or higher from [Oracle JDK](https://www.oracle.com/java/technologies/javase-downloads.html).
+   - Add `JAVA_HOME` to your system environment variables.
+
+4. **Android SDK**
+   - Install via Android Studio or standalone tools.
+   - Ensure `ANDROID_HOME` is set in your environment variables.
+
+5. **Allure Commandline**
+   - Install globally:
+     ```bash
+     npm install -g allure-commandline
+     ```
+
+6. **Appium Inspector** (Optional)
+   - For visual element inspection.
+   - Download from [Appium Inspector GitHub](https://github.com/appium/appium-inspector).
+
+---
+
+## Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Amromoussa2211/client.git
+   cd client
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+---
+
+## Project Structure
+- **`wdio.conf.js`**: Main WebdriverIO configuration file.
+- **`wdio.local.conf.js`**: Configuration for local testing.
+- **`wdio.ci.conf.js`**: Configuration for CI testing.
+- **Test Scripts**: Located in the `test` directory.
+- **Allure Results**: Generated in the `allure-results` directory.
+- **Reports**: Saved in the `allure-report` directory.
+
+---
+
+## Scripts
+The following scripts are available in `package.json`:
+
+### Run Tests
+- **Local Tests**:
   ```bash
-  node -v
-  npm -v
-3. Java Development Kit (JDK)
-Install Java JDK (version 8 or higher).
-bash
-Copy code
-java -version
-4. Android SDK
-Install the Android SDK and ensure the following tools are configured:
-adb (Android Debug Bridge)
-Emulator or physical device connected
-Add the Android SDK platform-tools to your PATH.
-5. Appium
-Install Appium globally:
-bash
-Copy code
-npm install -g appium
-appium -v
-6. Allure Commandline (Optional for Reports)
-Install Allure globally for generating reports:
-bash
-Copy code
-npm install -g allure-commandline --save-dev
-allure --version
-Installation
-1. Clone the Repository
-Clone this project from your GitHub repository:
+  npm run test:local
+  ```
+- **CI Tests**:
+  ```bash
+  npm run test:ci
+  ```
 
-bash
-Copy code
-git clone https://github.com/your-username/android-test-automation.git
-cd android-test-automation
-2. Install Dependencies
-Run the following command to install all required npm packages:
-
-bash
-Copy code
-npm install
-Setup
-1. Configure .env File
-Create a .env file in the root of the project and add the following configurations:
-
-dotenv
-Copy code
-# Appium Server Details
-APPIUM_HOST=localhost
-APPIUM_PORT=4723
-
-# Device Details
-DEVICE_NAME=your-device-name
-PLATFORM_VERSION=your-platform-version
-APP_PATH=path/to/your/app.apk
-2. Appium Server
-Start the Appium server:
-
-bash
-Copy code
-npm run start:appium
-Usage
-1. Run Tests
-Default Configuration:
-bash
-Copy code
-npm test
-Local Environment:
-bash
-Copy code
-npm run test:local
-CI Environment:
-bash
-Copy code
-npm run test:ci
-2. Generate and Open Allure Reports
-Generate Report:
-bash
-Copy code
+### Generate Allure Report
+```bash
 npm run generate-report
-Open Report:
-bash
-Copy code
-npm run open-report
-Running Tests on Emulator or Device
-1. Emulator
-Launch an Android Emulator using the Android SDK Manager or command line:
-bash
-Copy code
-emulator -avd <emulator-name>
-2. Physical Device
-Connect your Android device via USB.
-Enable Developer Options and USB Debugging on your device.
-Verify the device is connected:
-bash
-Copy code
-adb devices
-Project Structure
-plaintext
-Copy code
-android-test-automation/
-├── .env                    # Environment variables
-├── wdio.conf.js            # WebdriverIO configuration file
-├── wdio.local.conf.js      # Local environment configuration
-├── wdio.ci.conf.js         # CI environment configuration
-├── allure-results/         # Test results folder for Allure
-├── allure-report/          # Generated Allure reports
-├── tests/                  # Test scripts and cases
-├── package.json            # Project metadata and scripts
-└── README.md               # Documentation
-Troubleshooting
-Common Issues
-Appium Server Fails to Start
-Ensure you’ve installed Appium globally and added it to your PATH.
-Device Not Detected
-Verify that your Android device is connected and recognized by adb:
-bash
-Copy code
-adb devices
-Check your USB cable and device drivers.
-Java Not Found
-Ensure Java is installed and added to your PATH.
-Allure Not Found
-Install Allure Commandline globally and verify installation:
-bash
-Copy code
-allure --version
-Author
-Your Name
-Your Email Address
+```
 
-License
+### Open Allure Report
+```bash
+npm run open-report
+```
+
+### Start Appium Server
+```bash
+npm run start:appium
+```
+
+---
+
+## Running Tests
+
+1. Start the Appium server:
+   ```bash
+   npm run start:appium
+   ```
+
+2. Run the local tests:
+   ```bash
+   npm run test:local
+   ```
+
+3. View the Allure report:
+   ```bash
+   npm run open-report
+   ```
+
+---
+
+## Contribution
+Feel free to fork this repository and submit pull requests. Ensure that your changes are well-documented and tested.
+
+---
+
+## License
 This project is licensed under the ISC License.
 
-Contribution
-Contributions are welcome! Please submit a pull request or create an issue to suggest changes or report bugs.
+---
+
+For any questions or issues, feel free to contact the repository maintainer.
+
