@@ -1,7 +1,7 @@
 node_modules/
 allure-results/
 screenshots/
-.env
+
 allure-report/
 # Ignore screenshots directory
 screenshots/
