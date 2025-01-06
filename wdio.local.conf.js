@@ -14,7 +14,7 @@ const localConfig = {
         "appium:fullReset": false,
         "appium:skipDeviceInitialization": true,
         "appium:skipServerInstallation": true,
-        "appium:skipUnlock": true
+        "appium:skipUnlock": false
     }]
 };
 

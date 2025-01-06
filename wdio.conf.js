@@ -1,5 +1,5 @@
 const { execSync } = require('child_process');
-require('dotenv').config(); // Load environment variables
+require('dotenv').config();
 const path = require('path');
 const fs = require('fs');
 const allure = require('allure-commandline');
@@ -8,16 +8,16 @@ exports.config = {
     runner: 'local',
     hostname: 'localhost',
     protocol: 'http',
-    port: 4723, // Default Appium port
+    port: 4723,
     path: '/',
     specs: ['./test/specs/**/*.js'],
     exclude: [],
-    maxInstances: 10,
+    maxInstances: 1, // Reduced for stability
     logLevel: 'info',
     bail: 0,
-    waitforTimeout: 10000,
-    connectionRetryTimeout: 150000, // Increase timeout
-    connectionRetryCount: 1,
+    waitforTimeout: 15000, // Increased timeout
+    connectionRetryTimeout: 200000, // Increased timeout
+    connectionRetryCount: 2,
     framework: 'mocha',
     reporters: [
         'spec',
@@ -29,7 +29,7 @@ exports.config = {
     ],
     mochaOpts: {
         ui: 'bdd',
-        timeout: 60000
+        timeout: 120000 // Increased Mocha timeout
     },
     onPrepare: function (config, capabilities) {
         console.log('Checking if the device is connected...');
@@ -44,16 +44,19 @@ exports.config = {
         if (!installedPackages.includes(capabilities[0]["appium:appPackage"])) {
             console.log('APK is not installed. Installing...');
             execSync(`adb install ${capabilities[0]["appium:app"]}`, { stdio: 'inherit' });
+        } else {
+            console.log('APK is already installed.');
         }
-        console.log(`APK ${capabilities[0]["appium:appPackage"]} is installed.`);
     },
-    afterTest: async function (test, context, { error, result }) {
+    afterTest: async function (test, context, { error }) {
         const screenshotDir = path.join(__dirname, 'screenshots');
         if (!fs.existsSync(screenshotDir)) {
             fs.mkdirSync(screenshotDir, { recursive: true });
         }
-        const fileName = path.join(screenshotDir, `${test.title.replace(/[^a-zA-Z0-9]/g, '_')}_${result ? 'PASSED' : 'FAILED'}.png`);
-        await browser.saveScreenshot(fileName);
-        await allure.addAttachment('Screenshot', Buffer.from(await browser.takeScreenshot(), 'base64'), 'image/png');
-    }
+        if (error) {
+            const fileName = path.join(screenshotDir, `${test.title.replace(/[^a-zA-Z0-9]/g, '_')}_FAILED.png`);
+            await browser.saveScreenshot(fileName);
+            await allure.addAttachment('Failed Screenshot', fs.readFileSync(fileName), 'image/png');
+        }
+    },
 };

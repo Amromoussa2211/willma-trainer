@@ -7,8 +7,9 @@ allure-report/
 screenshots/
 
 # Ignore APK files
+.env
 
-.apk
+*.apk
 # Appium logs
 *.log
 appium.log
@@ -27,3 +28,4 @@ yarn-error.log*
 
 # Dependencies
 node_modules/
+.env
