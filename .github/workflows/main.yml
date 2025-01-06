@@ -21,13 +21,20 @@ jobs:
         with:
           node-version: '18'
 
-      # Install dependencies
-      - name: Install dependencies
-        run: npm install
+      # Set up JDK 17
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
       # Install Android SDK Tools (including ADB)
       - name: Install Android SDK Tools
         uses: android-actions/setup-android@v3
+
+      # Install dependencies
+      - name: Install dependencies
+        run: npm install
 
       # Download APK from GitHub Release
       - name: Download APK
