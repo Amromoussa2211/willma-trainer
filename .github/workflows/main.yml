@@ -19,7 +19,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'  # Use Node.js 18 (as per your setup)
+          node-version: '18'
 
       # Cache Node.js modules for faster builds
       - name: Cache Node.js modules
@@ -60,15 +60,25 @@ jobs:
           profile: pixel
           emulator-options: "-no-window -no-snapshot -gpu swiftshader_indirect -no-audio -no-boot-anim -no-accel"  # Disable hardware acceleration
           disable-animations: true
-          emulator-boot-timeout: 600  # 10 minutes timeout
+          emulator-boot-timeout: 1800  # Increase timeout to 30 minutes
           script: |
             echo "Waiting for emulator to boot..."
             adb wait-for-device
             echo "Emulator is ready!"
             DEVICE=$(adb devices | grep emulator | cut -f1)
             echo "Using device: $DEVICE"
+            echo "Waiting for emulator to fully boot..."
+            while true; do
+              boot_completed=$(adb -s $DEVICE shell getprop sys.boot_completed)
+              if [ "$boot_completed" = "1" ]; then
+                echo "Emulator is fully booted!"
+                break
+              fi
+              echo "Emulator is still booting..."
+              sleep 10
+            done
             echo "Installing APK..."
-            adb -s $DEVICE install ./apps/app-release.apk  # Install the downloaded APK
+            adb -s $DEVICE install ./apps/app-release.apk
             echo "Running tests..."
             npm run test:ci
 
