@@ -47,7 +47,7 @@ jobs:
           build-tools-version: '34.0.0'
           platform-version: '30'
           emulator-version: 'latest'
-          system-images: 'system-images;android-30;google_apis;arm64-v8a'
+          system-images: 'system-images;android-30;google_apis;x86_64'  # Use x86_64 system image
 
       # Install dependencies
       - name: Install dependencies
@@ -64,9 +64,9 @@ jobs:
         with:
           api-level: 30
           target: google_apis
-          arch: arm64-v8a  # Use ARM64 architecture
+          arch: x86_64  # Use x86_64 architecture
           profile: pixel
-          emulator-options: "-no-window -no-snapshot -gpu swiftshader_indirect -no-audio -no-boot-anim -no-accel"  # Disable hardware acceleration
+          emulator-options: "-no-window -no-snapshot -gpu swiftshader_indirect -no-audio -no-boot-anim"
           disable-animations: true
           emulator-boot-timeout: 1200  # Increase timeout to 20 minutes
           script: |
