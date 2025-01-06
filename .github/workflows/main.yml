@@ -47,7 +47,7 @@ jobs:
           build-tools-version: '34.0.0'
           platform-version: '30'
           emulator-version: 'latest'
-          system-images: 'system-images;android-30;google_apis;x86_64'  # Use x86_64 system image
+          system-images: 'system-images;android-30;default;x86_64'  # Use smaller system image
 
       # Install dependencies
       - name: Install dependencies
@@ -63,7 +63,7 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
-          target: google_apis
+          target: default  # Use default target
           arch: x86_64  # Use x86_64 architecture
           profile: pixel
           emulator-options: "-no-window -no-snapshot -gpu swiftshader_indirect -no-audio -no-boot-anim -no-accel"  # Disable hardware acceleration
