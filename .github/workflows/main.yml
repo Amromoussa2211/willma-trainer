@@ -8,7 +8,7 @@ on:
 
 jobs:
   android-tests:
-    runs-on: macos-12  # Use Intel-based macOS runner
+    runs-on: ubuntu-latest  # Use Linux runner
 
     steps:
       # Checkout the repository
