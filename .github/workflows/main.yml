@@ -66,9 +66,9 @@ jobs:
           target: google_apis
           arch: arm64-v8a  # Use ARM64 architecture
           profile: pixel
-          emulator-options: "-no-window -no-snapshot -gpu swiftshader_indirect -no-audio -no-boot-anim"
+          emulator-options: "-no-window -no-snapshot -gpu swiftshader_indirect -no-audio -no-boot-anim -no-accel"  # Disable hardware acceleration
           disable-animations: true
-          emulator-boot-timeout: 600
+          emulator-boot-timeout: 1200  # Increase timeout to 20 minutes
           script: |
             echo "Waiting for emulator to boot..."
             adb wait-for-device
