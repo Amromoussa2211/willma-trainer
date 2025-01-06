@@ -97,14 +97,6 @@ jobs:
           pkill -f "emulator.*5554" || true  # Forcefully kill the emulator process
           sleep 10  # Wait for the emulator to shut down
 
-      # Debug Emulator Shutdown
-      - name: Debug Emulator Shutdown
-        run: |
-          echo "List of connected devices:"
-          adb devices
-          echo "Running emulator processes:"
-          ps aux | grep emulator
-
       # Generate Allure report
       - name: Generate Allure report
         if: success()  # Only run if tests pass
