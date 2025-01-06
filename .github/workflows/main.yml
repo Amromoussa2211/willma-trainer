@@ -8,7 +8,7 @@ on:
 
 jobs:
   android-tests:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest # Use macOS for hardware acceleration
 
     steps:
       # Checkout the repository
@@ -27,6 +27,17 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+
+      # Cache Android SDK
+      - name: Cache Android SDK
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.android
+            /usr/local/lib/android/sdk
+          key: android-sdk-${{ runner.os }}-30
+          restore-keys: |
+            android-sdk-${{ runner.os }}-30
 
       # Install Android SDK Tools (including ADB)
       - name: Install Android SDK Tools
@@ -53,9 +64,10 @@ jobs:
           api-level: 30
           target: google_apis
           arch: x86_64
-          profile: pixel # Use a valid profile
+          profile: pixel
           emulator-options: "-no-window -no-snapshot"
           disable-animations: true
+          emulator-boot-timeout: 1200 # Increase timeout to 20 minutes
           script: |
             adb wait-for-device
             adb devices
