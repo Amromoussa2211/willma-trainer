@@ -19,28 +19,23 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: '18'  # Use Node.js 18 (as per your setup)
 
-      # Set up JDK 17
-      - name: Set up JDK 17
-        uses: actions/setup-java@v3
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      # Cache Android SDK
-      - name: Cache Android SDK
+      # Cache Node.js modules for faster builds
+      - name: Cache Node.js modules
         uses: actions/cache@v3
         with:
-          path: |
-            ~/.android
-            /usr/local/lib/android/sdk
-          key: android-sdk-${{ runner.os }}-30
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
-            android-sdk-${{ runner.os }}-30
+            npm-${{ runner.os }}-
 
-      # Install Android SDK Tools (including ADB)
-      - name: Install Android SDK Tools
+      # Install dependencies
+      - name: Install dependencies
+        run: npm install
+
+      # Set up Android SDK
+      - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
           cmdline-tools-version: 'latest'
@@ -49,17 +44,14 @@ jobs:
           emulator-version: 'latest'
           system-images: 'system-images;android-30;google_apis;x86_64'  # Use x86_64 system image
 
-      # Install dependencies
-      - name: Install dependencies
-        run: npm install
-
       # Download APK from GitHub Release
       - name: Download APK
         run: |
+          mkdir -p ./apps  # Create the apps directory if it doesn't exist
           curl -L -o ./apps/app-release.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-      # Set up Android Emulator
-      - name: Set up Android Emulator
+      # Start Android Emulator
+      - name: Start Android Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
@@ -68,40 +60,17 @@ jobs:
           profile: pixel
           emulator-options: "-no-window -no-snapshot -gpu swiftshader_indirect -no-audio -no-boot-anim -no-accel"  # Disable hardware acceleration
           disable-animations: true
-          emulator-boot-timeout: 1800  # Increase timeout to 30 minutes
+          emulator-boot-timeout: 600  # 10 minutes timeout
           script: |
             echo "Waiting for emulator to boot..."
             adb wait-for-device
             echo "Emulator is ready!"
             DEVICE=$(adb devices | grep emulator | cut -f1)
             echo "Using device: $DEVICE"
-            echo "Waiting for emulator to fully boot..."
-            while true; do
-              boot_completed=$(adb -s $DEVICE shell getprop sys.boot_completed)
-              if [ "$boot_completed" = "1" ]; then
-                echo "Emulator is fully booted!"
-                break
-              fi
-              echo "Emulator is still booting..."
-              sleep 10
-            done
             echo "Installing APK..."
-            adb -s $DEVICE install ./apps/app-release.apk
+            adb -s $DEVICE install ./apps/app-release.apk  # Install the downloaded APK
             echo "Running tests..."
             npm run test:ci
-
-      # Configure Emulator (Modify config.ini)
-      - name: Configure Emulator
-        run: |
-          echo "hw.initialOrientation=portrait" >> ~/.android/avd/test.avd/config.ini
-          echo "hw.lcd.density=420" >> ~/.android/avd/test.avd/config.ini
-          echo "hw.lcd.height=1920" >> ~/.android/avd/test.avd/config.ini
-          echo "hw.lcd.width=1080" >> ~/.android/avd/test.avd/config.ini
-          echo "hw.mainKeys=no" >> ~/.android/avd/test.avd/config.ini
-          echo "skin.name=1080x1920" >> ~/.android/avd/test.avd/config.ini
-          echo "skin.path=1080x1920" >> ~/.android/avd/test.avd/config.ini
-          echo "skin.dynamic=yes" >> ~/.android/avd/test.avd/config.ini
-          echo "showDeviceFrame=yes" >> ~/.android/avd/test.avd/config.ini
 
       # Debug Emulator
       - name: Debug Emulator
@@ -111,15 +80,14 @@ jobs:
           echo "Emulator logs:"
           cat ~/.android/avd/test.avd/logcat.log
 
-      # Terminate Emulator
-      - name: Terminate Emulator
-        run: |
-          adb -s emulator-5554 emu kill
-          sleep 10  # Wait for the emulator to shut down
+      # Generate Allure report
+      - name: Generate Allure report
+        if: success()  # Only run if tests pass
+        run: npm run generate-report
 
-      # Upload Allure Results
-      - name: Upload Allure Results
+      # Upload Allure report as an artifact
+      - name: Upload Allure report
         uses: actions/upload-artifact@v3
         with:
-          name: allure-results
-          path: allure-results/
+          name: allure-report
+          path: allure-report/
