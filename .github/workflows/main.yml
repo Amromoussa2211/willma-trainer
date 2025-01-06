@@ -8,7 +8,7 @@ on:
 
 jobs:
   android-tests:
-    runs-on: macos-latest # Use macOS for hardware acceleration
+    runs-on: macos-latest
 
     steps:
       # Checkout the repository
@@ -55,7 +55,7 @@ jobs:
       # Download APK from GitHub Release
       - name: Download APK
         run: |
-          curl -L -o ./apps/app.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
+          curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
       # Set up Android Emulator
       - name: Set up Android Emulator
@@ -67,11 +67,12 @@ jobs:
           profile: pixel
           emulator-options: "-no-window -no-snapshot"
           disable-animations: true
-          emulator-boot-timeout: 1200 # Increase timeout to 20 minutes
+          emulator-boot-timeout: 1200
           script: |
             adb wait-for-device
-            adb devices
-            adb install ./apps/app.apk
+            DEVICE=$(adb devices | grep emulator | cut -f1)
+            echo "Using device: $DEVICE"
+            adb -s $DEVICE install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
             npm run test:ci
 
       # Upload Allure Results
