@@ -67,7 +67,7 @@ jobs:
           profile: pixel
           emulator-options: "-no-window -no-snapshot -gpu swiftshader_indirect" # Force software rendering
           disable-animations: true
-          emulator-boot-timeout: 1200
+          emulator-boot-timeout: 1800  # Increased timeout
           script: |
             adb wait-for-device
             DEVICE=$(adb devices | grep emulator | cut -f1)
