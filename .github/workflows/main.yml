@@ -63,9 +63,9 @@ jobs:
         with:
           api-level: 30
           target: google_apis
-          arch: arm64-v8a # Use ARM architecture
+          arch: arm64-v8a
           profile: pixel
-          emulator-options: "-no-window -no-snapshot"
+          emulator-options: "-no-window -no-snapshot -gpu swiftshader_indirect" # Force software rendering
           disable-animations: true
           emulator-boot-timeout: 1200
           script: |
