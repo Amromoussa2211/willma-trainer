@@ -132,5 +132,5 @@ This project is licensed under the ISC License.
 
 ---
 
-For any questions or issues, feel free to contact the repository maintainer ..
+For any questions or issues, feel free to contact the repository maintainer ...
 
