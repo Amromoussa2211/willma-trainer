@@ -90,6 +90,12 @@ jobs:
           echo "Emulator logs:"
           cat ~/.android/avd/test.avd/logcat.log
 
+      # Terminate Emulator
+      - name: Terminate Emulator
+        run: |
+          adb -s emulator-5554 emu kill
+          sleep 10  # Wait for the emulator to shut down
+
       # Generate Allure report
       - name: Generate Allure report
         if: success()  # Only run if tests pass
