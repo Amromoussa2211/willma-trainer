@@ -58,6 +58,19 @@ jobs:
         run: |
           curl -L -o ./apps/app-release.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
+      # Configure Emulator
+      - name: Configure Emulator
+        run: |
+          echo "hw.initialOrientation=portrait" >> ~/.android/avd/test.avd/config.ini
+          echo "hw.lcd.density=420" >> ~/.android/avd/test.avd/config.ini
+          echo "hw.lcd.height=1920" >> ~/.android/avd/test.avd/config.ini
+          echo "hw.lcd.width=1080" >> ~/.android/avd/test.avd/config.ini
+          echo "hw.mainKeys=no" >> ~/.android/avd/test.avd/config.ini
+          echo "skin.name=1080x1920" >> ~/.android/avd/test.avd/config.ini
+          echo "skin.path=1080x1920" >> ~/.android/avd/test.avd/config.ini
+          echo "skin.dynamic=yes" >> ~/.android/avd/test.avd/config.ini
+          echo "showDeviceFrame=yes" >> ~/.android/avd/test.avd/config.ini
+
       # Set up Android Emulator
       - name: Set up Android Emulator
         uses: reactivecircus/android-emulator-runner@v2
@@ -97,6 +110,12 @@ jobs:
           adb devices
           echo "Emulator logs:"
           cat ~/.android/avd/test.avd/logcat.log
+
+      # Terminate Emulator
+      - name: Terminate Emulator
+        run: |
+          adb -s emulator-5554 emu kill
+          sleep 10  # Wait for the emulator to shut down
 
       # Upload Allure Results
       - name: Upload Allure Results
