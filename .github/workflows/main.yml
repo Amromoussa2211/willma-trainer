@@ -75,6 +75,12 @@ jobs:
             adb -s $DEVICE install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
             npm run test:ci
 
+      # Debug Emulator
+      - name: Debug Emulator
+        run: |
+          adb devices
+          cat ~/.android/avd/test.avd/logcat.log
+
       # Upload Allure Results
       - name: Upload Allure Results
         uses: actions/upload-artifact@v3
