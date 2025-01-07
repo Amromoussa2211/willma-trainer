@@ -14,7 +14,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Set up Android environment
+      # Step 2: Set up Android SDK
       - name: Set up Android SDK
         uses: android-actions/setup-android@v2
         with:
@@ -22,26 +22,31 @@ jobs:
           target: google_apis
           ndk: false
 
-      # Step 3: Configure Emulator (Download AVD without booting it)
+      # Step 3: Install System Image
+      - name: Install System Image
+        run: |
+          echo "Installing required system image..."
+          sdkmanager "system-images;android-30;google_apis;x86_64"
+
+      # Step 4: Configure Emulator
       - name: Configure Emulator
         run: |
-          echo "Downloading emulator components..."
+          echo "Creating AVD..."
           echo "no" | avdmanager create avd -n test -k "system-images;android-30;google_apis;x86_64" --force
-          # Initialize AVD without booting
           echo "Emulator downloaded and configured but not booted."
 
-      # Step 4: Download APK
+      # Step 5: Download APK
       - name: Download APK
         run: |
           mkdir -p apps
           curl -L -o ./apps/app-release.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-      # Step 5: Install APK on Emulator (emulator doesn't boot here)
+      # Step 6: Install APK on Emulator
       - name: Install APK
         run: |
           echo "Installing APK..."
           adb install ./apps/app-release.apk
 
-      # Step 6: Run Test Scripts
+      # Step 7: Run Test Scripts
       - name: Run Tests
         run: npm test
