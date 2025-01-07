@@ -50,14 +50,23 @@ jobs:
           touch $ANDROID_HOME/repositories.cfg
           yes | sdkmanager --update
 
-      - name: Install Required SDK Components
+      - name: Install platform-tools
+        run: |
+          echo "Installing platform-tools..."
+          sdkmanager --install "platform-tools" || { echo "Failed to install platform-tools"; exit 1; }
+
+      - name: Install emulator
+        run: |
+          echo "Installing emulator..."
+          sdkmanager --install "emulator" || { echo "Failed to install emulator"; exit 1; }
+
+      - name: Install platforms
         run: |
           echo "Installing platforms;android-30..."
           sdkmanager --install "platforms;android-30" || { echo "Failed to install platforms"; exit 1; }
-          echo "Installing emulator..."
-          sdkmanager --install "emulator" || { echo "Failed to install emulator"; exit 1; }
-          echo "Installing platform-tools..."
-          sdkmanager --install "platform-tools" || { echo "Failed to install platform-tools"; exit 1; }
+
+      - name: Install system-images
+        run: |
           echo "Installing system-images;android-30;google_apis_playstore;x86..."
           sdkmanager --install "system-images;android-30;google_apis_playstore;x86" || { echo "Failed to install system-images"; exit 1; }
           echo "All SDK components installed successfully."
@@ -91,9 +100,8 @@ jobs:
           exit 1
 
       - name: Verify emulator and adb are in PATH
-        run: |
-          which emulator
-          which adb
+        run: which emulator
+        run: which adb
 
       - name: Create and Start Emulator
         run: |
