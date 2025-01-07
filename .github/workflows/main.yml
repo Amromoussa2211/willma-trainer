@@ -83,3 +83,11 @@ jobs:
         run: |
           adb emu kill
           pkill -f appium
+
+      # Step 8: Upload Screenshots on Failure
+      - name: Upload Screenshots
+        if: failure()  # Run this step only if the job fails
+        uses: actions/upload-artifact@v3
+        with:
+          name: screenshots
+          path: ./screenshots/*.png
