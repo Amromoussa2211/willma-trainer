@@ -4,16 +4,13 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 jobs:
   android-tests:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Check out the repository
+      # Step 1: Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -23,44 +20,50 @@ jobs:
         with:
           node-version: '18'
 
-      # Step 3: Install project dependencies
+      # Step 3: Install dependencies
       - name: Install dependencies
         run: npm install
 
-      # Step 4: Set up Android environment
-      - name: Set up Android environment
+      # Step 4: Start Android emulator
+      - name: Start Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30                     # Specify the Android API level
-          target: google_apis               # Use Google APIs system image
-          arch: x86_64                      # Specify the architecture
-          profile: Nexus_6P                 # Specify the emulator profile
-          script: adb devices               # Simple script to check emulator readiness
-          disable-animations: true          # Disable animations for stability
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          profile: Nexus_6P
+          disable-animations: true
+          snapshot: false
 
-      # Step 5: Download APK from GitHub Release
+      # Step 5: Wait for emulator to boot
+      - name: Wait for emulator to fully boot
+        run: adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done; input keyevent 82'
+
+      # Step 6: Download APK from GitHub Releases
       - name: Download APK
         run: |
           mkdir -p apps
           curl -L -o ./apps/app-release.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-      # Step 6: Install APK on the emulator
+      # Step 7: Install APK on Emulator
       - name: Install APK
         run: adb install ./apps/app-release.apk
 
-      # Step 7: Run UI tests using Appium or WebdriverIO
+      # Step 8: Disable animations
+      - name: Disable animations
+        run: |
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+
+      # Step 9: Run tests
       - name: Run tests
-        env:
-          DEVICE_NAME: emulator-5554        # Use default emulator device name
-          APK_PATH: ./apps/app-release.apk  # Path to the APK file
-          UDID: emulator-5554              # Use emulator UDID
         run: npm test
 
-      # Step 8: Collect logs (optional)
-      - name: Collect logs
+      # Step 10: Collect logs (optional)
+      - name: Collect emulator logs
         run: adb logcat -d > emulator-logcat.log
 
-      # Step 9: Close the emulator
+      # Step 11: Terminate Emulator
       - name: Terminate emulator
-        if: always()
-        run: adb emu kill
+        run: adb -s emulator-5554 emu kill || echo "Emulator already stopped."
