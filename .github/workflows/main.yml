@@ -79,6 +79,7 @@ jobs:
           echo "Installing system-images;android-30;default;arm64-v8a..."
           sdkmanager --install "system-images;android-30;default;arm64-v8a" || { echo "Failed to install system-images"; exit 1; }
           echo "All SDK components installed successfully."
+          ls -la $ANDROID_HOME/system-images/android-30/default/arm64-v8a/
           sleep 10
 
       - name: Check Disk Space
