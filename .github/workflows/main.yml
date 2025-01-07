@@ -115,4 +115,29 @@ jobs:
     - name: Install APK on Emulator
       if: env.skip_apk_install == 'false'
       run: |
-        adb install ./apps/app-release
+        adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
+
+    # Step 15: Start Appium Server
+    - name: Start Appium server
+      run: |
+        npm install -g appium@2
+        appium --base-path /wd/hub &
+        # Wait for Appium to start
+        for i in {1..10}; do
+          if curl -s localhost:4723/wd/hub/status | grep -q "status"; then
+            echo "Appium server started"
+            break
+          fi
+          sleep 5
+        done
+
+    # Step 16: Run WebDriverIO Tests
+    - name: Run WebDriverIO tests
+      run: |
+        npx wdio run ./wdio.conf.js
+
+    # Step 17: Force Stop Emulator
+    - name: Force Stop Emulator
+      run: |
+        adb emu kill
+        pkill -f "emulator" || true
