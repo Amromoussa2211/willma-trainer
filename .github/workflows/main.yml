@@ -61,7 +61,7 @@ jobs:
     # Step 8: Install Required SDK Components
     - name: Install Required SDK Components
       run: |
-        yes | sdkmanager --install "system-images;android-30;google_apis_playstore;x86"
+        yes | sdkmanager --install "system-images;android-30;google_apis_playstore;arm64-v8a"
         yes | sdkmanager --install "emulator"
         yes | sdkmanager --install "platform-tools"
         yes | sdkmanager --install "platforms;android-30"
@@ -80,8 +80,8 @@ jobs:
     # Step 11: Create and Start Emulator
     - name: Create and Start Emulator
       run: |
-        echo no | avdmanager create avd --force -n test --abi "google_apis_playstore/x86" --package "system-images;android-30;google_apis_playstore;x86" --device "Nexus 6"
-        emulator -avd test -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -memory 1024 -cores 1 &
+        echo no | avdmanager create avd --force -n test --abi "google_apis_playstore/arm64-v8a" --package "system-images;android-30;google_apis_playstore;arm64-v8a" --device "Nexus 6"
+        emulator -avd test -no-window -noaudio -no-boot-anim -no-snapshot -memory 1024 -cores 1 &
         adb wait-for-device
         adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
         sleep 30 # Wait for the emulator to fully boot
