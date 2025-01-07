@@ -79,6 +79,10 @@ jobs:
           echo "Installing system-images;android-30;google_apis_playstore;x86..."
           sdkmanager --install "system-images;android-30;google_apis_playstore;x86" || { echo "Failed to install system-images"; exit 1; }
           echo "All SDK components installed successfully."
+          sleep 10
+
+      - name: Check Disk Space
+        run: df -h
 
       - name: List Installed Packages
         run: sdkmanager --list
@@ -127,7 +131,10 @@ jobs:
           emulator -avd test -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -memory 2048 -cores 2 &
           adb wait-for-device
           adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
-          sleep 30 # Wait for the emulator to fully boot
+          sleep 30
+          adb shell getprop sys.boot_completed
+          adb shell logcat -d > logcat_output.txt
+          cat logcat_output.txt
 
       - name: Disable Animations
         run: |
@@ -147,7 +154,6 @@ jobs:
         run: |
           npm install -g appium@2
           appium --base-path /wd/hub &
-          # Wait for Appium to start
           for i in {1..10}; do
             if curl -s localhost:4723/wd/hub/status | grep -q "status"; then
               echo "Appium server started"
