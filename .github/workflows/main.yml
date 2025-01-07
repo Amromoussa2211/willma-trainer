@@ -13,22 +13,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Step 2: Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
           cache: 'npm'
 
-      # Step 3: Install dependencies
       - name: Install dependencies
         run: npm ci
 
-      # Step 4: Set up Android environment variables
       - name: Set up Android environment variables
         run: |
           echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
@@ -38,7 +34,6 @@ jobs:
           echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
           mkdir -p $ANDROID_HOME
 
-      # Step 5: Set up Android Command Line Tools
       - name: Set up Android Command Line Tools
         run: |
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O android-sdk.zip
@@ -46,19 +41,16 @@ jobs:
           unzip android-sdk.zip -d $ANDROID_HOME/cmdline-tools/latest
           rm android-sdk.zip
 
-      # Step 6: Verify sdkmanager is in PATH
       - name: Verify sdkmanager is in PATH
         run: |
           which sdkmanager
 
-      # Step 7: Update SDK Repositories
       - name: Update SDK Repositories
         run: |
           mkdir -p $ANDROID_HOME/repositories.cfg
           touch $ANDROID_HOME/repositories.cfg
           yes | sdkmanager --update
 
-      # Step 8: Install Required SDK Components
       - name: Install Required SDK Components
         run: |
           yes | sdkmanager --install "system-images;android-30;google_apis_playstore;x86"
@@ -66,18 +58,15 @@ jobs:
           yes | sdkmanager --install "platform-tools"
           yes | sdkmanager --install "platforms;android-30"
 
-      # Step 9: Verify SDK Setup
       - name: Verify SDK Setup
         run: |
           ls -la $ANDROID_HOME/platforms
 
-      # Step 10: Verify emulator and adb are in PATH
       - name: Verify emulator and adb are in PATH
         run: |
           which emulator
           which adb
 
-      # Step 11: Create and Start Emulator
       - name: Create and Start Emulator
         run: |
           echo no | avdmanager create avd --force -n test --abi "google_apis_playstore/x86" --package "system-images;android-30;google_apis_playstore;x86" --device "Nexus 6"
@@ -86,25 +75,21 @@ jobs:
           adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
           sleep 30 # Wait for the emulator to fully boot
 
-      # Step 12: Disable Animations
       - name: Disable Animations
         run: |
           adb shell settings put global window_animation_scale 0.0
           adb shell settings put global transition_animation_scale 0.0
           adb shell settings put global animator_duration_scale 0.0
 
-      # Step 13: Download APK
       - name: Download APK
         run: |
           mkdir -p ./apps
           curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-      # Step 14: Install APK on Emulator
       - name: Install APK on Emulator
         run: |
           adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-      # Step 15: Start Appium Server
       - name: Start Appium Server
         run: |
           npm install -g appium@2
@@ -118,12 +103,11 @@ jobs:
             sleep 5
           done
 
-      # Step 16: Run WebDriverIO Tests
       - name: Run WebDriverIO Tests
         run: |
           npx wdio run ./wdio.ci.conf.js
 
-      # Step 17: Force Stop Emulator
+      - name: Force Stop Emulator
         run: |
           adb emu kill
           pkill -f "emulator" || true
