@@ -45,14 +45,7 @@ jobs:
             ~/.android/adb*
           key: avd-30  # Change this key if the API level changes
 
-      # Step 6: Download APK
-      - name: Download APK
-        run: |
-          mkdir -p apps
-          curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
-          ls -lh ./apps/
-
-      # Step 7: Run tests on Android Emulator
+      # Step 6: Run tests on Android Emulator
       - name: Run tests on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -62,32 +55,41 @@ jobs:
           profile: Nexus 6
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
-            # Install the APK
-            adb install /home/runner/work/client/client/apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
+            # Ensure apps directory exists
+            mkdir -p apps
 
-            # Wait for the emulator to be fully booted
+            # Download the APK
+            curl -L -o ./apps/app-release.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
+
+            # Uninstall any previous instance of the app
+            adb uninstall com.willma.client.staging || true
+
+            # Install the APK
+            adb install ./apps/app-release.apk
+
+            # Wait for the emulator to boot
             adb wait-for-device
             adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done;'
 
             # Start Appium server
-            npm run start:appium &
+            npx appium server --use-plugins element-wait &
 
             # Wait for Appium to start
-            sleep 30  # Increased wait time
+            sleep 30  # Adjust if needed
 
             # Run tests
             npm run test:ci
 
-      # Step 8: Terminate Emulator and Appium (if needed)
+      # Step 7: Cleanup
       - name: Terminate Emulator and Appium
-        if: always()  # Run this step even if previous steps fail
+        if: always()
         run: |
           adb emu kill
           pkill -f appium
 
-      # Step 9: Upload Screenshots on Failure
+      # Step 8: Upload Screenshots on Failure
       - name: Upload Screenshots
-        if: failure()  # Run this step only if the job fails
+        if: failure()
         uses: actions/upload-artifact@v3
         with:
           name: screenshots
