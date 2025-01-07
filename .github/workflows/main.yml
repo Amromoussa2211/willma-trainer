@@ -13,133 +13,82 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # Step 1: Checkout the repository
-    - name: Checkout code
-      uses: actions/checkout@v3
+      # Step 1: Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    # Step 2: Set up JDK for Android tools
-    - name: Set up JDK
-      uses: actions/setup-java@v3
-      with:
-        distribution: 'temurin'
-        java-version: '11'
+      # Step 2: Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
 
-    # Step 3: Set up Android environment variables
-    - name: Set up Android environment variables
-      run: |
-        echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
-        mkdir -p $ANDROID_HOME
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: npm ci
 
-    # Step 4: Set up Android Command Line Tools
-    - name: Set up Android Command Line Tools
-      run: |
-        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O android-sdk.zip
-        mkdir -p $ANDROID_HOME/cmdline-tools
-        unzip android-sdk.zip -d $ANDROID_HOME/cmdline-tools
-        mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
-        echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
-        rm android-sdk.zip
+      # Step 4: Enable KVM for hardware acceleration
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
 
-    # Step 5: Verify sdkmanager is in PATH
-    - name: Verify sdkmanager is in PATH
-      run: |
-        which sdkmanager
+      # Step 5: Cache AVD to speed up subsequent runs
+      - name: Cache AVD
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-30  # Change this key if the API level changes
 
-    # Step 6: Update SDK Repositories
-    - name: Update SDK Repositories
-      run: |
-        mkdir -p $ANDROID_HOME/repositories.cfg
-        touch $ANDROID_HOME/repositories.cfg
-        yes | sdkmanager --update
+      # Step 6: Set up Android SDK and Emulator
+      - name: Set up Android SDK
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          profile: Nexus 6
+          avd-name: test
+          emulator-options: "-no-window -gpu swiftshader_indirect -noaudio -no-boot-anim"
+          disable-animations: true
+          script: |
+            sdkmanager --install "system-images;android-30;google_apis;x86_64"
+            sdkmanager --install "emulator"
+            sdkmanager --install "platform-tools"
+            echo no | avdmanager create avd --force -n test --abi "google_apis/x86_64" --package "system-images;android-30;google_apis;x86_64" --device "Nexus 6"
 
-    # Step 7: Update Android SDK and accept licenses
-    - name: Update Android SDK and accept licenses
-      run: |
-        yes | sdkmanager --licenses
-        yes | sdkmanager --update
+      # Step 7: Wait for Emulator to Boot
+      - name: Wait for Emulator to Boot
+        run: |
+          adb wait-for-device
+          adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
+          sleep 30 # Additional delay to ensure the system is fully initialized
 
-    # Step 8: Set up Android SDK
-    - name: Set up Android SDK
-      uses: reactivecircus/android-emulator-runner@v2
-      with:
-        api-level: 30
-        target: google_apis_playstore # Use Google APIs with Play Store
-        arch: x86
-        profile: Nexus 6
-        avd-name: test
-        emulator-options: "-no-window -no-audio -no-snapshot -no-boot-anim -memory 2048 -cores 2"
-        disable-animations: true
-        script: |
-          sdkmanager --install "system-images;android-30;google_apis_playstore;x86"
-          sdkmanager --install "emulator"
-          sdkmanager --install "platform-tools"
-          echo no | avdmanager create avd --force -n test --abi "google_apis_playstore/x86" --package "system-images;android-30;google_apis_playstore;x86" --device "Nexus 6"
+      # Step 8: Install APK on Emulator
+      - name: Install APK on Emulator
+        run: |
+          adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-    # Step 9: Verify AVD Creation
-    - name: Verify AVD Creation
-      run: |
-        avdmanager list avd
+      # Step 9: Start Appium Server
+      - name: Start Appium server
+        run: |
+          npm install -g appium@2
+          appium --base-path /wd/hub &
+          # Wait for Appium to start
+          for i in {1..10}; do
+            if curl -s localhost:4723/wd/hub/status | grep -q "status"; then
+              echo "Appium server started"
+              break
+            fi
+            sleep 5
+          done
 
-    # Step 10: Wait for Emulator to Fully Boot
-    - name: Wait for Emulator to Fully Boot
-      run: |
-        adb wait-for-device
-        adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
-        sleep 30 # Additional delay to ensure the system is fully initialized
-
-    # Step 11: Disable Animations Manually
-    - name: Disable Animations Manually
-      run: |
-        adb root
-        adb remount
-        adb shell "echo 'persist.sys.bootanim.disable=1' >> /system/build.prop"
-        adb shell "echo 'persist.sys.bootanim.scale=0' >> /system/build.prop"
-        adb shell "echo 'persist.sys.bootanim.timeout=0' >> /system/build.prop"
-        adb reboot
-        adb wait-for-device
-        adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
-
-    # Step 12: Verify Emulator Status
-    - name: Verify Emulator Status
-      run: |
-        adb devices
-
-    # Step 13: Detect Emulator UDID
-    - name: Detect Emulator UDID
-      id: detect-udid
-      run: |
-        echo "UDID=$(adb devices | grep 'emulator-' | awk '{print $1}')" >> $GITHUB_ENV
-
-    # Step 14: Install dependencies
-    - name: Install dependencies
-      run: |
-        npm ci
-
-    # Step 15: Download APK
-    - name: Download APK
-      run: |
-        curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
-
-    # Step 16: Start Appium Server
-    - name: Start Appium server
-      run: |
-        npm install -g appium@2
-        appium --base-path /wd/hub &
-        # Wait for Appium to start
-        for i in {1..10}; do
-          if curl -s localhost:4723/wd/hub/status | grep -q "status"; then
-            echo "Appium server started"
-            break
-          fi
-          sleep 5
-        done
-
-    # Step 17: Install APK on emulator
-    - name: Install APK on emulator
-      run: |
-        adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
-
-    # Step 18: Run WebDriverIO tests
-    - name: Run WebDriverIO tests
-      run: |
-        npx wdio run ./wdio.ci.conf.js
+      # Step 10: Run WebDriverIO Tests
+      - name: Run WebDriverIO tests
+        run: |
+          npx wdio run ./wdio.ci.conf.js
