@@ -82,7 +82,10 @@ jobs:
           chmod -R 777 $ANDROID_HOME/system-images/
           find $ANDROID_HOME/system-images/ -type d
           sleep 10
-
+          echo "Listing system-images directory structure..."
+          find $ANDROID_HOME/system-images/ -type f
+          ls -la $ANDROID_HOME/system-images/android-30/default/arm64-v8a/
+          
       - name: Check Disk Space
         run: df -h
 
