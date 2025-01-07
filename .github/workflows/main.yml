@@ -127,4 +127,4 @@ jobs:
     - name: Force Stop Emulator
       run: |
         adb emu kill
-        pkill -f "emulator" || true 
+        pkill -f "emulator" || true
