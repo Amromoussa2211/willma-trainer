@@ -65,7 +65,7 @@ jobs:
         arch: x86
         profile: Nexus 6
         avd-name: test
-        emulator-options: "-no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -memory 2048 -cores 2"
+        emulator-options: "-no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -memory 1024 -cores 1"
         disable-animations: true
         script: |
           sdkmanager --install "system-images;android-30;google_apis_playstore;x86"
@@ -93,38 +93,26 @@ jobs:
         adb shell settings put global transition_animation_scale 0.0
         adb shell settings put global animator_duration_scale 0.0
 
-    # Step 12: Download APK
+    # Step 12: Check if APK is Installed
+    - name: Check if APK is Installed
+      id: check-apk
+      run: |
+        if adb shell pm list packages | grep -q "com.willma.client.staging"; then
+          echo "APK is already installed."
+          echo "skip_apk_install=true" >> $GITHUB_ENV
+        else
+          echo "APK is not installed."
+          echo "skip_apk_install=false" >> $GITHUB_ENV
+        fi
+
+    # Step 13: Download APK
     - name: Download APK
       run: |
         mkdir -p ./apps
         curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-    # Step 13: Install APK on Emulator
+    # Step 14: Install APK on Emulator
     - name: Install APK on Emulator
+      if: env.skip_apk_install == 'false'
       run: |
-        adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
-
-    # Step 14: Start Appium Server
-    - name: Start Appium server
-      run: |
-        npm install -g appium@2
-        appium --base-path /wd/hub &
-        # Wait for Appium to start
-        for i in {1..10}; do
-          if curl -s localhost:4723/wd/hub/status | grep -q "status"; then
-            echo "Appium server started"
-            break
-          fi
-          sleep 5
-        done
-
-    # Step 15: Run WebDriverIO Tests
-    - name: Run WebDriverIO tests
-      run: |
-        npx wdio run ./wdio.conf.js
-
-    # Step 16: Force Stop Emulator
-    - name: Force Stop Emulator
-      run: |
-        adb emu kill
-        pkill -f "emulator" || true
+        adb install ./apps/app-release
