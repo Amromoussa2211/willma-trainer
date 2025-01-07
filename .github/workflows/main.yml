@@ -34,11 +34,11 @@ jobs:
     - name: Set up Android Command Line Tools
       run: |
         wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O android-sdk.zip
-        unzip android-sdk.zip -d $ANDROID_HOME
+        unzip android-sdk.zip -d cmdline-tools-temp
         mkdir -p $ANDROID_HOME/cmdline-tools/latest
-        mv $ANDROID_HOME/cmdline-tools/* $ANDROID_HOME/cmdline-tools/latest
+        mv cmdline-tools-temp/* $ANDROID_HOME/cmdline-tools/latest
         echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
-        rm android-sdk.zip
+        rm -rf cmdline-tools-temp android-sdk.zip
 
     # Step 5: Update Android SDK and accept licenses
     - name: Update Android SDK and accept licenses
