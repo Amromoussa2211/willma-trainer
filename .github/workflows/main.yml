@@ -24,7 +24,15 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # Step 4: Start Android emulator
+      # Step 4: Set up Android SDK
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v2
+        with:
+          api-level: 30
+          target: default
+          ndk: false
+
+      # Step 5: Start Android emulator
       - name: Start Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -33,37 +41,28 @@ jobs:
           arch: x86_64
           profile: Nexus_6P
           disable-animations: true
-          snapshot: false
+          emulator-boot-timeout: 600
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          force-avd-creation: true
 
-      # Step 5: Wait for emulator to boot
+      # Step 6: Wait for emulator to fully boot
       - name: Wait for emulator to fully boot
         run: adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done; input keyevent 82'
 
-      # Step 6: Download APK from GitHub Releases
+      # Step 7: Download APK from GitHub Releases
       - name: Download APK
         run: |
           mkdir -p apps
           curl -L -o ./apps/app-release.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-      # Step 7: Install APK on Emulator
+      # Step 8: Install APK on Emulator
       - name: Install APK
         run: adb install ./apps/app-release.apk
 
-      # Step 8: Disable animations
-      - name: Disable animations
-        run: |
-          adb shell settings put global window_animation_scale 0
-          adb shell settings put global transition_animation_scale 0
-          adb shell settings put global animator_duration_scale 0
-
-      # Step 9: Run tests
+      # Step 9: Run Tests
       - name: Run tests
         run: npm test
 
-      # Step 10: Collect logs (optional)
-      - name: Collect emulator logs
-        run: adb logcat -d > emulator-logcat.log
-
-      # Step 11: Terminate Emulator
+      # Step 10: Terminate Emulator
       - name: Terminate emulator
         run: adb -s emulator-5554 emu kill || echo "Emulator already stopped."
