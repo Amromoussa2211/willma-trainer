@@ -1,42 +1,66 @@
-name: Android Test Automation
+name: Android UI Tests
 
 on:
   push:
     branches:
       - main
   pull_request:
+    branches:
+      - main
 
 jobs:
   android-tests:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Check out the repository
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # Step 2: Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
 
+      # Step 3: Install project dependencies
       - name: Install dependencies
         run: npm install
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          cmdline-tools-version: 'latest'
-          platform-version: '30'
-
-      - name: Start Android Emulator
+      # Step 4: Set up Android environment
+      - name: Set up Android environment
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30
-          target: google_apis
-          arch: x86_64
-          script: |
-            adb install ./apps/app-release.apk
-            npm run test:ci
+          api-level: 30                     # Specify the Android API level
+          target: google_apis               # Use Google APIs system image
+          arch: x86_64                      # Specify the architecture
+          profile: Nexus_6P                 # Specify the emulator profile
+          script: adb devices               # Simple script to check emulator readiness
+          disable-animations: true          # Disable animations for stability
 
-      - name: Terminate Emulator
+      # Step 5: Download APK from GitHub Release
+      - name: Download APK
+        run: |
+          mkdir -p apps
+          curl -L -o ./apps/app-release.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
+
+      # Step 6: Install APK on the emulator
+      - name: Install APK
+        run: adb install ./apps/app-release.apk
+
+      # Step 7: Run UI tests using Appium or WebdriverIO
+      - name: Run tests
+        env:
+          DEVICE_NAME: emulator-5554        # Use default emulator device name
+          APK_PATH: ./apps/app-release.apk  # Path to the APK file
+          UDID: emulator-5554              # Use emulator UDID
+        run: npm test
+
+      # Step 8: Collect logs (optional)
+      - name: Collect logs
+        run: adb logcat -d > emulator-logcat.log
+
+      # Step 9: Close the emulator
+      - name: Terminate emulator
+        if: always()
         run: adb emu kill
