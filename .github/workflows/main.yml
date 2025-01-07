@@ -71,6 +71,9 @@ jobs:
           sdkmanager --install "system-images;android-30;google_apis_playstore;x86" || { echo "Failed to install system-images"; exit 1; }
           echo "All SDK components installed successfully."
 
+      - name: List Installed Packages
+        run: sdkmanager --list
+
       - name: Verify SDK Setup
         run: |
           echo "Checking if platforms directory exists..."
