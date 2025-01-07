@@ -64,14 +64,20 @@ jobs:
         yes | sdkmanager --install "system-images;android-30;google_apis_playstore;x86"
         yes | sdkmanager --install "emulator"
         yes | sdkmanager --install "platform-tools"
+        yes | sdkmanager --install "platforms;android-30"
 
-    # Step 9: Verify emulator and adb are in PATH
+    # Step 9: Verify SDK Setup
+    - name: Verify SDK Setup
+      run: |
+        ls -la $ANDROID_HOME/platforms
+
+    # Step 10: Verify emulator and adb are in PATH
     - name: Verify emulator and adb are in PATH
       run: |
         which emulator
         which adb
 
-    # Step 10: Create and Start Emulator
+    # Step 11: Create and Start Emulator
     - name: Create and Start Emulator
       run: |
         echo no | avdmanager create avd --force -n test --abi "google_apis_playstore/x86" --package "system-images;android-30;google_apis_playstore;x86" --device "Nexus 6"
@@ -80,25 +86,25 @@ jobs:
         adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
         sleep 30 # Wait for the emulator to fully boot
 
-    # Step 11: Disable Animations
+    # Step 12: Disable Animations
     - name: Disable Animations
       run: |
         adb shell settings put global window_animation_scale 0.0
         adb shell settings put global transition_animation_scale 0.0
         adb shell settings put global animator_duration_scale 0.0
 
-    # Step 12: Download APK
+    # Step 13: Download APK
     - name: Download APK
       run: |
         mkdir -p ./apps
         curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-    # Step 13: Install APK on Emulator
+    # Step 14: Install APK on Emulator
     - name: Install APK on Emulator
       run: |
         adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-    # Step 14: Start Appium Server
+    # Step 15: Start Appium Server
     - name: Start Appium server
       run: |
         npm install -g appium@2
@@ -112,12 +118,12 @@ jobs:
           sleep 5
         done
 
-    # Step 15: Run WebDriverIO Tests
+    # Step 16: Run WebDriverIO Tests
     - name: Run WebDriverIO tests
       run: |
         npx wdio run ./wdio.ci.conf.js
 
-    # Step 16: Force Stop Emulator
+    # Step 17: Force Stop Emulator
     - name: Force Stop Emulator
       run: |
         adb emu kill
