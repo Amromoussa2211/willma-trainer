@@ -39,7 +39,7 @@ jobs:
           wget https://dl.google.com/android/repository/commandlinetools-linux-6609375_latest.zip -O android-sdk.zip
           mkdir -p $ANDROID_HOME/cmdline-tools
           unzip android-sdk.zip -d $ANDROID_HOME/cmdline-tools
-          mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+          mv $ANDROID_HOME/cmdline-tools/cmdline-tools-* $ANDROID_HOME/cmdline-tools/latest
           rm android-sdk.zip
 
       - name: Verify sdkmanager is in PATH
