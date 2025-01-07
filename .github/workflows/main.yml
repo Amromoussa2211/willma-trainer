@@ -21,7 +21,19 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      # Step 3: Cache Gradle dependencies (optional, if you use Gradle)
+      # Step 3: Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18  # Use the Node.js version specified in your project
+          cache: 'npm'  # Cache npm dependencies for faster builds
+
+      # Step 4: Install npm dependencies
+      - name: Install dependencies
+        run: |
+          npm install
+
+      # Step 5: Cache Gradle dependencies (optional, if you use Gradle)
       - name: Cache Gradle dependencies
         uses: actions/cache@v4
         with:
@@ -30,7 +42,7 @@ jobs:
             ~/.gradle/wrapper
           key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*') }}
 
-      # Step 4: Cache AVD to speed up subsequent runs
+      # Step 6: Cache AVD to speed up subsequent runs
       - name: Cache AVD
         uses: actions/cache@v4
         id: avd-cache
@@ -40,7 +52,7 @@ jobs:
             ~/.android/adb*
           key: avd-30  # Change this key if the API level changes
 
-      # Step 5: Run tests using the Android Emulator Runner
+      # Step 7: Run tests using the Android Emulator Runner
       - name: Run tests on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -57,5 +69,11 @@ jobs:
             # Install the APK on the emulator
             adb install ./apps/app-release.apk
 
+            # Start Appium server
+            npm run start:appium &
+
+            # Wait for Appium to start
+            sleep 10
+
             # Run your tests
-            npm test
+            npm run test:ci
