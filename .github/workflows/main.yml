@@ -13,118 +13,115 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # Step 1: Checkout the repository
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    # Step 2: Set up Node.js
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: 18
-        cache: 'npm'
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
 
-    # Step 3: Install dependencies
-    - name: Install dependencies
-      run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-    # Step 4: Set up Android environment variables
-    - name: Set up Android environment variables
-      run: |
-        echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
-        mkdir -p $ANDROID_HOME
+      - name: Set up Android environment variables
+        run: |
+          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+          mkdir -p $ANDROID_HOME
 
-    # Step 5: Set up Android Command Line Tools
-    - name: Set up Android Command Line Tools
-      run: |
-        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O android-sdk.zip
-        mkdir -p $ANDROID_HOME/cmdline-tools
-        unzip android-sdk.zip -d $ANDROID_HOME/cmdline-tools
-        mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
-        echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
-        echo "$ANDROID_HOME/emulator" >> $GITHUB_PATH
-        echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
-        rm android-sdk.zip
+      - name: Set up Android Command Line Tools
+        run: |
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O android-sdk.zip
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          unzip android-sdk.zip -d $ANDROID_HOME/cmdline-tools
+          mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$ANDROID_HOME/emulator" >> $GITHUB_PATH
+          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+          rm android-sdk.zip
 
-    # Step 6: Verify sdkmanager is in PATH
-    - name: Verify sdkmanager is in PATH
-      run: |
-        which sdkmanager
+      - name: Verify sdkmanager is in PATH
+        run: |
+          which sdkmanager
 
-    # Step 7: Update SDK Repositories
-    - name: Update SDK Repositories
-      run: |
-        mkdir -p $ANDROID_HOME/repositories.cfg
-        touch $ANDROID_HOME/repositories.cfg
-        yes | sdkmanager --update
+      - name: Update SDK Repositories
+        run: |
+          mkdir -p $ANDROID_HOME/repositories.cfg
+          touch $ANDROID_HOME/repositories.cfg
+          yes | sdkmanager --update
 
-    # Step 8: Install Required SDK Components
-    - name: Install Required SDK Components
-      run: |
-        yes | sdkmanager --install "system-images;android-30;google_apis_playstore;x86"
-        yes | sdkmanager --install "emulator"
-        yes | sdkmanager --install "platform-tools"
-        yes | sdkmanager --install "platforms;android-30"
+      - name: Install Required SDK Components
+        run: |
+          yes | sdkmanager --install "system-images;android-30;google_apis_playstore;x86_64"
+          yes | sdkmanager --install "emulator"
+          yes | sdkmanager --install "platform-tools"
+          yes | sdkmanager --install "platforms;android-30"
 
-    # Step 9: Verify SDK Setup
-    - name: Verify SDK Setup
-      run: |
-        ls -la $ANDROID_HOME/platforms
+      - name: Verify SDK Setup
+        run: |
+          ls -la $ANDROID_HOME/platforms
 
-    # Step 10: Verify emulator and adb are in PATH
-    - name: Verify emulator and adb are in PATH
-      run: |
-        which emulator
-        which adb
+      - name: Verify emulator and adb are in PATH
+        run: |
+          which emulator
+          which adb
 
-    # Step 11: Create and Start Emulator
-    - name: Create and Start Emulator
-      run: |
-        echo no | avdmanager create avd --force -n test --abi "google_apis_playstore/x86" --package "system-images;android-30;google_apis_playstore;x86" --device "Nexus 6"
-        emulator -avd test -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -memory 1024 -cores 1 &
-        adb wait-for-device
-        adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
-        sleep 30 # Wait for the emulator to fully boot
+      - name: Install KVM
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
 
-    # Step 12: Disable Animations
-    - name: Disable Animations
-      run: |
-        adb shell settings put global window_animation_scale 0.0
-        adb shell settings put global transition_animation_scale 0.0
-        adb shell settings put global animator_duration_scale 0.0
+      - name: Add runner user to KVM group
+        run: |
+          sudo usermod -aG kvm $USER
+          sudo chown root:kvm /dev/kvm
+          sudo chmod 660 /dev/kvm
 
-    # Step 13: Download APK
-    - name: Download APK
-      run: |
-        mkdir -p ./apps
-        curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
+      - name: Verify KVM setup
+        run: |
+          ls -la /dev/kvm
 
-    # Step 14: Install APK on Emulator
-    - name: Install APK on Emulator
-      run: |
-        adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
+      - name: Create and Start Emulator
+        run: |
+          echo no | avdmanager create avd --force -n test --abi "google_apis_playstore/x86_64" --package "system-images;android-30;google_apis_playstore;x86_64" --device "Nexus 6"
+          emulator -avd test -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -memory 2048 -cores 2 &
+          adb wait-for-device
+          adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
+          sleep 30 # Wait for the emulator to fully boot
 
-    # Step 15: Start Appium Server
-    - name: Start Appium server
-      run: |
-        npm install -g appium@2
-        appium --base-path /wd/hub &
-        # Wait for Appium to start
-        for i in {1..10}; do
-          if curl -s localhost:4723/wd/hub/status | grep -q "status"; then
-            echo "Appium server started"
-            break
-          fi
-          sleep 5
-        done
+      - name: Disable Animations
+        run: |
+          adb shell settings put global window_animation_scale 0.0
+          adb shell settings put global transition_animation_scale 0.0
+          adb shell settings put global animator_duration_scale 0.0
 
-    # Step 16: Run WebDriverIO Tests
-    - name: Run WebDriverIO tests
-      run: |
-        npx wdio run ./wdio.ci.conf.js
+      - name: Download APK
+        run: |
+          mkdir -p ./apps
+          curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-    # Step 17: Force Stop Emulator
-    - name: Force Stop Emulator
-      run: |
-        adb emu kill
-        pkill -f "emulator" || true
+      - name: Install APK on Emulator
+        run: |
+          adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
+
+      - name: Start Appium server
+        run: |
+          npm install -g appium@2
+          appium --base-path /wd/hub &
+          for i in {1..10}; do
+            if curl -s localhost:4723/wd/hub/status | grep -q "status"; then
+              echo "Appium server started"
+              break
+            fi
+            sleep 5
+          done
+
+      - name: Run WebDriverIO tests
+        run: |
+          npx wdio run ./wdio.ci.conf.js
+
+      - name: Force Stop Emulator
+        run: |
+          adb emu kill
+          pkill -f "emulator" || true
