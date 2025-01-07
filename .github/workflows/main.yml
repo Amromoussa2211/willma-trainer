@@ -24,42 +24,70 @@ jobs:
         distribution: 'temurin'
         java-version: '11'
 
-    # Step 3: Set up Android SDK
+    # Step 3: Update Android SDK
+    - name: Update Android SDK
+      run: |
+        yes | sdkmanager --update
+        yes | sdkmanager --licenses
+
+    # Step 4: Set up Android SDK
     - name: Set up Android SDK
       uses: reactivecircus/android-emulator-runner@v2
       with:
         api-level: 30
         target: google_apis
         arch: x86_64
-        profile: Nexus_6
+        profile: Nexus 6
         avd-name: test
         emulator-options: "-no-window -no-audio"
         disable-animations: true
-        script: adb devices
+        script: |
+          sdkmanager --install "system-images;android-30;google_apis;x86_64"
+          sdkmanager --install "emulator"
+          sdkmanager --install "platform-tools"
+          echo no | avdmanager create avd --force -n test --abi "google_apis/x86_64" --package "system-images;android-30;google_apis;x86_64" --device "Nexus 6"
 
-    # Step 4: Install dependencies
+    # Step 5: Verify AVD Creation
+    - name: Verify AVD Creation
+      run: |
+        avdmanager list avd
+
+    # Step 6: Detect Emulator UDID
+    - name: Detect Emulator UDID
+      id: detect-udid
+      run: |
+        echo "UDID=$(adb devices | grep 'emulator-' | awk '{print $1}')" >> $GITHUB_ENV
+
+    # Step 7: Install dependencies
     - name: Install dependencies
       run: |
         npm ci
 
-    # Step 5: Download APK
+    # Step 8: Download APK
     - name: Download APK
       run: |
-        curl -L -o ./apps/app-release.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
+        curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-    # Step 6: Start Appium Server
+    # Step 9: Start Appium Server
     - name: Start Appium server
       run: |
         npm install -g appium@2
         appium --base-path /wd/hub &
-        sleep 10 # Wait for Appium to start
+        # Wait for Appium to start
+        for i in {1..10}; do
+          if curl -s localhost:4723/wd/hub/status | grep -q "status"; then
+            echo "Appium server started"
+            break
+          fi
+          sleep 5
+        done
 
-    # Step 7: Install APK on emulator
+    # Step 10: Install APK on emulator
     - name: Install APK on emulator
       run: |
-        adb install ./apps/app-release.apk
+        adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-    # Step 8: Run WebDriverIO tests
+    # Step 11: Run WebDriverIO tests
     - name: Run WebDriverIO tests
       run: |
         npx wdio run ./wdio.ci.conf.js
