@@ -32,7 +32,7 @@ jobs:
 
       - name: Set up Android Command Line Tools
         run: |
-          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O android-sdk.zip
+          wget https://dl.google.com/android/repository/commandlinetools-linux-6609375_latest.zip -O android-sdk.zip
           mkdir -p $ANDROID_HOME/cmdline-tools
           unzip android-sdk.zip -d $ANDROID_HOME/cmdline-tools
           mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
