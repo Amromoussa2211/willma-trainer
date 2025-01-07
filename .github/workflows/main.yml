@@ -124,7 +124,6 @@ jobs:
           npx wdio run ./wdio.ci.conf.js
 
       # Step 17: Force Stop Emulator
-      - name: Force Stop Emulator
         run: |
           adb emu kill
           pkill -f "emulator" || true
