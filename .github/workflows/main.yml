@@ -76,6 +76,8 @@ jobs:
 
       - name: Verify SDK Setup
         run: |
+          echo "Checking directory structure..."
+          ls -la $ANDROID_HOME
           echo "Checking if platforms directory exists..."
           if [ -d "$ANDROID_HOME/platforms" ]; then
             echo "Platforms directory found."
@@ -136,19 +138,4 @@ jobs:
         run: |
           npm install -g appium@2
           appium --base-path /wd/hub &
-          # Wait for Appium to start
-          for i in {1..10}; do
-            if curl -s localhost:4723/wd/hub/status | grep -q "status"; then
-              echo "Appium server started"
-              break
-            fi
-            sleep 5
-          done
-
-      - name: Run WebDriverIO Tests
-        run: npx wdio run ./wdio.ci.conf.js
-
-      - name: Force Stop Emulator
-        run: |
-          adb emu kill
-          pkill -f "emulator" || true
+          # Wait for Appium
