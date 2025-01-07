@@ -1,4 +1,4 @@
-name: Android Emulator Setup Without Boot
+name: Android Emulator Setup and Tests
 
 on:
   push:
@@ -6,61 +6,56 @@ on:
       - main
 
 jobs:
-  android-emulator-setup:
+  test:
     runs-on: ubuntu-latest
 
     steps:
       # Step 1: Checkout code
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      # Step 2: Set up Android SDK
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v2
+      # Step 2: Enable KVM for hardware acceleration
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # Step 3: Cache Gradle dependencies (optional, if you use Gradle)
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
         with:
-          api-level: 30
-          target: google_apis
-          ndk: false
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*') }}
 
-      # Step 3: Install Emulator Package
-      - name: Install Emulator
-        run: |
-          echo "Installing emulator package..."
-          sdkmanager "emulator"
+      # Step 4: Cache AVD to speed up subsequent runs
+      - name: Cache AVD
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-30  # Change this key if the API level changes
 
-      # Step 4: Install System Image
-      - name: Install System Image
-        run: |
-          echo "Installing required system image..."
-          sdkmanager "system-images;android-30;google_apis;x86_64"
+      # Step 5: Run tests using the Android Emulator Runner
+      - name: Run tests on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30  # Use the API level you need
+          target: google_apis  # Use the target you need (default, google_apis, etc.)
+          arch: x86_64  # Use x86_64 for better performance (requires KVM)
+          profile: Nexus 6  # Optional: Specify a device profile
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim  # Optimized for CI
+          script: |
+            # Download your APK
+            mkdir -p apps
+            curl -L -o ./apps/app-release.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-      # Step 5: Configure Emulator
-      - name: Configure Emulator
-        run: |
-          echo "Creating AVD..."
-          echo "no" | avdmanager create avd -n test -k "system-images;android-30;google_apis;x86_64" --force
-          echo "Emulator downloaded and configured."
+            # Install the APK on the emulator
+            adb install ./apps/app-release.apk
 
-      # Step 6: Start Emulator
-      - name: Start Emulator
-        run: |
-          echo "Starting Emulator..."
-          $ANDROID_HOME/emulator/emulator -avd test -no-audio -no-window -no-snapshot -no-boot-anim &
-          adb wait-for-device
-          echo "Emulator started."
-
-      # Step 7: Download APK
-      - name: Download APK
-        run: |
-          mkdir -p apps
-          curl -L -o ./apps/app-release.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
-
-      # Step 8: Install APK on Emulator
-      - name: Install APK
-        run: |
-          echo "Installing APK..."
-          adb install ./apps/app-release.apk
-
-      # Step 9: Run Test Scripts
-      - name: Run Tests
-        run: npm test
+            # Run your tests
+            npm test
