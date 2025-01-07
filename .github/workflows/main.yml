@@ -72,7 +72,14 @@ jobs:
             npm run start:appium &
 
             # Wait for Appium to start
-            sleep 20  # Increased wait time
+            sleep 30  # Increased wait time
 
             # Run tests
             npm run test:ci
+
+      # Step 7: Terminate Emulator and Appium (if needed)
+      - name: Terminate Emulator and Appium
+        if: always()  # Run this step even if previous steps fail
+        run: |
+          adb emu kill
+          pkill -f appium
