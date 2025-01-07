@@ -53,10 +53,10 @@ jobs:
 
       - name: Install Required SDK Components
         run: |
-          yes | sdkmanager --install "system-images;android-29;google_apis;armeabi-v7a"
+          yes | sdkmanager --install "system-images;android-28;google_apis;armeabi-v7a"
           yes | sdkmanager --install "emulator"
           yes | sdkmanager --install "platform-tools"
-          yes | sdkmanager --install "platforms;android-29"
+          yes | sdkmanager --install "platforms;android-28"
 
       - name: Verify SDK Setup
         run: |
@@ -69,7 +69,7 @@ jobs:
 
       - name: Create and Start Emulator
         run: |
-          echo no | avdmanager create avd --force -n test --abi "google_apis/armeabi-v7a" --package "system-images;android-29;google_apis;armeabi-v7a" --device "Nexus 6"
+          echo no | avdmanager create avd --force -n test --abi "google_apis/armeabi-v7a" --package "system-images;android-28;google_apis;armeabi-v7a" --device "Nexus 6"
           emulator -avd test -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -memory 2048 -cores 2 &
           adb wait-for-device
           adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
