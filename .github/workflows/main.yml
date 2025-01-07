@@ -73,7 +73,7 @@ jobs:
             if [ ! -f ./apps/app-release.apk ]; then
               echo "APK file not found!"
               exit 1
-            fi  # Added the missing 'fi' here
+            fi  # Properly close the 'if' block with 'fi'
 
             # Install the APK on the emulator
             adb install ./apps/app-release.apk
