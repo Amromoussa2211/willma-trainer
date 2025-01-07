@@ -45,7 +45,14 @@ jobs:
             ~/.android/adb*
           key: avd-30  # Change this key if the API level changes
 
-      # Step 6: Run tests on Android Emulator
+      # Step 6: Download APK
+      - name: Download APK
+        run: |
+          mkdir -p apps
+          curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
+          ls -lh ./apps/
+
+      # Step 7: Run tests on Android Emulator
       - name: Run tests on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -55,14 +62,8 @@ jobs:
           profile: Nexus 6
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
-            # Create the apps directory if it doesn't exist
-            mkdir -p apps
-
-            # Download the APK
-            curl -L -o ./apps/app-release.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
-
             # Install the APK
-            adb install ./apps/app-release.apk
+            adb install /home/runner/work/client/client/apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
             # Wait for the emulator to be fully booted
             adb wait-for-device
@@ -77,14 +78,14 @@ jobs:
             # Run tests
             npm run test:ci
 
-      # Step 7: Terminate Emulator and Appium (if needed)
+      # Step 8: Terminate Emulator and Appium (if needed)
       - name: Terminate Emulator and Appium
         if: always()  # Run this step even if previous steps fail
         run: |
           adb emu kill
           pkill -f appium
 
-      # Step 8: Upload Screenshots on Failure
+      # Step 9: Upload Screenshots on Failure
       - name: Upload Screenshots
         if: failure()  # Run this step only if the job fails
         uses: actions/upload-artifact@v3
