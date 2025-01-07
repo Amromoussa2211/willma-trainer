@@ -24,13 +24,29 @@ jobs:
         distribution: 'temurin'
         java-version: '11'
 
-    # Step 3: Update Android SDK
-    - name: Update Android SDK
+    # Step 3: Set up Android environment variables
+    - name: Set up Android environment variables
+      run: |
+        echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+        mkdir -p $ANDROID_HOME
+
+    # Step 4: Set up Android Command Line Tools
+    - name: Set up Android Command Line Tools
+      run: |
+        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O android-sdk.zip
+        unzip android-sdk.zip -d $ANDROID_HOME
+        mkdir -p $ANDROID_HOME/cmdline-tools/latest
+        mv $ANDROID_HOME/cmdline-tools/* $ANDROID_HOME/cmdline-tools/latest
+        echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
+        rm android-sdk.zip
+
+    # Step 5: Update Android SDK and accept licenses
+    - name: Update Android SDK and accept licenses
       run: |
         yes | sdkmanager --update
         yes | sdkmanager --licenses
 
-    # Step 4: Set up Android SDK
+    # Step 6: Set up Android SDK
     - name: Set up Android SDK
       uses: reactivecircus/android-emulator-runner@v2
       with:
@@ -47,28 +63,28 @@ jobs:
           sdkmanager --install "platform-tools"
           echo no | avdmanager create avd --force -n test --abi "google_apis/x86_64" --package "system-images;android-30;google_apis;x86_64" --device "Nexus 6"
 
-    # Step 5: Verify AVD Creation
+    # Step 7: Verify AVD Creation
     - name: Verify AVD Creation
       run: |
         avdmanager list avd
 
-    # Step 6: Detect Emulator UDID
+    # Step 8: Detect Emulator UDID
     - name: Detect Emulator UDID
       id: detect-udid
       run: |
         echo "UDID=$(adb devices | grep 'emulator-' | awk '{print $1}')" >> $GITHUB_ENV
 
-    # Step 7: Install dependencies
+    # Step 9: Install dependencies
     - name: Install dependencies
       run: |
         npm ci
 
-    # Step 8: Download APK
+    # Step 10: Download APK
     - name: Download APK
       run: |
         curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-    # Step 9: Start Appium Server
+    # Step 11: Start Appium Server
     - name: Start Appium server
       run: |
         npm install -g appium@2
@@ -82,12 +98,12 @@ jobs:
           sleep 5
         done
 
-    # Step 10: Install APK on emulator
+    # Step 12: Install APK on emulator
     - name: Install APK on emulator
       run: |
         adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-    # Step 11: Run WebDriverIO tests
+    # Step 13: Run WebDriverIO tests
     - name: Run WebDriverIO tests
       run: |
         npx wdio run ./wdio.ci.conf.js
