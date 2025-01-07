@@ -63,16 +63,15 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim  # Optimized for CI
           working-directory: /home/runner/work/client/client  # Set the correct working directory
           script: |
+            # Create the apps directory if it doesn't exist
+            mkdir -p apps
+
+            # Download the APK with the correct name
+            curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
+
             # Verify the APK file exists
             if [ ! -f ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk ]; then
-              echo "APK file not found! Downloading..."
-              # Download the APK with the correct name
-              curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
-            fi
-
-            # Verify the APK file exists after download
-            if [ ! -f ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk ]; then
-              echo "APK file still not found! Exiting..."
+              echo "APK file not found! Exiting..."
               exit 1
             fi
 
