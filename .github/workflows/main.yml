@@ -11,87 +11,32 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
 
-      # Cache Node.js modules
-      - name: Cache Node.js modules
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: npm-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            npm-${{ runner.os }}-
-
-      # Install dependencies
       - name: Install dependencies
         run: npm install
 
-      # Set up Android SDK
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
           cmdline-tools-version: 'latest'
-          build-tools-version: '34.0.0'
           platform-version: '30'
-          emulator-version: 'latest'
-          system-images: 'system-images;android-30;google_apis;x86_64'
 
-      # Start Android Emulator
       - name: Start Android Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
           target: google_apis
           arch: x86_64
-          profile: pixel
-          emulator-options: "-no-window -no-boot-anim"
-          disable-animations: true
-          emulator-boot-timeout: 600
+          script: |
+            adb install ./apps/app-release.apk
+            npm run test:ci
 
-      # Wait for Emulator to Boot
-      - name: Wait for emulator to boot
-        run: adb wait-for-device
-
-      # Install APK
-      - name: Install APK
-        run: adb install ./apps/app-release.apk
-
-      # Run Tests
-      - name: Run Tests
-        run: npm run test:ci
-
-      # Debugging Logs
-      - name: Capture Emulator Logs
-        if: failure()
-        run: adb logcat -d > emulator-logcat.log
-
-      # Upload Debug Logs
-      - name: Upload Debug Logs
-        if: failure()
-        uses: actions/upload-artifact@v3
-        with:
-          name: emulator-debug-logs
-          path: emulator-logcat.log
-
-      # Terminate Emulator
       - name: Terminate Emulator
         run: adb emu kill
-
-      # Generate Allure Report
-      - name: Generate Allure Report
-        run: npm run generate-report
-
-      # Upload Allure Report
-      - name: Upload Allure Report
-        uses: actions/upload-artifact@v3
-        with:
-          name: allure-report
-          path: allure-report/
