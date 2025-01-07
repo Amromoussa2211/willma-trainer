@@ -36,10 +36,10 @@ jobs:
 
       - name: Set up Android Command Line Tools
         run: |
-          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O android-sdk.zip
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9123335_latest.zip -O commandlinetools.zip
           mkdir -p $ANDROID_HOME/cmdline-tools/latest
-          unzip android-sdk.zip -d $ANDROID_HOME/cmdline-tools/latest
-          rm android-sdk.zip
+          unzip -d $ANDROID_HOME/cmdline-tools/latest commandlinetools.zip
+          rm commandlinetools.zip
 
       - name: Verify sdkmanager is in PATH
         run: which sdkmanager
@@ -138,4 +138,19 @@ jobs:
         run: |
           npm install -g appium@2
           appium --base-path /wd/hub &
-          # Wait for Appium
+          # Wait for Appium to start
+          for i in {1..10}; do
+            if curl -s localhost:4723/wd/hub/status | grep -q "status"; then
+              echo "Appium server started"
+              break
+            fi
+            sleep 5
+          done
+
+      - name: Run WebDriverIO Tests
+        run: npx wdio run ./wdio.ci.conf.js
+
+      - name: Force Stop Emulator
+        run: |
+          adb emu kill
+          pkill -f "emulator" || true
