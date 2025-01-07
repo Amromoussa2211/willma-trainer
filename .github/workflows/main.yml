@@ -56,17 +56,17 @@ jobs:
       uses: reactivecircus/android-emulator-runner@v2
       with:
         api-level: 30
-        target: google_apis
-        arch: x86_64
+        target: default # Use AOSP instead of google_apis
+        arch: x86       # Use 32-bit instead of x86_64
         profile: Nexus 6
         avd-name: test
-        emulator-options: "-no-window -no-audio"
+        emulator-options: "-no-window -no-audio -no-snapshot -no-boot-anim -memory 2048 -cores 2"
         disable-animations: true
         script: |
-          sdkmanager --install "system-images;android-30;google_apis;x86_64"
+          sdkmanager --install "system-images;android-30;default;x86"
           sdkmanager --install "emulator"
           sdkmanager --install "platform-tools"
-          echo no | avdmanager create avd --force -n test --abi "google_apis/x86_64" --package "system-images;android-30;google_apis;x86_64" --device "Nexus 6"
+          echo no | avdmanager create avd --force -n test --abi "default/x86" --package "system-images;android-30;default;x86" --device "Nexus 6"
 
     # Step 8: Verify AVD Creation
     - name: Verify AVD Creation
