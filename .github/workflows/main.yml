@@ -78,30 +78,34 @@ jobs:
             echo "Platforms directory found."
           else
             echo "Platforms directory not found."
+            exit 1
           fi
           echo "Checking if emulator directory exists..."
           if [ -d "$ANDROID_HOME/emulator" ]; then
             echo "Emulator directory found."
           else
             echo "Emulator directory not found."
+            exit 1
           fi
           echo "Checking if system-images directory exists..."
           if [ -d "$ANDROID_HOME/system-images" ]; then
             echo "System-images directory found."
           else
             echo "System-images directory not found."
+            exit 1
           fi
           echo "Checking if cmdline-tools directory exists..."
           if [ -d "$ANDROID_HOME/cmdline-tools/latest" ]; then
             echo "Cmdline-tools directory found."
           else
             echo "Cmdline-tools directory not found."
+            exit 1
           fi
-          exit 1
 
       - name: Verify emulator and adb are in PATH
-        run: which emulator
-        run: which adb
+        run: |
+          which emulator
+          which adb
 
       - name: Create and Start Emulator
         run: |
