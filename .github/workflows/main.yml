@@ -73,23 +73,40 @@ jobs:
       run: |
         avdmanager list avd
 
-    # Step 9: Detect Emulator UDID
+    # Step 9: Check Emulator Logs
+    - name: Check Emulator Logs
+      run: |
+        cat $ANDROID_HOME/.android/avd/test.avd/config.ini
+        cat $ANDROID_HOME/.android/avd/test.ini
+
+    # Step 10: Wait for Emulator to Boot
+    - name: Wait for Emulator to Boot
+      run: |
+        adb wait-for-device
+        adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
+
+    # Step 11: Verify Emulator Status
+    - name: Verify Emulator Status
+      run: |
+        adb devices
+
+    # Step 12: Detect Emulator UDID
     - name: Detect Emulator UDID
       id: detect-udid
       run: |
         echo "UDID=$(adb devices | grep 'emulator-' | awk '{print $1}')" >> $GITHUB_ENV
 
-    # Step 10: Install dependencies
+    # Step 13: Install dependencies
     - name: Install dependencies
       run: |
         npm ci
 
-    # Step 11: Download APK
+    # Step 14: Download APK
     - name: Download APK
       run: |
         curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-    # Step 12: Start Appium Server
+    # Step 15: Start Appium Server
     - name: Start Appium server
       run: |
         npm install -g appium@2
@@ -103,12 +120,12 @@ jobs:
           sleep 5
         done
 
-    # Step 13: Install APK on emulator
+    # Step 16: Install APK on emulator
     - name: Install APK on emulator
       run: |
         adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-    # Step 14: Run WebDriverIO tests
+    # Step 17: Run WebDriverIO tests
     - name: Run WebDriverIO tests
       run: |
         npx wdio run ./wdio.ci.conf.js
