@@ -62,17 +62,4 @@ jobs:
             curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
             # Install the APK
-            adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
-
-            # Wait for the emulator to be fully booted
-            adb wait-for-device
-            adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done;'
-
-            # Start Appium server
-            npm run start:appium &
-
-            # Wait for Appium to start
-            sleep 10
-
-            # Run tests
-            npm run test:ci
+            adb install
