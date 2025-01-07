@@ -53,13 +53,10 @@ jobs:
 
       - name: Install Required SDK Components
         run: |
-          retry_count=3
-          while [ $retry_count -gt 0 ]; do
-            yes | sdkmanager --install "system-images;android-30;google_apis_playstore;x86" && break || retry_count=$((retry_count-1))
-          done
-          yes | sdkmanager --install "emulator"
-          yes | sdkmanager --install "platform-tools"
-          yes | sdkmanager --install "platforms;android-30"
+          sdkmanager --install "system-images;android-30;google_apis_playstore;x86" || exit 1
+          sdkmanager --install "emulator" || exit 1
+          sdkmanager --install "platform-tools" || exit 1
+          sdkmanager --install "platforms;android-30" || exit 1
 
       - name: Verify SDK Setup
         run: |
