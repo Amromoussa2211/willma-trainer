@@ -45,39 +45,40 @@ jobs:
       run: |
         which sdkmanager
 
-    # Step 6: Update Android SDK and accept licenses
+    # Step 6: Update SDK Repositories
+    - name: Update SDK Repositories
+      run: |
+        mkdir -p $ANDROID_HOME/repositories.cfg
+        touch $ANDROID_HOME/repositories.cfg
+        yes | sdkmanager --update
+
+    # Step 7: Update Android SDK and accept licenses
     - name: Update Android SDK and accept licenses
       run: |
-        yes | sdkmanager --update
         yes | sdkmanager --licenses
+        yes | sdkmanager --update
 
-    # Step 7: Set up Android SDK
+    # Step 8: Set up Android SDK
     - name: Set up Android SDK
       uses: reactivecircus/android-emulator-runner@v2
       with:
         api-level: 30
-        target: default # Use AOSP instead of google_apis
-        arch: x86       # Use 32-bit instead of x86_64
+        target: google_apis # Use Google APIs instead of default
+        arch: x86
         profile: Nexus 6
         avd-name: test
         emulator-options: "-no-window -no-audio -no-snapshot -no-boot-anim -memory 2048 -cores 2"
         disable-animations: true
         script: |
-          sdkmanager --install "system-images;android-30;default;x86"
+          sdkmanager --install "system-images;android-30;google_apis;x86"
           sdkmanager --install "emulator"
           sdkmanager --install "platform-tools"
-          echo no | avdmanager create avd --force -n test --abi "default/x86" --package "system-images;android-30;default;x86" --device "Nexus 6"
+          echo no | avdmanager create avd --force -n test --abi "google_apis/x86" --package "system-images;android-30;google_apis;x86" --device "Nexus 6"
 
-    # Step 8: Verify AVD Creation
+    # Step 9: Verify AVD Creation
     - name: Verify AVD Creation
       run: |
         avdmanager list avd
-
-    # Step 9: Check Emulator Logs
-    - name: Check Emulator Logs
-      run: |
-        cat $ANDROID_HOME/.android/avd/test.avd/config.ini
-        cat $ANDROID_HOME/.android/avd/test.ini
 
     # Step 10: Wait for Emulator to Boot
     - name: Wait for Emulator to Boot
