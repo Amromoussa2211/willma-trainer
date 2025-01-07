@@ -76,7 +76,8 @@ jobs:
             adb install ./apps/app-release.apk
 
             # Verify the APK is installed
-            if ! adb shell pm list packages | grep -q "com.willma.client.staging"; then
+            adb shell pm list packages | grep com.willma.client.staging
+            if [ $? -ne 0 ]; then
               echo "APK installation failed!"
               exit 1
             fi
