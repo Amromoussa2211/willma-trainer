@@ -42,10 +42,10 @@ jobs:
           profile: Nexus_6P
           disable-animations: true
           emulator-boot-timeout: 600
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           force-avd-creation: true
 
-      # Step 6: Wait for emulator to fully boot
+      # Step 6: Wait for emulator to boot
       - name: Wait for emulator to fully boot
         run: adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done; input keyevent 82'
 
@@ -65,4 +65,5 @@ jobs:
 
       # Step 10: Terminate Emulator
       - name: Terminate emulator
-        run: adb -s emulator-5554 emu kill || echo "Emulator already stopped."
+        run: |
+          adb devices | grep emulator | cut -f1 | while read line; do adb -s $line emu kill || true; done
