@@ -1,4 +1,4 @@
-name: Android UI Tests
+name: Android Emulator Setup Without Boot
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  android-tests:
+  android-emulator-setup:
     runs-on: ubuntu-latest
 
     steps:
@@ -14,56 +14,34 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Set up Node.js
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-
-      # Step 3: Install dependencies
-      - name: Install dependencies
-        run: npm install
-
-      # Step 4: Set up Android SDK
+      # Step 2: Set up Android environment
       - name: Set up Android SDK
         uses: android-actions/setup-android@v2
         with:
           api-level: 30
-          target: default
+          target: google_apis
           ndk: false
 
-      # Step 5: Start Android emulator
-      - name: Start Emulator
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 30
-          target: google_apis
-          arch: x86_64
-          profile: Nexus_6P
-          disable-animations: true
-          emulator-boot-timeout: 600
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          force-avd-creation: true
+      # Step 3: Configure Emulator (Download AVD without booting it)
+      - name: Configure Emulator
+        run: |
+          echo "Downloading emulator components..."
+          echo "no" | avdmanager create avd -n test -k "system-images;android-30;google_apis;x86_64" --force
+          # Initialize AVD without booting
+          echo "Emulator downloaded and configured but not booted."
 
-      # Step 6: Wait for emulator to boot
-      - name: Wait for emulator to fully boot
-        run: adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done; input keyevent 82'
-
-      # Step 7: Download APK from GitHub Releases
+      # Step 4: Download APK
       - name: Download APK
         run: |
           mkdir -p apps
           curl -L -o ./apps/app-release.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-      # Step 8: Install APK on Emulator
+      # Step 5: Install APK on Emulator (emulator doesn't boot here)
       - name: Install APK
-        run: adb install ./apps/app-release.apk
-
-      # Step 9: Run Tests
-      - name: Run tests
-        run: npm test
-
-      # Step 10: Terminate Emulator
-      - name: Terminate emulator
         run: |
-          adb devices | grep emulator | cut -f1 | while read line; do adb -s $line emu kill || true; done
+          echo "Installing APK..."
+          adb install ./apps/app-release.apk
+
+      # Step 6: Run Test Scripts
+      - name: Run Tests
+        run: npm test
