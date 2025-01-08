@@ -1,4 +1,4 @@
-name: Node.js Setup Test
+name: Dependency Installation Test
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
       - main
 
 jobs:
-  setup-node:
+  install-deps:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,8 +21,7 @@ jobs:
         with:
           node-version: 18
 
-      - name: Verify Node.js setup
+      - name: Install dependencies
         run: |
-          echo "Setting up Node.js..."
-          node -v
-          npm -v
+          echo "Installing dependencies..."
+          npm ci
