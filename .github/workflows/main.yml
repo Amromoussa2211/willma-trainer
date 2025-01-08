@@ -1,4 +1,4 @@
-name: Android E2E Tests (Remote Config)
+name: Android E2E Tests (Fixed Appium Path)
 
 on:
   push:
@@ -18,13 +18,13 @@ jobs:
         ports:
           - 4723:4723
         options: >-
-          --health-cmd "curl -f http://localhost:4723/wd/hub/status || exit 1"
+          --health-cmd "curl -f http://localhost:4723/status || exit 1"
           --health-interval 10s
           --health-timeout 30s
           --health-retries 5
 
     steps:
-    - name: Checkout code
+    - name: Checkout Code
       uses: actions/checkout@v3
 
     - name: Set up Node.js
@@ -61,5 +61,5 @@ jobs:
         APK_PATH: "./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk"
         APPIUM_HOST: "localhost"
         APPIUM_PORT: "4723"
-        APPIUM_PATH: "/"
+        APPIUM_PATH: "/" # Updated to match Appium 2.x default base path
       run: npm run test:ci
