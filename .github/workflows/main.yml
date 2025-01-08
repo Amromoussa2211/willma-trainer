@@ -56,6 +56,7 @@ jobs:
         avd-name: test
         emulator-boot-timeout: 1800  # Increased timeout to 1800 seconds (30 minutes)
         emulator-port: 5554
+        script: echo "Dummy script"  # Provide a dummy script to bypass the error
 
     # Step 7: Debug Emulator Startup
     - name: Debug Emulator Startup
