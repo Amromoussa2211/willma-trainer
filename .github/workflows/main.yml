@@ -47,7 +47,7 @@ jobs:
     - name: Start Emulator
       run: |
         echo "Starting emulator..."
-        emulator -avd test -no-window -no-audio -gpu swiftshader_indirect -no-boot-anim &
+        emulator -avd test -no-window -no-audio -gpu swiftshader -no-boot-anim &
         adb wait-for-device
         while [[ "$(adb shell getprop sys.boot_completed | tr -d '\r')" != "1" ]]; do
           sleep 5
