@@ -21,11 +21,10 @@ jobs:
       with:
         node-version: 18
 
-    - name: Install Docker
+    - name: Install Docker CLI
       run: |
-        brew install --cask docker
-        sudo --background /Applications/Docker.app/Contents/MacOS/Docker
-        sleep 30  # Wait for Docker to start
+        brew install docker
+        brew install docker-compose
 
     - name: Set up Android SDK
       uses: android-actions/setup-android@v2
