@@ -46,7 +46,7 @@ jobs:
         emulator-boot-timeout: 600
 
     ### Step 5: Download and Install APK
-    - name: Download and install APK
+    - name: Download and Install APK
       run: |
         mkdir -p apps
         curl -L -o ./apps/app-release.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
@@ -60,7 +60,7 @@ jobs:
         appium --base-path / --port 4723 &
 
     ### Step 7: Run E2E Tests
-    - name: Run E2E tests
+    - name: Run E2E Tests
       env:
         DEVICE_NAME: "emulator-5554"
         APK_PATH: "./apps/app-release.apk"
