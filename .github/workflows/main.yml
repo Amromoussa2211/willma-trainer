@@ -35,15 +35,20 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
-          target: google_apis
+          target: google_apis_playstore # Use a different system image
           arch: x86_64
-          profile: Nexus 6
-          emulator-options: -no-window -gpu swiftshader -noaudio -no-boot-anim -no-snapshot
+          profile: Nexus 5 # Use a lighter profile
+          emulator-options: -no-window -gpu swiftshader -noaudio -no-boot-anim -no-snapshot -memory 4096 -cores 4
           script: |
             set -e
             mkdir -p apps
             curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
             adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
+
+            # Disable animations
+            adb shell settings put global window_animation_scale 0
+            adb shell settings put global transition_animation_scale 0
+            adb shell settings put global animator_duration_scale 0
 
             # Wait for emulator to boot
             adb wait-for-device
@@ -68,3 +73,8 @@ jobs:
       - name: Run tests
         run: |
           npx wdio run ./wdio.ci.conf.js || { echo "Tests failed"; exit 1; }
+
+      - name: Terminate Emulator
+        run: |
+          adb emu kill
+          pkill -f "emulator" || true
