@@ -30,7 +30,11 @@ jobs:
       with:
         node-version: 18
 
-    # Step 4: Launch Android Emulator
+    # Step 4: Install Android SDK Command-line Tools
+    - name: Install Android SDK Command-line Tools
+      uses: android-actions/setup-android@v2
+
+    # Step 5: Launch Android Emulator
     - name: Launch Android Emulator
       uses: reactivecircus/android-emulator-runner@v2
       with:
@@ -45,7 +49,7 @@ jobs:
         avd-name: test
         emulator-boot-timeout: 600
 
-    # Step 5: Download and Install APK
+    # Step 6: Download and Install APK
     - name: Download and Install APK
       run: |
         mkdir -p apps
@@ -53,13 +57,13 @@ jobs:
         adb wait-for-device
         adb install ./apps/app-release.apk
 
-    # Step 6: Install and Start Appium Server
+    # Step 7: Install and Start Appium Server
     - name: Install and Start Appium Server
       run: |
         npm install -g appium
         appium --base-path / --port 4723 &
 
-    # Step 7: Run E2E Tests
+    # Step 8: Run E2E Tests
     - name: Run E2E Tests
       env:
         DEVICE_NAME: "emulator-5554"
@@ -69,6 +73,6 @@ jobs:
         APPIUM_PATH: "/"
       run: npm run test:ci
 
-    # Step 8: Terminate Emulator
+    # Step 9: Terminate Emulator
     - name: Terminate Emulator
       run: adb -s emulator-5554 emu kill
