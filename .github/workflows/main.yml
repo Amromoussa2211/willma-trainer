@@ -34,27 +34,10 @@ jobs:
     - name: Install dependencies
       run: npm install
 
-    - name: Start Docker Emulator
+    - name: Download Docker Emulator
       run: |
+        echo "Pulling Docker emulator image..."
         docker pull budtmo/docker-android:latest  # Use the latest tag
-        docker run -d \
-          --name android-emulator \
-          -e DEVICE="Pixel 4" \
-          -e ANDROID_VERSION=30 \
-          -e APPIUM=true \
-          -p 4723:4723 \
-          -p 5554:5554 \
-          budtmo/docker-android:latest
-
-    - name: Wait for Emulator to Boot
-      run: |
-        echo "Waiting for emulator to boot..."
-        adb wait-for-device
-        while [[ "$(adb shell getprop sys.boot_completed | tr -d '\r')" != "1" ]]; do
-          sleep 5
-          echo "Waiting for emulator to boot..."
-        done
-        echo "Emulator booted successfully!"
 
     - name: Download and install APK
       run: |
@@ -64,14 +47,9 @@ jobs:
 
     - name: Run E2E tests
       env:
-        DEVICE_NAME: "emulator-5554"
+        DEVICE_NAME: "your_device_id"  # Replace with your real device ID
         APK_PATH: "./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk"
         APPIUM_HOST: "localhost"
         APPIUM_PORT: "4723"
         APPIUM_PATH: "/"
       run: npm run test:ci
-
-    - name: Stop Docker Emulator
-      run: |
-        docker stop android-emulator
-        docker rm android-emulator
