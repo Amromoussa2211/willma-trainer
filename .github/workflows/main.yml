@@ -25,12 +25,14 @@ jobs:
           node-version: 18
           cache: 'npm'
         run: |
-          npm -v > logs/nodejs_setup.log
+          echo "Setting up Node.js..." > logs/nodejs_setup.log
+          npm -v >> logs/nodejs_setup.log
           echo "Node.js setup completed" >> logs/nodejs_setup.log
 
       - name: Install dependencies
         run: |
-          npm ci > logs/dependencies_install.log 2>&1
+          echo "Installing dependencies..." > logs/dependencies_install.log
+          npm ci >> logs/dependencies_install.log 2>&1
           echo "Dependencies installation completed" >> logs/dependencies_install.log
 
       - name: Set up JDK 17
@@ -39,7 +41,8 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
         run: |
-          java -version > logs/jdk_setup.log
+          echo "Setting up JDK 17..." > logs/jdk_setup.log
+          java -version >> logs/jdk_setup.log
           echo "JDK setup completed" >> logs/jdk_setup.log
 
       - name: Set up Android SDK
@@ -48,15 +51,17 @@ jobs:
           cmdline-tools-version: 'latest'
           accept-android-sdk-licenses: true
         run: |
-          sdkmanager --list > logs/android_sdk_setup.log
+          echo "Setting up Android SDK..." > logs/android_sdk_setup.log
+          sdkmanager --list >> logs/android_sdk_setup.log
           echo "Android SDK setup completed" >> logs/android_sdk_setup.log
 
       - name: Enable KVM
         run: |
+          echo "Enabling KVM..." > logs/kvm_setup.log
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-          echo "KVM enabled" > logs/kvm_setup.log
+          echo "KVM enabled" >> logs/kvm_setup.log
 
       - name: Cache AVD
         uses: actions/cache@v4
@@ -67,12 +72,14 @@ jobs:
             ~/.android/adb*
           key: avd-30
         run: |
-          ls ~/.android/avd > logs/avd_cache.log
+          echo "Caching AVD..." > logs/avd_cache.log
+          ls ~/.android/avd >> logs/avd_cache.log
           echo "AVD cache setup completed" >> logs/avd_cache.log
 
       - name: Update SDK and clear cache
         run: |
-          yes | sdkmanager --update > logs/sdk_update.log 2>&1
+          echo "Updating SDK and clearing cache..." > logs/sdk_update.log
+          yes | sdkmanager --update >> logs/sdk_update.log 2>&1
           yes | sdkmanager --uninstall "build-tools;35.0.0" "platform-tools" "platforms;android-30" "system-images;android-30;google_apis;x86_64" >> logs/sdk_update.log 2>&1
           yes | sdkmanager --install "build-tools;35.0.0" "platform-tools" "platforms;android-30" "system-images;android-30;google_apis;x86_64" >> logs/sdk_update.log 2>&1
           echo "SDK update and cache cleared" >> logs/sdk_update.log
@@ -87,8 +94,9 @@ jobs:
           emulator-options: -no-window -gpu swiftshader -noaudio -no-boot-anim
         run: |
           set -e
+          echo "Running tests on emulator..." > logs/emulator_run.log
           mkdir -p apps
-          curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk > logs/emulator_run.log 2>&1
+          curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk >> logs/emulator_run.log 2>&1
           adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk >> logs/emulator_run.log 2>&1
           adb wait-for-device >> logs/emulator_run.log 2>&1
           echo "Emulator is ready" >> logs/emulator_run.log
@@ -110,9 +118,8 @@ jobs:
           echo "Emulator terminated" >> logs/emulator_run.log
 
       - name: Archive logs
-        if: failure()
+        if: always() # Use 'always()' to ensure logs are archived even if the build succeeds
         uses: actions/upload-artifact@v3
         with:
           name: logs
-          path: |
-            logs
+          path: logs
