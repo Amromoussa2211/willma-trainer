@@ -1,4 +1,4 @@
-name: Android E2E Tests with x86_64 Emulator
+name: Android E2E Tests with ARM Emulator
 
 on:
   push:
@@ -28,7 +28,7 @@ jobs:
       run: |
         echo "Installing Android SDK Tools..."
         yes | sdkmanager --install "platform-tools"  # Install adb and fastboot
-        yes | sdkmanager --install "system-images;android-30;default;x86_64"  # Use x86_64 system image
+        yes | sdkmanager --install "system-images;android-30;default;arm64-v8a"  # Use ARM system image
         yes | sdkmanager --install "emulator"
         echo "Adding Android SDK tools to PATH..."
         echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
@@ -39,10 +39,10 @@ jobs:
         echo "Creating Android Virtual Device (AVD)..."
         echo "no" | avdmanager create avd --force \
           --name "test" \
-          --package "system-images;android-30;default;x86_64" \
+          --package "system-images;android-30;default;arm64-v8a" \
           --device "pixel_4" \
           --tag "default" \
-          --abi "x86_64"
+          --abi "arm64-v8a"
 
     - name: Start Emulator
       run: |
