@@ -61,21 +61,12 @@ jobs:
           echo "Waiting for emulator to boot..."
           adb wait-for-device
           while ! adb shell getprop sys.boot_completed | grep 1; do
-            sleep 10
+            sleep 15
           done
           echo "Emulator booted successfully!"
 
-          # Disable animations (retry if ADB fails)
-          echo "Disabling animations..."
-          for i in {1..5}; do
-            adb shell settings put global window_animation_scale 0.0 && break || sleep 10
-          done
-          for i in {1..5}; do
-            adb shell settings put global transition_animation_scale 0.0 && break || sleep 10
-          done
-          for i in {1..5}; do
-            adb shell settings put global animator_duration_scale 0.0 && break || sleep 10
-          done
+          # Skip input keyevent 82 (if not needed)
+          echo "Skipping input keyevent 82..."
 
           # Download and install APK
           echo "Downloading and installing APK..."
