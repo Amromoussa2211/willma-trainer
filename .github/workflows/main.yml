@@ -72,14 +72,18 @@ jobs:
             curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
             adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-            # Wait for emulator to boot (simplified approach)
+            # Wait for emulator to boot
             adb wait-for-device
             echo "Emulator is ready"
+
+            # Capture logcat
+            adb logcat -d > logcat.txt
+            cat logcat.txt
 
             npm install -g appium@2 --quiet
             appium --base-path /wd/hub &
 
-            # Wait for Appium to start (simplified approach)
+            # Wait for Appium to start
             sleep 10
             echo "Appium server started"
 

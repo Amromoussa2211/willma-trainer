@@ -31,7 +31,7 @@ exports.config = {
         ui: 'bdd',
         timeout: 120000 // Increased Mocha timeout
     },
-    onPrepare: function (config, capabilities) {
+    onPrepare: async function (config, capabilities) { // Marked as async
         console.log('Checking if the device is connected...');
         const devices = execSync('adb devices').toString();
         if (!devices.includes(capabilities[0]["appium:udid"])) {
@@ -46,6 +46,20 @@ exports.config = {
             execSync(`adb install ${capabilities[0]["appium:app"]}`, { stdio: 'inherit' });
         } else {
             console.log('APK is already installed.');
+        }
+
+        // Wait for emulator to boot
+        for (let i = 0; i < 60; i++) {
+            try {
+                const bootCompleted = execSync(`adb shell getprop sys.boot_completed`).toString().trim();
+                if (bootCompleted === '1') {
+                    console.log('Emulator is fully booted.');
+                    break;
+                }
+            } catch (error) {
+                console.log('Waiting for emulator to boot...');
+            }
+            await new Promise(resolve => setTimeout(resolve, 5000)); // Allowed because onPrepare is async
         }
     },
     afterTest: async function (test, context, { error }) {
