@@ -57,6 +57,8 @@ jobs:
             adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done;'
             npm install -g appium@2
             appium --base-path /wd/hub &
+
+            # Wait for Appium to start
             for i in {1..30}; do
               if curl -s localhost:4723/wd/hub/status | grep -q "status"; then
                 echo "Appium server started"
@@ -65,6 +67,10 @@ jobs:
               echo "Waiting for Appium server to start..."
               sleep 2
             done
-            npx wdio run ./wdio.ci.conf.js
+
+            # Run tests
+            npx wdio run ./wdio.ci.conf.js || { echo "Tests failed"; exit 1; }
+
+            # Terminate Emulator
             adb emu kill
             pkill -f "emulator" || true
