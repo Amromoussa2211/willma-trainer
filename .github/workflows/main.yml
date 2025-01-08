@@ -21,14 +21,8 @@ jobs:
       with:
         node-version: 18
 
-    - name: Clear npm cache
-      run: npm cache clean --force
-
     - name: Install dependencies
-      run: |
-        npm config set fetch-retry-mintimeout 20000
-        npm config set fetch-retry-maxtimeout 120000
-        npm install
+      run: npm install
 
     - name: Start Docker Emulator
       run: |
@@ -38,9 +32,9 @@ jobs:
           -e DEVICE="Pixel 4" \
           -e ANDROID_VERSION=30 \
           -e APPIUM=true \
-          -p 4723:4723 \  # Appium port
-          -p 5554:5554 \  # ADB port
-          budtmo/docker-android:latest  # Use the latest tag
+          -p 4723:4723 \
+          -p 5554:5554 \
+          budtmo/docker-android:latest
 
     - name: Wait for Emulator to Boot
       run: |
