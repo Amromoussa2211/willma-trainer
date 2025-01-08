@@ -35,20 +35,24 @@ jobs:
     - name: Install Android SDK
       uses: android-actions/setup-android@v2
 
-    # Step 5: Install Appium and WebdriverIO Dependencies
-    - name: Install Dependencies
+    # Step 5: List Available Device Profiles
+    - name: List Available Device Profiles
       run: |
-        npm install
-        npm install -g appium@latest
+        avdmanager list device
 
-    # Step 6: Launch Android Emulator
+    # Step 6: Install Required System Image
+    - name: Install Required System Image
+      run: |
+        sdkmanager --install 'system-images;android-30;google_apis;x86_64'
+
+    # Step 7: Launch Android Emulator
     - name: Launch Android Emulator
       uses: ReactiveCircus/android-emulator-runner@v2
       with:
         api-level: 30
         target: google_apis
         arch: x86_64
-        profile: Pixel_4_API_30
+        profile: pixel  # Use a different device profile
         emulator-options: -no-window -no-audio -gpu swiftshader_indirect -no-boot-anim
         disable-animations: true
         force-avd-creation: true
@@ -58,19 +62,19 @@ jobs:
         emulator-port: 5554
         script: echo "Dummy script"  # Provide a dummy script to bypass the error
 
-    # Step 7: Debug Emulator Startup
+    # Step 8: Debug Emulator Startup
     - name: Debug Emulator Startup
       run: |
         $ANDROID_SDK_ROOT/emulator/emulator -avd test -no-window -no-audio -gpu swiftshader_indirect -no-boot-anim &
         sleep 120  # Wait for 2 minutes
         adb devices
 
-    # Step 8: Check Emulator Logs
+    # Step 9: Check Emulator Logs
     - name: Check Emulator Logs
       run: |
         cat /Users/runner/.android/avd/test.avd/logcat.log
 
-    # Step 9: Download and Install APK
+    # Step 10: Download and Install APK
     - name: Download and Install APK
       run: |
         mkdir -p apps
@@ -78,13 +82,13 @@ jobs:
         adb wait-for-device
         adb install ./apps/app-release.apk
 
-    # Step 10: Start Appium Server
+    # Step 11: Start Appium Server
     - name: Start Appium Server
       run: |
         appium --base-path / --port 4723 --log-level error &
         sleep 10  # Wait for Appium to start
 
-    # Step 11: Run WebdriverIO Tests
+    # Step 12: Run WebdriverIO Tests
     - name: Run WebdriverIO Tests
       env:
         DEVICE_NAME: "emulator-5554"
@@ -94,25 +98,25 @@ jobs:
         APPIUM_PATH: "/"
       run: npm run test:ci
 
-    # Step 12: Generate Allure Report
+    # Step 13: Generate Allure Report
     - name: Generate Allure Report
       run: |
         npm run generate-report
 
-    # Step 13: Archive Allure Report
+    # Step 14: Archive Allure Report
     - name: Archive Allure Report
       uses: actions/upload-artifact@v3
       with:
         name: allure-report
         path: allure-report/
 
-    # Step 14: Verify Emulator is Running
+    # Step 15: Verify Emulator is Running
     - name: Verify Emulator is Running
       run: |
         adb devices
         adb -s emulator-5554 shell getprop ro.boot.completed
 
-    # Step 15: Terminate Emulator
+    # Step 16: Terminate Emulator
     - name: Terminate Emulator
       run: |
         if adb devices | grep -q "emulator-5554"; then
