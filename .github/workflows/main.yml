@@ -1,4 +1,4 @@
-name: Android E2E Tests with Docker Emulator
+name: Android E2E Tests with Lightweight Emulator
 
 on:
   push:
@@ -28,38 +28,35 @@ jobs:
       run: |
         echo "Installing Android SDK Tools..."
         yes | sdkmanager --install "platform-tools"  # Install adb and fastboot
+        yes | sdkmanager --install "system-images;android-30;default;x86_64"  # Use a smaller system image
+        yes | sdkmanager --install "emulator"
         echo "Adding Android SDK tools to PATH..."
         echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+        echo "$ANDROID_HOME/emulator" >> $GITHUB_PATH
 
-    - name: Install dependencies
-      run: npm install
-
-    - name: Download Docker Emulator
+    - name: Create Android Virtual Device (AVD)
       run: |
-        echo "Pulling Docker emulator image..."
-        docker pull budtmo/docker-android:latest  # Use the latest tag
+        echo "Creating Android Virtual Device (AVD)..."
+        echo "no" | avdmanager create avd --force \
+          --name "test" \
+          --package "system-images;android-30;default;x86_64" \
+          --device "pixel_4" \
+          --tag "default" \
+          --abi "x86_64"
 
-    - name: Start Docker Emulator
+    - name: Start Emulator
       run: |
-        echo "Starting Docker emulator..."
-        docker run -d \
-          --name android-emulator \
-          -e DEVICE="Pixel 4" \
-          -e ANDROID_VERSION=30 \
-          -e APPIUM=true \
-          -p 4723:4723 \
-          -p 5554:5554 \
-          budtmo/docker-android:latest
-
-    - name: Wait for Emulator to Boot
-      run: |
-        echo "Waiting for emulator to boot..."
+        echo "Starting emulator..."
+        emulator -avd test -no-window -no-audio -gpu swiftshader_indirect -no-boot-anim &
         adb wait-for-device
         while [[ "$(adb shell getprop sys.boot_completed | tr -d '\r')" != "1" ]]; do
           sleep 5
           echo "Waiting for emulator to boot..."
         done
         echo "Emulator booted successfully!"
+
+    - name: Install dependencies
+      run: npm install
 
     - name: Download and install APK
       run: |
@@ -76,7 +73,6 @@ jobs:
         APPIUM_PATH: "/"
       run: npm run test:ci
 
-    - name: Stop Docker Emulator
+    - name: Stop Emulator
       run: |
-        docker stop android-emulator
-        docker rm android-emulator
+        adb -s emulator-5554 emu kill
