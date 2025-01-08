@@ -1,4 +1,4 @@
-name: Android Emulator CI with WebDriverIO
+name: Android Emulator Tests
 
 on:
   push:
@@ -13,107 +13,67 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Step 2: Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
           cache: 'npm'
 
+      # Step 3: Install dependencies
       - name: Install dependencies
         run: npm ci
 
-      - name: Set up Android SDK directories
+      # Step 4: Enable KVM for hardware acceleration
+      - name: Enable KVM
         run: |
-          mkdir -p $HOME/android-sdk/cmdline-tools/latest
-          mkdir -p $HOME/android-sdk/emulator
-          mkdir -p $HOME/android-sdk/platform-tools
-          mkdir -p $HOME/android-sdk/platforms
-          mkdir -p $HOME/android-sdk/system-images
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
 
-      - name: Set up Android environment variables
-        run: |
-          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
-          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
-          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
-          echo "$ANDROID_HOME/emulator" >> $GITHUB_PATH
-          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
-          chmod -R 777 $HOME/android-sdk
+      # Step 5: Cache AVD to speed up subsequent runs
+      - name: Cache AVD
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-30  # Change this key if the API level changes
 
-      - name: Set up Android Command Line Tools
-        run: |
-          wget https://dl.google.com/android/repository/commandlinetools-linux-9123335_latest.zip -O commandlinetools.zip
-          unzip -d $ANDROID_HOME/cmdline-tools/latest commandlinetools.zip
-          rm commandlinetools.zip
+      # Step 6: Run tests on Android Emulator
+      - name: Run tests on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          profile: Nexus 6
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: |
+            # Create the apps directory if it doesn't exist
+            mkdir -p apps
 
-      - name: Verify sdkmanager is in PATH
-        run: which sdkmanager
+            # Download the APK
+            curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-      - name: Update SDK Repositories
-        run: yes | sdkmanager --update
+            # Install the APK
+            adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-      - name: Install platform-tools
-        run: sdkmanager --install "platform-tools"
+            # Wait for the emulator to be fully booted
+            adb wait-for-device
+            adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done;'
 
-      - name: Install emulator
-        run: sdkmanager --install "emulator"
+            # Start Appium server
+            npm install -g appium@2
+            appium --base-path /wd/hub &
 
-      - name: Install platforms
-        run: sdkmanager --install "platforms;android-30"
+            # Wait for Appium to start
+            sleep 20
 
-      - name: Install system-images
-        run: sdkmanager --install "system-images;android-30;default;arm64-v8a"
-
-      - name: Verify SDK Setup
-        run: |
-          echo "Listing installed packages..."
-          sdkmanager --list
-          echo "Checking directory structure..."
-          ls -la $ANDROID_HOME
-
-      - name: Create and Start Emulator
-        run: |
-          echo no | avdmanager create avd --force -n test --abi "default/arm64-v8a" --package "system-images;android-30;default;arm64-v8a" --device "Nexus 6"
-          emulator -avd test -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -memory 2048 -cores 2 &
-          adb wait-for-device
-          adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
-          sleep 30
-          adb shell getprop sys.boot_completed
-          adb shell logcat -d > logcat_output.txt
-          cat logcat_output.txt
-
-      - name: Disable Animations
-        run: |
-          adb shell settings put global window_animation_scale 0.0
-          adb shell settings put global transition_animation_scale 0.0
-          adb shell settings put global animator_duration_scale 0.0
-
-      - name: Download APK
-        run: |
-          mkdir -p ./apps
-          curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
-
-      - name: Install APK on Emulator
-        run: adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
-
-      - name: Start Appium Server
-        run: |
-          npm install -g appium@2
-          appium --base-path /wd/hub &
-          for i in {1..10}; do
-            if curl -s localhost:4723/wd/hub/status | grep -q "status"; then
-              echo "Appium server started"
-              break
-            fi
-            sleep 5
-          done
-
-      - name: Run WebDriverIO Tests
-        run: npx wdio run ./wdio.ci.conf.js
-
-      - name: Force Stop Emulator
-        run: |
-          adb emu kill
-          pkill -f "emulator" || true
+            # Run tests
+            npx wdio run ./wdio.ci.conf.js
