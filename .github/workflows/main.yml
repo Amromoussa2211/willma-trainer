@@ -97,5 +97,4 @@ jobs:
 
             # Terminate Emulator
             adb emu kill
-            pkill -f "emulator" || true 
-            
+            pkill -f "emulator" || true
