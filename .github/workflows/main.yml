@@ -1,4 +1,4 @@
-name: Node.js Setup Test
+name: Echo Test
 
 on:
   push:
@@ -16,22 +16,5 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Create log directory
-        run: mkdir -p logs
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-        run: |
-          echo "Setting up Node.js..." | tee logs/nodejs_setup.log
-          node -v >> logs/nodejs_setup.log
-          npm -v >> logs/nodejs_setup.log
-          echo "Node.js setup completed" >> logs/nodejs_setup.log
-          cat logs/nodejs_setup.log
-
-      - name: Archive logs
-        uses: actions/upload-artifact@v3
-        with:
-          name: logs
-          path: logs
+      - name: Run echo command
+        run: echo "Hello, world!"
