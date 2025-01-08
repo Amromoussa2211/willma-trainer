@@ -84,3 +84,4 @@ jobs:
 
             # Run tests
             npx wdio run ./wdio.ci.conf.js
+ 
