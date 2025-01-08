@@ -1,4 +1,4 @@
-name: Android App E2E Testing
+name: Android E2E Tests (Remote Config)
 
 on:
   push:
@@ -14,17 +14,17 @@ jobs:
 
     services:
       appium:
-        image: appium/appium
+        image: appium/appium:latest
         ports:
           - 4723:4723
         options: >-
           --health-cmd "curl -f http://localhost:4723/wd/hub/status || exit 1"
           --health-interval 10s
-          --health-timeout 5s
-          --health-retries 3
+          --health-timeout 30s
+          --health-retries 5
 
     steps:
-    - name: Checkout Code
+    - name: Checkout code
       uses: actions/checkout@v3
 
     - name: Set up Node.js
@@ -32,34 +32,34 @@ jobs:
       with:
         node-version: 18
 
-    - name: Install Dependencies
+    - name: Install dependencies
       run: npm install
 
     - name: Start Android Emulator
       uses: reactivecircus/android-emulator-runner@v2
       with:
         api-level: 30
-        target: default
+        target: google_apis
         arch: x86_64
         profile: Pixel_4_API_30
-        emulator-options: "-no-boot-anim -no-snapshot"
+        emulator-options: "-no-window -no-audio -gpu swiftshader_indirect -no-boot-anim"
         disable-animations: true
         force-avd-creation: true
 
-    - name: Verify Emulator Boot
+    - name: Verify emulator boot
       run: adb shell getprop sys.boot_completed | grep 1
 
-    - name: Download and Install APK
+    - name: Download and install APK
       run: |
         mkdir -p apps
         curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
         adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-    - name: Run E2E Tests
+    - name: Run E2E tests
       env:
         DEVICE_NAME: "emulator-5554"
         APK_PATH: "./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk"
         APPIUM_HOST: "localhost"
         APPIUM_PORT: "4723"
         APPIUM_PATH: "/"
-      run: npx wdio wdio.ci.conf.js
+      run: npm run test:ci
