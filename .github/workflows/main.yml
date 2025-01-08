@@ -12,17 +12,6 @@ jobs:
   e2e-tests:
     runs-on: macos-latest  # Use macOS runner for hardware acceleration
 
-    services:
-      appium:
-        image: appium/appium:latest
-        ports:
-          - 4723:4723
-        options: >-
-          --health-cmd "curl -f http://localhost:4723/status || exit 1"
-          --health-interval 10s
-          --health-timeout 30s
-          --health-retries 5
-
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
@@ -31,6 +20,12 @@ jobs:
       uses: actions/setup-node@v3
       with:
         node-version: 18
+
+    - name: Install Docker
+      run: |
+        brew install --cask docker
+        sudo --background /Applications/Docker.app/Contents/MacOS/Docker
+        sleep 30  # Wait for Docker to start
 
     - name: Set up Android SDK
       uses: android-actions/setup-android@v2
