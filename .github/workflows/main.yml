@@ -21,6 +21,16 @@ jobs:
       with:
         node-version: 18
 
+    - name: Set up Android SDK
+      uses: android-actions/setup-android@v2
+
+    - name: Install Android SDK Tools
+      run: |
+        echo "Installing Android SDK Tools..."
+        yes | sdkmanager --install "platform-tools"  # Install adb and fastboot
+        echo "Adding Android SDK tools to PATH..."
+        echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+
     - name: Install dependencies
       run: npm install
 
