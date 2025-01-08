@@ -1,4 +1,4 @@
-name: Android Emulator Tests
+name: Enhanced Diagnostic
 
 on:
   push:
@@ -16,27 +16,36 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Create log directory
-        run: mkdir -p logs
+      - name: Print working directory
+        run: |
+          echo "Working directory:"
+          pwd
+
+      - name: List files in repository
+        run: |
+          echo "Files in repository:"
+          ls -la
+
+      - name: Create and list logs directory
+        run: |
+          mkdir -p logs
+          echo "Logs directory created"
+          echo "Listing contents of logs directory:"
+          ls -la logs
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
-          cache: 'npm'
         run: |
-          echo "Setting up Node.js..." | tee logs/nodejs_setup.log
-          node -v >> logs/nodejs_setup.log
-          npm -v >> logs/nodejs_setup.log
-          echo "Node.js setup completed" >> logs/nodejs_setup.log
-          cat logs/nodejs_setup.log
+          echo "Setting up Node.js..."
+          node -v
+          npm -v
 
       - name: Install dependencies
         run: |
-          echo "Installing dependencies..." | tee logs/dependencies_install.log
-          npm ci >> logs/dependencies_install.log 2>&1
-          echo "Dependencies installation completed" >> logs/dependencies_install.log
-          cat logs/dependencies_install.log
+          echo "Installing dependencies..."
+          npm ci
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -44,10 +53,8 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
         run: |
-          echo "Setting up JDK 17..." | tee logs/jdk_setup.log
-          java -version >> logs/jdk_setup.log
-          echo "JDK setup completed" >> logs/jdk_setup.log
-          cat logs/jdk_setup.log
+          echo "Setting up JDK 17..."
+          java -version
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
@@ -55,18 +62,21 @@ jobs:
           cmdline-tools-version: 'latest'
           accept-android-sdk-licenses: true
         run: |
-          echo "Setting up Android SDK..." | tee logs/android_sdk_setup.log
-          sdkmanager --list >> logs/android_sdk_setup.log
-          echo "Android SDK setup completed" >> logs/android_sdk_setup.log
-          cat logs/android_sdk_setup.log
+          echo "Setting up Android SDK..."
+          sdkmanager --list
 
-      - name: Verify setup
+      - name: Enable KVM
         run: |
-          echo "Verifying setup..." | tee logs/setup_verification.log
-          node -v >> logs/setup_verification.log
-          java -version >> logs/setup_verification.log
-          sdkmanager --list >> logs/setup_verification.log
-          cat logs/setup_verification.log
+          echo "Enabling KVM..."
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          lsmod | grep kvm
+
+      - name: Verify AVD
+        run: |
+          echo "Verifying AVD setup..."
+          ls ~/.android/avd
 
       - name: Archive logs
         uses: actions/upload-artifact@v3
