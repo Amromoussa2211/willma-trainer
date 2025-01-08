@@ -21,7 +21,6 @@ jobs:
         with:
           node-version: 18
           cache: 'npm'
-        continue-on-error: true
         run: |
           npm -v > logs/nodejs_setup.log
           echo "Node.js setup completed" >> logs/nodejs_setup.log
@@ -36,7 +35,6 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-        continue-on-error: true
         run: |
           java -version > logs/jdk_setup.log
           echo "JDK setup completed" >> logs/jdk_setup.log
@@ -46,7 +44,6 @@ jobs:
         with:
           cmdline-tools-version: 'latest'
           accept-android-sdk-licenses: true
-        continue-on-error: true
         run: |
           sdkmanager --list > logs/android_sdk_setup.log
           echo "Android SDK setup completed" >> logs/android_sdk_setup.log
@@ -66,7 +63,6 @@ jobs:
             ~/.android/avd/*
             ~/.android/adb*
           key: avd-30
-        continue-on-error: true
         run: |
           ls ~/.android/avd > logs/avd_cache.log
           echo "AVD cache setup completed" >> logs/avd_cache.log
@@ -86,30 +82,29 @@ jobs:
           arch: x86_64
           profile: Nexus 6
           emulator-options: -no-window -gpu swiftshader -noaudio -no-boot-anim
-          continue-on-error: true
-          run: |
-            set -e
-            mkdir -p apps
-            curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk > logs/emulator_run.log 2>&1
-            adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk >> logs/emulator_run.log 2>&1
-            adb wait-for-device >> logs/emulator_run.log 2>&1
-            echo "Emulator is ready" >> logs/emulator_run.log
+        run: |
+          set -e
+          mkdir -p apps
+          curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk > logs/emulator_run.log 2>&1
+          adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk >> logs/emulator_run.log 2>&1
+          adb wait-for-device >> logs/emulator_run.log 2>&1
+          echo "Emulator is ready" >> logs/emulator_run.log
 
-            npm install -g appium@2 --quiet >> logs/emulator_run.log 2>&1
-            appium --base-path /wd/hub & >> logs/emulator_run.log 2>&1
-            sleep 10
-            echo "Appium server started" >> logs/emulator_run.log
+          npm install -g appium@2 --quiet >> logs/emulator_run.log 2>&1
+          appium --base-path /wd/hub & >> logs/emulator_run.log 2>&1
+          sleep 10
+          echo "Appium server started" >> logs/emulator_run.log
 
-            npx wdio run ./wdio.ci.conf.js >> logs/emulator_run.log 2>&1
-            adb logcat -d > logs/adb_logcat.txt
-            killall -s SIGTERM node
-            sleep 5
-            killall -s SIGKILL node
-            echo "Appium logs saved" >> logs/emulator_run.log
+          npx wdio run ./wdio.ci.conf.js >> logs/emulator_run.log 2>&1
+          adb logcat -d > logs/adb_logcat.txt
+          killall -s SIGTERM node
+          sleep 5
+          killall -s SIGKILL node
+          echo "Appium logs saved" >> logs/emulator_run.log
 
-            adb emu kill
-            pkill -f "emulator" || true
-            echo "Emulator terminated" >> logs/emulator_run.log
+          adb emu kill
+          pkill -f "emulator" || true
+          echo "Emulator terminated" >> logs/emulator_run.log
 
       - name: Archive logs
         if: failure()
