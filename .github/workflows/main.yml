@@ -47,8 +47,8 @@ jobs:
           -e DEVICE="Pixel 4" \
           -e ANDROID_VERSION=30 \
           -e APPIUM=true \
-          -p 4723:4723 \  # Appium port
-          -p 5554:5554 \  # ADB port
+          -p 4723:4723 \
+          -p 5554:5554 \
           budtmo/docker-android:latest
 
     - name: Wait for Emulator to Boot
