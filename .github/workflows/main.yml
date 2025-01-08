@@ -40,6 +40,12 @@ jobs:
             ~/.android/adb*
           key: avd-30
 
+      - name: Update SDK and clear cache
+        run: |
+          yes | sdkmanager --update
+          yes | sdkmanager --uninstall "build-tools;35.0.0" "platform-tools" "platforms;android-30" "system-images;android-30;google_apis;x86_64"
+          yes | sdkmanager --install "build-tools;35.0.0" "platform-tools" "platforms;android-30" "system-images;android-30;google_apis;x86_64"
+
       - name: Run tests on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -47,15 +53,21 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: Nexus 6
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          emulator-options: -no-window -gpu swiftshader -noaudio -no-boot-anim
           script: |
             set -e
             mkdir -p apps
             curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
             adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
-            adb wait-for-device
-            adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done;'
-            npm install -g appium@2
+
+            # Wait for emulator to boot
+            for i in {1..60}; do
+              adb shell getprop sys.boot_completed | grep -q "1" && break
+              echo "Waiting for emulator to boot... (attempt $i)"
+              sleep 5
+            done
+
+            npm install -g appium@2 --quiet
             appium --base-path /wd/hub &
 
             # Wait for Appium to start
