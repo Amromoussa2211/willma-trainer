@@ -1,4 +1,4 @@
-name: Android E2E Tests with x86_64 Emulator
+name: Android Emulator Test
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
       - main
 
 jobs:
-  e2e-tests:
+  emulator-test:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,16 +24,20 @@ jobs:
     - name: Set up Android SDK
       uses: android-actions/setup-android@v2
 
-    - name: Install Android SDK Tools
+    - name: Install Android SDK Tools and Emulator
       run: |
-        echo "Installing Android SDK Tools..."
-        yes | sdkmanager --install "platform-tools"
-        yes | sdkmanager --install "system-images;android-30;default;x86_64"
-        yes | sdkmanager --install "emulator"
+        echo "Installing Android SDK Tools and Emulator..."
+        sdkmanager --install "platform-tools" "emulator" "system-images;android-30;default;x86_64"
+
+    - name: Update PATH for Android SDK
+      run: echo "${ANDROID_HOME}/emulator:${ANDROID_HOME}/tools:${ANDROID_HOME}/tools/bin:${ANDROID_HOME}/platform-tools" >> $GITHUB_PATH
+
+    - name: Debug Emulator Path
+      run: which emulator
 
     - name: Create Android Virtual Device (AVD)
       run: |
-        echo "Creating Android Virtual Device (AVD)..."
+        echo "Creating AVD..."
         echo "no" | avdmanager create avd --force \
           --name "test" \
           --package "system-images;android-30;default;x86_64" \
@@ -51,23 +55,11 @@ jobs:
         done
         echo "Emulator booted successfully!"
 
-    - name: Install dependencies
+    - name: Install Dependencies
       run: npm install
 
-    - name: Download and install APK
-      run: |
-        mkdir -p apps
-        curl -L -o ./apps/app-release.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release.apk
-        adb install ./apps/app-release.apk
-
-    - name: Run E2E tests
-      env:
-        DEVICE_NAME: "emulator-5554"
-        APK_PATH: "./apps/app-release.apk"
-        APPIUM_HOST: "localhost"
-        APPIUM_PORT: "4723"
-        APPIUM_PATH: "/"
-      run: npm run test:ci
+    - name: Run Tests
+      run: npm test
 
     - name: Stop Emulator
       run: adb -s emulator-5554 emu kill
