@@ -48,9 +48,19 @@ jobs:
         emulator-options: "-no-window -no-audio -gpu swiftshader_indirect -no-boot-anim"
         disable-animations: true
         force-avd-creation: true
+        cores: 2
+        avd-name: test
+        emulator-boot-timeout: 600
+        emulator-port: 5554
+        disable-spellchecker: false
+        disable-linux-hw-accel: true  # Explicitly disable hardware acceleration
+        enable-hw-keyboard: false
+        channel: stable
 
     - name: Verify emulator boot
-      run: adb shell getprop sys.boot_completed | grep 1
+      run: |
+        adb wait-for-device
+        adb shell getprop sys.boot_completed | grep 1
 
     - name: Download and install APK
       run: |
