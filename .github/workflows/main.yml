@@ -1,4 +1,4 @@
-name: Android E2E Tests (Fixed Appium Path)
+name: Android E2E Tests with Docker Emulator
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
 
 jobs:
   e2e-tests:
-    runs-on: macos-latest  # Use macOS runner for hardware acceleration
+    runs-on: ubuntu-latest  # Use Ubuntu runner
 
     steps:
     - name: Checkout Code
@@ -21,50 +21,20 @@ jobs:
       with:
         node-version: 18
 
-    - name: Set up Android SDK
-      uses: android-actions/setup-android@v2
+    - name: Install dependencies
+      run: npm install
 
-    - name: Install Android Emulator and System Image
+    - name: Start Docker Emulator
       run: |
-        echo "Installing Android Emulator and System Image..."
-        yes | sdkmanager --install "system-images;android-30;google_apis;arm64-v8a"  # Use ARM64 image
-        yes | sdkmanager --install "emulator"
-        yes | sdkmanager --install "platform-tools"
-        yes | sdkmanager --install "platforms;android-30"
-        yes | sdkmanager --install "build-tools;34.0.0"
-
-    - name: Create Android Virtual Device (AVD)
-      run: |
-        echo "Creating Android Virtual Device (AVD)..."
-        echo "no" | avdmanager create avd --force \
-          --name "test" \
-          --package "system-images;android-30;google_apis;arm64-v8a" \
-          --device "pixel_4" \
-          --tag "google_apis" \
-          --abi "arm64-v8a"
-
-    - name: Start Android Emulator
-      uses: reactivecircus/android-emulator-runner@v2
-      with:
-        api-level: 30
-        target: google_apis
-        arch: arm64-v8a  # Use ARM64 architecture
-        profile: pixel_4  # Use the correct profile name
-        emulator-options: "-no-window -no-audio -gpu swiftshader_indirect -no-boot-anim"
-        disable-animations: true
-        force-avd-creation: true
-        cores: 2
-        avd-name: test
-        emulator-boot-timeout: 1200
-        emulator-port: 5554
-        disable-spellchecker: false
-        disable-linux-hw-accel: false
-        enable-hw-keyboard: false
-        channel: stable
-        script: |
-          echo "Starting Android Emulator..."
-          adb wait-for-device
-          echo "Emulator is ready!"
+        docker pull budtmo/docker-android:emulator_30.0.0
+        docker run -d \
+          --name android-emulator \
+          -e DEVICE="Pixel 4" \
+          -e ANDROID_VERSION=30 \
+          -e APPIUM=true \
+          -p 4723:4723 \  # Appium port
+          -p 5554:5554 \  # ADB port
+          budtmo/docker-android:emulator_30.0.0
 
     - name: Wait for Emulator to Boot
       run: |
@@ -90,3 +60,8 @@ jobs:
         APPIUM_PORT: "4723"
         APPIUM_PATH: "/"
       run: npm run test:ci
+
+    - name: Stop Docker Emulator
+      run: |
+        docker stop android-emulator
+        docker rm android-emulator
