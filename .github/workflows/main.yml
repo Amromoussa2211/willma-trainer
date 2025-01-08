@@ -10,7 +10,7 @@ on:
 
 jobs:
   e2e-tests:
-    runs-on: macos-latest
+    runs-on: macos-latest  # Use macOS runner for hardware acceleration
 
     steps:
     - name: Checkout Code
@@ -27,7 +27,7 @@ jobs:
     - name: Install Android Emulator and System Image
       run: |
         echo "Installing Android Emulator and System Image..."
-        yes | sdkmanager --install "system-images;android-30;google_apis;x86_64"
+        yes | sdkmanager --install "system-images;android-30;google_apis;arm64-v8a"  # Use ARM64 image
         yes | sdkmanager --install "emulator"
         yes | sdkmanager --install "platform-tools"
         yes | sdkmanager --install "platforms;android-30"
@@ -38,17 +38,17 @@ jobs:
         echo "Creating Android Virtual Device (AVD)..."
         echo "no" | avdmanager create avd --force \
           --name "test" \
-          --package "system-images;android-30;google_apis;x86_64" \
+          --package "system-images;android-30;google_apis;arm64-v8a" \  # Use ARM64 image
           --device "pixel_4" \
           --tag "google_apis" \
-          --abi "x86_64"
+          --abi "arm64-v8a"  # Use ARM64 ABI
 
     - name: Start Android Emulator
       uses: reactivecircus/android-emulator-runner@v2
       with:
         api-level: 30
         target: google_apis
-        arch: x86_64
+        arch: arm64-v8a  # Use ARM64 architecture
         profile: pixel_4  # Use the correct profile name
         emulator-options: "-no-window -no-audio -gpu swiftshader_indirect -no-boot-anim"
         disable-animations: true
