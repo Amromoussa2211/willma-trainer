@@ -10,7 +10,7 @@ on:
 
 jobs:
   e2e-tests:
-    runs-on: macos-latest  # Use macOS runner for hardware acceleration
+    runs-on: macos-latest
 
     steps:
     - name: Checkout Code
@@ -21,11 +21,17 @@ jobs:
       with:
         node-version: 18
 
-    - name: Set up Android SDK
-      uses: android-actions/setup-android@v2
+    - name: Clear npm cache
+      run: npm cache clean --force
 
     - name: Install dependencies
-      run: npm install
+      run: |
+        npm config set fetch-retry-mintimeout 20000
+        npm config set fetch-retry-maxtimeout 120000
+        npm install
+
+    - name: Set up Android SDK
+      uses: android-actions/setup-android@v2
 
     - name: Start Android Emulator
       uses: reactivecircus/android-emulator-runner@v2
@@ -39,13 +45,13 @@ jobs:
         force-avd-creation: true
         cores: 2
         avd-name: test
-        emulator-boot-timeout: 1200  # Increased timeout to 20 minutes
+        emulator-boot-timeout: 1200
         emulator-port: 5554
         disable-spellchecker: false
-        disable-linux-hw-accel: false  # Hardware acceleration is enabled on macOS
+        disable-linux-hw-accel: false
         enable-hw-keyboard: false
         channel: stable
-        script: |  # Required script input
+        script: |
           echo "Starting Android Emulator..."
           adb wait-for-device
           echo "Emulator is ready!"
@@ -72,5 +78,5 @@ jobs:
         APK_PATH: "./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk"
         APPIUM_HOST: "localhost"
         APPIUM_PORT: "4723"
-        APPIUM_PATH: "/" # Updated to match Appium 2.x default base path
+        APPIUM_PATH: "/"
       run: npm run test:ci
