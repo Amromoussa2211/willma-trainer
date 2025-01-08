@@ -54,10 +54,22 @@ jobs:
         force-avd-creation: true
         cores: 2
         avd-name: test
-        emulator-boot-timeout: 1200  # Increased timeout for stability
+        emulator-boot-timeout: 1800  # Increased timeout to 1800 seconds (30 minutes)
         emulator-port: 5554
 
-    # Step 7: Download and Install APK
+    # Step 7: Debug Emulator Startup
+    - name: Debug Emulator Startup
+      run: |
+        $ANDROID_SDK_ROOT/emulator/emulator -avd test -no-window -no-audio -gpu swiftshader_indirect -no-boot-anim &
+        sleep 120  # Wait for 2 minutes
+        adb devices
+
+    # Step 8: Check Emulator Logs
+    - name: Check Emulator Logs
+      run: |
+        cat /Users/runner/.android/avd/test.avd/logcat.log
+
+    # Step 9: Download and Install APK
     - name: Download and Install APK
       run: |
         mkdir -p apps
@@ -65,13 +77,13 @@ jobs:
         adb wait-for-device
         adb install ./apps/app-release.apk
 
-    # Step 8: Start Appium Server
+    # Step 10: Start Appium Server
     - name: Start Appium Server
       run: |
         appium --base-path / --port 4723 --log-level error &
         sleep 10  # Wait for Appium to start
 
-    # Step 9: Run WebdriverIO Tests
+    # Step 11: Run WebdriverIO Tests
     - name: Run WebdriverIO Tests
       env:
         DEVICE_NAME: "emulator-5554"
@@ -81,24 +93,25 @@ jobs:
         APPIUM_PATH: "/"
       run: npm run test:ci
 
-    # Step 10: Generate Allure Report
+    # Step 12: Generate Allure Report
     - name: Generate Allure Report
       run: |
         npm run generate-report
 
-    # Step 11: Archive Allure Report
+    # Step 13: Archive Allure Report
     - name: Archive Allure Report
       uses: actions/upload-artifact@v3
       with:
         name: allure-report
         path: allure-report/
 
-    # Step 12: Verify Emulator Logs
-    - name: Verify Emulator Logs
+    # Step 14: Verify Emulator is Running
+    - name: Verify Emulator is Running
       run: |
-        cat /Users/runner/.android/avd/test.avd/logcat.log
+        adb devices
+        adb -s emulator-5554 shell getprop ro.boot.completed
 
-    # Step 13: Terminate Emulator
+    # Step 15: Terminate Emulator
     - name: Terminate Emulator
       run: |
         if adb devices | grep -q "emulator-5554"; then
