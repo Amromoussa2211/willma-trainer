@@ -12,11 +12,11 @@ exports.config = {
     path: '/',
     specs: ['./test/specs/**/*.js'],
     exclude: [],
-    maxInstances: 1, // Reduced for stability
+    maxInstances: 1,
     logLevel: 'info',
     bail: 0,
-    waitforTimeout: 15000, // Increased timeout
-    connectionRetryTimeout: 200000, // Increased timeout
+    waitforTimeout: 15000,
+    connectionRetryTimeout: 200000,
     connectionRetryCount: 2,
     framework: 'mocha',
     reporters: [
@@ -29,38 +29,11 @@ exports.config = {
     ],
     mochaOpts: {
         ui: 'bdd',
-        timeout: 120000 // Increased Mocha timeout
+        timeout: 120000
     },
-    onPrepare: async function (config, capabilities) { // Marked as async
-        console.log('Checking if the device is connected...');
-        const devices = execSync('adb devices').toString();
-        if (!devices.includes(capabilities[0]["appium:udid"])) {
-            throw new Error(`Device with UDID ${capabilities[0]["appium:udid"]} is not connected.`);
-        }
-        console.log(`Device ${capabilities[0]["appium:udid"]} is connected.`);
-
-        console.log('Checking if the APK is installed...');
-        const installedPackages = execSync(`adb shell pm list packages`).toString();
-        if (!installedPackages.includes(capabilities[0]["appium:appPackage"])) {
-            console.log('APK is not installed. Installing...');
-            execSync(`adb install ${capabilities[0]["appium:app"]}`, { stdio: 'inherit' });
-        } else {
-            console.log('APK is already installed.');
-        }
-
-        // Wait for emulator to boot
-        for (let i = 0; i < 60; i++) {
-            try {
-                const bootCompleted = execSync(`adb shell getprop sys.boot_completed`).toString().trim();
-                if (bootCompleted === '1') {
-                    console.log('Emulator is fully booted.');
-                    break;
-                }
-            } catch (error) {
-                console.log('Waiting for emulator to boot...');
-            }
-            await new Promise(resolve => setTimeout(resolve, 5000)); // Allowed because onPrepare is async
-        }
+    onPrepare: async function (config, capabilities) {
+        console.log('Skipping device check and APK installation...');
+        // Add any other setup logic here
     },
     afterTest: async function (test, context, { error }) {
         const screenshotDir = path.join(__dirname, 'screenshots');
