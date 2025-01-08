@@ -52,7 +52,7 @@ jobs:
         api-level: 30
         target: google_apis
         arch: x86_64
-        profile: Pixel_4_API_30
+        profile: pixel # Use a valid device profile
         emulator-options: "-no-window -no-audio -gpu swiftshader_indirect -no-boot-anim"
         disable-animations: true
         force-avd-creation: true
