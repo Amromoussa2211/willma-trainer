@@ -1,4 +1,4 @@
-name: Basic Environment Test
+name: Node.js Setup Test
 
 on:
   push:
@@ -9,17 +9,20 @@ on:
       - main
 
 jobs:
-  test:
+  setup-node:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Verify environment
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Verify Node.js setup
         run: |
-          echo "Checking environment..."
-          echo "Node.js version:" && node -v || echo "Node.js not found"
-          echo "npm version:" && npm -v || echo "npm not found"
-          echo "Java version:" && java -version || echo "Java not found"
-          echo "Done with basic environment check."
+          echo "Setting up Node.js..."
+          node -v
+          npm -v
