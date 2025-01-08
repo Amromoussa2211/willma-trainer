@@ -31,15 +31,33 @@ jobs:
           cmdline-tools-version: 'latest'
           accept-android-sdk-licenses: true
 
+      - name: Start Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          profile: Nexus 6
+          emulator-options: -no-window -gpu swiftshader -noaudio -no-boot-anim -no-snapshot
+          script: |
+            set -e
+            mkdir -p apps
+            curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
+            adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
+
+            # Wait for emulator to boot
+            adb wait-for-device
+            echo "Emulator is ready"
+
       - name: Start Appium server
         run: |
           npm install -g appium@2 --quiet
-          appium --base-path /wd/hub &
+          appium --base-path / &
 
       - name: Wait for Appium server to start
         run: |
           for i in {1..30}; do
-            if curl -s localhost:4723/wd/hub/status | grep -q "status"; then
+            if curl -s localhost:4723/status | grep -q "status"; then
               echo "Appium server started"
               break
             fi
@@ -49,9 +67,4 @@ jobs:
 
       - name: Run tests
         run: |
-          set -e
-          mkdir -p apps
-          curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
-
-          # Run tests
           npx wdio run ./wdio.ci.conf.js || { echo "Tests failed"; exit 1; }
