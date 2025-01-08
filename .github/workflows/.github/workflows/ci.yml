@@ -1,65 +1,65 @@
-name: Android Test Automation
+name: Android E2E Tests (Fixed Appium Path)
 
 on:
   push:
     branches:
       - main
   pull_request:
+    branches:
+      - main
 
 jobs:
-  android-tests:
-    runs-on: ubuntu-latest
+  e2e-tests:
+    runs-on: ubuntu-22.04
+
+    services:
+      appium:
+        image: appium/appium:latest
+        ports:
+          - 4723:4723
+        options: >-
+          --health-cmd "curl -f http://localhost:4723/status || exit 1"
+          --health-interval 10s
+          --health-timeout 30s
+          --health-retries 5
 
     steps:
-      # Checkout the repository
-      - name: Checkout code
-        uses: actions/checkout@v3
+    - name: Checkout Code
+      uses: actions/checkout@v3
 
-      # Set up Node.js
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
 
-      # Install dependencies
-      - name: Install dependencies
-        run: npm install
+    - name: Install dependencies
+      run: npm install
 
-      # Set up Android Emulator
-      - name: Set up Android Emulator
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 30
-          target: google_apis
-          arch: x86_64
-          profile: Pixel_4
-          emulator-options: "-no-window -no-snapshot"
-          disable-animations: true
+    - name: Start Android Emulator
+      uses: reactivecircus/android-emulator-runner@v2
+      with:
+        api-level: 30
+        target: google_apis
+        arch: x86_64
+        profile: Pixel_4_API_30
+        emulator-options: "-no-window -no-audio -gpu swiftshader_indirect -no-boot-anim"
+        disable-animations: true
+        force-avd-creation: true
 
-      # Wait for Emulator to boot
-      - name: Wait for Android Emulator to boot
-        run: adb wait-for-device
+    - name: Verify emulator boot
+      run: adb shell getprop sys.boot_completed | grep 1
 
-      # Debug Emulator
-      - name: Debug Emulator
-        run: adb devices
+    - name: Download and install APK
+      run: |
+        mkdir -p apps
+        curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
+        adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-      # Download APK from GitHub Release
-      - name: Download APK
-        run: |
-          curl -L -o ./apps/app.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
-
-      # Install APK
-      - name: Install APK
-        run: adb install ./apps/app.apk
-
-      # Run Tests
-      - name: Run WebdriverIO Tests
-        run: npm run test:ci
-
-      # Upload Allure Results
-      - name: Upload Allure Results
-        uses: actions/upload-artifact@v3
-        with:
-          name: allure-results
-          path: allure-results/
+    - name: Run E2E tests
+      env:
+        DEVICE_NAME: "emulator-5554"
+        APK_PATH: "./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk"
+        APPIUM_HOST: "localhost"
+        APPIUM_PORT: "4723"
+        APPIUM_PATH: "/" # Updated to match Appium 2.x default base path
+      run: npm run test:ci
