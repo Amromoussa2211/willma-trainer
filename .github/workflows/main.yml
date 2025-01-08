@@ -21,8 +21,14 @@ jobs:
       with:
         node-version: 18
 
+    - name: Clear npm cache
+      run: npm cache clean --force
+
     - name: Install dependencies
-      run: npm install
+      run: |
+        npm config set fetch-retry-mintimeout 20000
+        npm config set fetch-retry-maxtimeout 120000
+        npm install
 
     - name: Start Docker Emulator
       run: |
