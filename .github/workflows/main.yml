@@ -10,7 +10,7 @@ on:
 
 jobs:
   e2e-tests:
-    runs-on: ubuntu-22.04
+    runs-on: macos-latest  # Use macOS runner for hardware acceleration
 
     services:
       appium:
@@ -53,14 +53,19 @@ jobs:
         emulator-boot-timeout: 600
         emulator-port: 5554
         disable-spellchecker: false
-        disable-linux-hw-accel: true  # Explicitly disable hardware acceleration
+        disable-linux-hw-accel: false  # Hardware acceleration is enabled on macOS
         enable-hw-keyboard: false
         channel: stable
 
-    - name: Verify emulator boot
+    - name: Wait for Emulator to Boot
       run: |
+        echo "Waiting for emulator to boot..."
         adb wait-for-device
-        adb shell getprop sys.boot_completed | grep 1
+        while [[ "$(adb shell getprop sys.boot_completed | tr -d '\r')" != "1" ]]; do
+          sleep 5
+          echo "Waiting for emulator to boot..."
+        done
+        echo "Emulator booted successfully!"
 
     - name: Download and install APK
       run: |
