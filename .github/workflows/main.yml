@@ -20,6 +20,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
@@ -65,17 +66,26 @@ jobs:
           arch: x86_64
           profile: Nexus 6
           emulator-options: -no-window -gpu swiftshader -noaudio -no-boot-anim
-        run: |
-          set -e
-          mkdir -p apps
-          curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
-          adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
-          adb wait-for-device
-          echo "Emulator is ready"
-          npm install -g appium@2 --quiet
-          appium --base-path /wd/hub &
-          sleep 10
-          echo "Appium server started"
-          npx wdio run ./wdio.ci.conf.js
-          adb emu kill
-          pkill -f "emulator" || true
+          script: |
+            set -e
+            mkdir -p apps
+            curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
+            adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
+
+            # Wait for emulator to boot (simplified approach)
+            adb wait-for-device
+            echo "Emulator is ready"
+
+            npm install -g appium@2 --quiet
+            appium --base-path /wd/hub &
+
+            # Wait for Appium to start (simplified approach)
+            sleep 10
+            echo "Appium server started"
+
+            # Run tests
+            npx wdio run ./wdio.ci.conf.js || { echo "Tests failed"; exit 1; }
+
+            # Terminate Emulator
+            adb emu kill
+            pkill -f "emulator" || true
