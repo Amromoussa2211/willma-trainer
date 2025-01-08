@@ -10,7 +10,7 @@ on:
 
 jobs:
   android-e2e-tests:
-    runs-on: ubuntu-latest  # Use macOS for better hardware acceleration
+    runs-on: ubuntu-latest
 
     steps:
     # Step 1: Checkout Code
@@ -35,13 +35,20 @@ jobs:
     - name: Install Android SDK
       uses: android-actions/setup-android@v2
 
-    # Step 5: Install Appium and WebdriverIO Dependencies
+    # Step 5: Clear npm Cache
+    - name: Clear npm Cache
+      run: |
+        npm cache clean --force
+
+    # Step 6: Install Dependencies
     - name: Install Dependencies
       run: |
+        npm config set fetch-retry-mintimeout 20000
+        npm config set fetch-retry-maxtimeout 120000
+        npm config set registry https://registry.npmjs.org/
         npm install
-        npm install -g appium@latest
 
-    # Step 6: Create and Launch Android Emulator
+    # Step 7: Create and Launch Android Emulator
     - name: Create and Launch Emulator
       run: |
         # Install system image for Android 30 (x86_64)
@@ -61,13 +68,13 @@ jobs:
           echo "Emulator failed to start. Skipping emulator-related steps."
         fi
 
-    # Step 7: Download APK
+    # Step 8: Download APK
     - name: Download APK
       run: |
         mkdir -p apps
         curl -L -o ./apps/app-release.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-    # Step 8: Install APK on Emulator (if running)
+    # Step 9: Install APK on Emulator (if running)
     - name: Install APK on Emulator
       run: |
         if adb devices | grep -q "emulator-5554"; then
@@ -77,13 +84,13 @@ jobs:
           echo "Emulator not found. Skipping APK installation."
         fi
 
-    # Step 9: Start Appium Server
+    # Step 10: Start Appium Server
     - name: Start Appium Server
       run: |
         appium --base-path / --port 4723 --log-level error &
         sleep 10  # Wait for Appium to start
 
-    # Step 10: Run WebdriverIO Tests
+    # Step 11: Run WebdriverIO Tests
     - name: Run WebdriverIO Tests
       env:
         DEVICE_NAME: "emulator-5554"  # Default emulator port
@@ -98,23 +105,23 @@ jobs:
           echo "Emulator not found. Skipping tests."
         fi
 
-    # Step 11: Generate Allure Report
+    # Step 12: Generate Allure Report
     - name: Generate Allure Report
       run: |
         npm run generate-report
 
-    # Step 12: Archive Allure Report
+    # Step 13: Archive Allure Report
     - name: Archive Allure Report
       uses: actions/upload-artifact@v3
       with:
         name: allure-report
         path: allure-report/
 
-    # Step 13: Terminate Emulator (if running)
+    # Step 14: Terminate Emulator (if running)
     - name: Terminate Emulator
       run: |
         if adb devices | grep -q "emulator-5554"; then
           adb -s emulator-5554 emu kill || echo "Failed to terminate emulator. Continuing..."
         else
           echo "Emulator not found. Skipping termination."
-        fi
+        fi 
