@@ -25,9 +25,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Clean up existing SDK directories
+      - name: Set up Android SDK directories
         run: |
-          rm -rf $HOME/android-sdk
           mkdir -p $HOME/android-sdk/cmdline-tools/latest
           mkdir -p $HOME/android-sdk/emulator
           mkdir -p $HOME/android-sdk/platform-tools
@@ -42,7 +41,6 @@ jobs:
           echo "$ANDROID_HOME/emulator" >> $GITHUB_PATH
           echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
           chmod -R 777 $HOME/android-sdk
-          mkdir -p $ANDROID_HOME
 
       - name: Set up Android Command Line Tools
         run: |
@@ -54,81 +52,26 @@ jobs:
         run: which sdkmanager
 
       - name: Update SDK Repositories
-        run: |
-          mkdir -p $ANDROID_HOME/repositories.cfg
-          touch $ANDROID_HOME/repositories.cfg
-          yes | sdkmanager --update
+        run: yes | sdkmanager --update
 
       - name: Install platform-tools
-        run: |
-          echo "Installing platform-tools..."
-          sdkmanager --install "platform-tools" || { echo "Failed to install platform-tools"; exit 1; }
+        run: sdkmanager --install "platform-tools"
 
       - name: Install emulator
-        run: |
-          echo "Installing emulator..."
-          sdkmanager --install "emulator" || { echo "Failed to install emulator"; exit 1; }
+        run: sdkmanager --install "emulator"
 
       - name: Install platforms
-        run: |
-          echo "Installing platforms;android-30..."
-          sdkmanager --install "platforms;android-30" || { echo "Failed to install platforms"; exit 1; }
+        run: sdkmanager --install "platforms;android-30"
 
       - name: Install system-images
-        run: |
-          echo "Installing system-images;android-30;default;arm64-v8a..."
-          sdkmanager --install "system-images;android-30;default;arm64-v8a" || { echo "Failed to install system-images"; exit 1; }
-          echo "All SDK components installed successfully."
-          chmod -R 777 $ANDROID_HOME/system-images/
-          echo "Listing entire directory structure..."
-          find $ANDROID_HOME -type d
-          sleep 10
-          echo "Listing files in system-images directory..."
-          find $ANDROID_HOME/system-images/ -type f
-          
-      - name: Check Disk Space
-        run: df -h
-
-      - name: List Installed Packages
-        run: sdkmanager --list
+        run: sdkmanager --install "system-images;android-30;default;arm64-v8a"
 
       - name: Verify SDK Setup
         run: |
+          echo "Listing installed packages..."
+          sdkmanager --list
           echo "Checking directory structure..."
           ls -la $ANDROID_HOME
-          echo "Checking if platforms directory exists..."
-          if [ -d "$ANDROID_HOME/platforms" ]; then
-            echo "Platforms directory found."
-          else
-            echo "Platforms directory not found."
-            exit 1
-          fi
-          echo "Checking if emulator directory exists..."
-          if [ -d "$ANDROID_HOME/emulator" ]; then
-            echo "Emulator directory found."
-          else
-            echo "Emulator directory not found."
-            exit 1
-          fi
-          echo "Checking if system-images directory exists..."
-          if [ -d "$ANDROID_HOME/system-images" ]; then
-            echo "System-images directory found."
-          else
-            echo "System-images directory not found."
-            exit 1
-          fi
-          echo "Checking if cmdline-tools directory exists..."
-          if [ -d "$ANDROID_HOME/cmdline-tools/latest" ]; then
-            echo "Cmdline-tools directory found."
-          else
-            echo "Cmdline-tools directory not found."
-            exit 1
-          fi
-
-      - name: Verify emulator and adb are in PATH
-        run: |
-          which emulator
-          which adb
 
       - name: Create and Start Emulator
         run: |
