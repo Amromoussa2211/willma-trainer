@@ -70,17 +70,12 @@ jobs:
           mkdir -p apps
           curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
           adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
-
           adb wait-for-device
           echo "Emulator is ready"
-
           npm install -g appium@2 --quiet
           appium --base-path /wd/hub &
-
           sleep 10
           echo "Appium server started"
-
           npx wdio run ./wdio.ci.conf.js
-
           adb emu kill
           pkill -f "emulator" || true
