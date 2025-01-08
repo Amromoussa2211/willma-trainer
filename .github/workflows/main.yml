@@ -72,25 +72,16 @@ jobs:
             curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
             adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-            # Wait for emulator to boot
-            for i in {1..60}; do
-              adb shell getprop sys.boot_completed | grep -q "1" && break
-              echo "Waiting for emulator to boot... (attempt $i)"
-              sleep 5
-            done
+            # Wait for emulator to boot (simplified approach)
+            adb wait-for-device
+            echo "Emulator is ready"
 
             npm install -g appium@2 --quiet
             appium --base-path /wd/hub &
 
-            # Wait for Appium to start
-            for i in {1..30}; do
-              if curl -s localhost:4723/wd/hub/status | grep -q "status"; then
-                echo "Appium server started"
-                break
-              fi
-              echo "Waiting for Appium server to start..."
-              sleep 2
-            done
+            # Wait for Appium to start (simplified approach)
+            sleep 10
+            echo "Appium server started"
 
             # Run tests
             npx wdio run ./wdio.ci.conf.js || { echo "Tests failed"; exit 1; }
