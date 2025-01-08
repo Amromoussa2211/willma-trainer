@@ -35,23 +35,34 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
-          target: google_apis_playstore # Use a different system image
+          target: google_apis_playstore # Use a faster system image
           arch: x86_64
           profile: Nexus 5 # Use a lighter profile
-          emulator-options: -no-window -gpu swiftshader -noaudio -no-boot-anim -no-snapshot -memory 4096 -cores 4
+          emulator-options: -no-window -gpu swiftshader -noaudio -no-boot-anim -memory 2048 -cores 2 -skin 480x800 -snapshot default
           script: |
             set -e
             mkdir -p apps
             curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
             adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-            # Disable animations
-            adb shell settings put global window_animation_scale 0
-            adb shell settings put global transition_animation_scale 0
-            adb shell settings put global animator_duration_scale 0
+            # Restart ADB server
+            adb kill-server
+            adb start-server
 
             # Wait for emulator to boot
-            adb wait-for-device
+            for i in {1..60}; do
+              adb devices | grep -q "emulator-5554.*device" && break
+              echo "Waiting for emulator to boot... (attempt $i)"
+              sleep 10
+            done
+
+            # Wait for boot to complete
+            for i in {1..60}; do
+              adb -s emulator-5554 shell getprop sys.boot_completed | grep -q "1" && break
+              echo "Waiting for emulator to complete boot... (attempt $i)"
+              sleep 10
+            done
+
             echo "Emulator is ready"
 
       - name: Start Appium server
