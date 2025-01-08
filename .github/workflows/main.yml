@@ -26,7 +26,7 @@ jobs:
 
     - name: Start Docker Emulator
       run: |
-        docker pull budtmo/docker-android:emulator_30.0.0
+        docker pull budtmo/docker-android:latest  # Use the latest tag
         docker run -d \
           --name android-emulator \
           -e DEVICE="Pixel 4" \
@@ -34,7 +34,7 @@ jobs:
           -e APPIUM=true \
           -p 4723:4723 \  # Appium port
           -p 5554:5554 \  # ADB port
-          budtmo/docker-android:emulator_30.0.0
+          budtmo/docker-android:latest  # Use the latest tag
 
     - name: Wait for Emulator to Boot
       run: |
