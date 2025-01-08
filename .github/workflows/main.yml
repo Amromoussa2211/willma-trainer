@@ -53,19 +53,32 @@ jobs:
         target: google_apis
         arch: x86_64
         profile: pixel # Use a valid device profile
-        emulator-options: "-no-window -no-audio -gpu swiftshader_indirect -no-boot-anim"
+        emulator-options: "-no-window -no-audio -gpu swiftshader_indirect -no-boot-anim -no-snapshot -no-accel"
         disable-animations: true
         force-avd-creation: true
         script: |
-          # Verify emulator boot
-          adb shell getprop sys.boot_completed | grep 1
+          # Wait for emulator to boot (increase timeout if needed)
+          echo "Waiting for emulator to boot..."
+          adb wait-for-device
+          while ! adb shell getprop sys.boot_completed | grep 1; do
+            sleep 10
+          done
+          echo "Emulator booted successfully!"
+
+          # Disable animations (retry if ADB fails)
+          echo "Disabling animations..."
+          adb shell settings put global window_animation_scale 0.0 || true
+          adb shell settings put global transition_animation_scale 0.0 || true
+          adb shell settings put global animator_duration_scale 0.0 || true
 
           # Download and install APK
+          echo "Downloading and installing APK..."
           mkdir -p apps
           curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
           adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
           # Run E2E tests
+          echo "Running E2E tests..."
           npm run test:ci
 
     - name: Upload test artifacts
@@ -73,4 +86,4 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: test-results
-        path: path/to/test/results # Update this path to where your test results are stored
+        path: test-results # Update this path to where your test results are stored
