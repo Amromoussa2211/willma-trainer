@@ -38,10 +38,10 @@ jobs:
         echo "Creating Android Virtual Device (AVD)..."
         echo "no" | avdmanager create avd --force \
           --name "test" \
-          --package "system-images;android-30;google_apis;arm64-v8a" \  # Use ARM64 image
+          --package "system-images;android-30;google_apis;arm64-v8a" \
           --device "pixel_4" \
           --tag "google_apis" \
-          --abi "arm64-v8a"  # Use ARM64 ABI
+          --abi "arm64-v8a"
 
     - name: Start Android Emulator
       uses: reactivecircus/android-emulator-runner@v2
