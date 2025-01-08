@@ -1,4 +1,4 @@
-name: Basic Android Emulator Test
+name: Android Emulator Tests
 
 on:
   push:
@@ -19,11 +19,6 @@ jobs:
       - name: Create log directory
         run: mkdir -p logs
 
-      - name: List logs directory
-        run: |
-          echo "Listing contents of logs directory before any action:"
-          ls -la logs
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -37,6 +32,26 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: 'latest'
+          accept-android-sdk-licenses: true
+        run: |
+          echo "Setting up Android SDK..." | tee logs/android_sdk_setup.log
+          sdkmanager --list >> logs/android_sdk_setup.log
+          echo "Android SDK setup completed" >> logs/android_sdk_setup.log
+          cat logs/android_sdk_setup.log
+
+      - name: Enable KVM
+        run: |
+          echo "Enabling KVM..." | tee logs/kvm_setup.log
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          echo "KVM enabled" >> logs/kvm_setup.log
+          cat logs/kvm_setup.log
 
       - name: Verify setup
         run: |
