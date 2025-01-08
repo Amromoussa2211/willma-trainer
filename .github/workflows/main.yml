@@ -21,11 +21,6 @@ jobs:
       with:
         node-version: 18
 
-    - name: Install Docker CLI
-      run: |
-        brew install docker
-        brew install docker-compose
-
     - name: Set up Android SDK
       uses: android-actions/setup-android@v2
 
@@ -44,12 +39,16 @@ jobs:
         force-avd-creation: true
         cores: 2
         avd-name: test
-        emulator-boot-timeout: 600
+        emulator-boot-timeout: 1200  # Increased timeout to 20 minutes
         emulator-port: 5554
         disable-spellchecker: false
         disable-linux-hw-accel: false  # Hardware acceleration is enabled on macOS
         enable-hw-keyboard: false
         channel: stable
+        script: |  # Required script input
+          echo "Starting Android Emulator..."
+          adb wait-for-device
+          echo "Emulator is ready!"
 
     - name: Wait for Emulator to Boot
       run: |
