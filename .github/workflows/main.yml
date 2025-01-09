@@ -68,6 +68,9 @@ jobs:
           # Skip input keyevent 82 (if not needed)
           echo "Skipping input keyevent 82..."
 
+          # Skip disabling animations (if not needed)
+          echo "Skipping disabling animations..."
+
           # Download and install APK
           echo "Downloading and installing APK..."
           mkdir -p apps
