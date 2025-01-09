@@ -44,7 +44,10 @@ jobs:
       uses: android-actions/setup-android@v2
       with:
         android-tools-component: 'platform-tools,build-tools-30.0.3,android-30,google-apis'
-        install-component: 'platform-tools,build-tools-30.0.3,android-30,google-apis,emulator,sys-img-arm64-google_apis-30'
+        install-component: 'platform-tools,build-tools-30.0.3,android-30,google-apis,emulator,sys-img-x86_64-google_apis-30'
+
+    - name: List Installed SDK Packages
+      run: sdkmanager --list
 
     - name: Install dependencies
       run: npm install
@@ -54,11 +57,12 @@ jobs:
       with:
         api-level: 30
         target: google_apis
-        arch: arm64-v8a
+        arch: x86_64
         profile: pixel
         emulator-options: "-no-window -no-audio -no-boot-anim -no-snapshot -no-accel -boot-timeout 500"
         disable-animations: true
         force-avd-creation: true
+        emulator-boot-timeout: 900
         script: |
           echo "Waiting for emulator to boot..."
           adb wait-for-device
