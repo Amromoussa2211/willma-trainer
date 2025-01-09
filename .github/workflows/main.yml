@@ -1,3 +1,80 @@
+# name: Android E2E Tests
+
+# on:
+#   push:
+#     branches:
+#       - main
+#   pull_request:
+#     branches:
+#       - main
+
+# jobs:
+#   e2e-tests:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout Code
+#         uses: actions/checkout@v3
+
+#       - name: Set up Node.js
+#         uses: actions/setup-node@v3
+#         with:
+#           node-version: '18'
+
+#       - name: Set up Java
+#         uses: actions/setup-java@v3
+#         with:
+#           distribution: 'zulu'
+#           java-version: '17'
+
+#       - name: Set up Android SDK
+#         uses: android-actions/setup-android@v3
+#         with:
+#           cmdline-tools-version: 'latest'
+#           accept-android-sdk-licenses: true
+#           packages: platform-tools platforms;android-33 build-tools;33.0.0 emulator system-images;android-33;google_apis_playstore;x86_64
+
+#       - name: List system images
+#         run: $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --list | grep "system-images;android-33;google_apis_playstore;x86_64"
+
+#       - name: Create AVD
+#         run: |
+#           echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd --name testAVD --package 'system-images;android-33;google_apis_playstore;x86_64' --force
+
+#       - name: Fix KVM permissions
+#         run: |
+#           sudo apt-get update -y
+#           sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
+#           sudo gpasswd -a $USER kvm
+#           sudo chmod 666 /dev/kvm
+
+#       - name: Verify KVM
+#         run: |
+#           kvm-ok
+
+#       - name: Start Emulator
+#         run: |
+#           nohup $ANDROID_HOME/emulator/emulator -avd testAVD -no-audio -no-window &
+#           sleep 300
+
+#       - name: Wait for Device
+#         run: adb wait-for-device
+
+#       - name: List ADB Devices
+#         run: adb devices
+
+#       - name: Install Dependencies
+#         run: npm install
+
+#       - name: Download APK
+#         run: |
+#           curl -L -o app.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
+
+#       - name: Install APK
+#         run: adb install -r app.apk
+
+#       - name: Run Tests
+#         run: npm run test:ci
+
 name: Android E2E Tests
 
 on:
@@ -65,12 +142,21 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      - name: Download APK
+      - name: Download and Install APK
         run: |
-          curl -L -o app.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
+          mkdir -p apps
+          curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
+          adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-      - name: Install APK
-        run: adb install -r app.apk
+      - name: Verify APK Installation
+        run: |
+          adb shell pm list packages | grep com.willma.client.staging
+          if [ $? -eq 0 ]; then
+            echo "APK installed successfully."
+          else
+            echo "APK installation failed."
+            exit 1
+          fi
 
       - name: Run Tests
         run: npm run test:ci
