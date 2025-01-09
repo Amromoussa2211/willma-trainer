@@ -1,68 +1,140 @@
-name: Android E2E Tests (Fixed Appium Path)
+# name: Android E2E Tests (Fixed Appium Path)
 
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+# on:
+#   push:
+#     branches:
+#       - main
+#   pull_request:
+#     branches:
+#       - main
 
-jobs:
-  e2e-tests:
-    runs-on: ubuntu-22.04
+# jobs:
+#   e2e-tests:
+#     runs-on: ubuntu-22.04
 
-    services:
-      appium:
-        image: appium/appium:latest
-        ports:
-          - 4723:4723
-        options: >-
-          --health-cmd "curl -f http://localhost:4723/status || exit 1"
-          --health-interval 10s
-          --health-timeout 30s
-          --health-retries 5
+#     services:
+#       appium:
+#         image: appium/appium:latest
+#         ports:
+#           - 4723:4723
+#         options: >-
+#           --health-cmd "curl -f http://localhost:4723/status || exit 1"
+#           --health-interval 10s
+#           --health-timeout 30s
+#           --health-retries 5
 
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
+#     steps:
+#     - name: Checkout Code
+#       uses: actions/checkout@v3
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: 18
+#     - name: Set up Node.js
+#       uses: actions/setup-node@v3
+#       with:
+#         node-version: 18
 
-    - name: Set up Android SDK
-      uses: android-actions/setup-android@v2
+#     - name: Set up Android SDK
+#       uses: android-actions/setup-android@v2
 
-    - name: Install dependencies
-      run: npm install
+#     - name: Install dependencies
+#       run: npm install
 
-    - name: Start Android Emulator
-      uses: reactivecircus/android-emulator-runner@v2
-      with:
-        api-level: 30
-        target: google_apis
-        arch: x86_64
-        profile: Pixel_4_API_30
-        emulator-options: "-no-window -no-audio -gpu swiftshader_indirect -no-boot-anim"
-        disable-animations: true
-        force-avd-creation: true
+#     - name: Start Android Emulator
+#       uses: reactivecircus/android-emulator-runner@v2
+#       with:
+#         api-level: 30
+#         target: google_apis
+#         arch: x86_64
+#         profile: Pixel_4_API_30
+#         emulator-options: "-no-window -no-audio -gpu swiftshader_indirect -no-boot-anim"
+#         disable-animations: true
+#         force-avd-creation: true
 
-    - name: Verify emulator boot
-      run: adb shell getprop sys.boot_completed | grep 1
+#     - name: Verify emulator boot
+#       run: adb shell getprop sys.boot_completed | grep 1
 
-    - name: Download and install APK
-      run: |
-        mkdir -p apps
-        curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
-        adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
+#     - name: Download and install APK
+#       run: |
+#         mkdir -p apps
+#         curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
+#         adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-    - name: Run E2E tests
-      env:
-        DEVICE_NAME: "emulator-5554"
-        APK_PATH: "./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk"
-        APPIUM_HOST: "localhost"
-        APPIUM_PORT: "4723"
-        APPIUM_PATH: "/" # Updated to match Appium 2.x default base path
-      run: npm run test:ci
+#     - name: Run E2E tests
+#       env:
+#         DEVICE_NAME: "emulator-5554"
+#         APK_PATH: "./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk"
+#         APPIUM_HOST: "localhost"
+#         APPIUM_PORT: "4723"
+#         APPIUM_PATH: "/" # Updated to match Appium 2.x default base path
+#       run: npm run test:ci
+
+
+#       ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+# #       name: Android Test Automation
+
+# # on:
+# #   push:
+# #     branches:
+# #       - main  # Trigger on push to the main branch
+# #     paths:
+# #       - '**'  # Trigger on any changes in the repository
+
+# # jobs:
+# #   test:
+# #     runs-on: ubuntu-latest
+
+# #     steps:
+# #       # Step 1: Checkout the repository
+# #       - name: Checkout code
+# #         uses: actions/checkout@v4
+
+# #       # Step 2: Set up JDK 17
+# #       - name: Set up JDK 17
+# #         uses: actions/setup-java@v4
+# #         with:
+# #           java-version: '17'
+# #           distribution: 'adopt'
+
+# #       # Step 3: Install Node.js
+# #       - name: Set up Node.js
+# #         uses: actions/setup-node@v4
+# #         with:
+# #           node-version: '18'  # Use Node.js 18 (or the version you need)
+# #           cache: 'npm'
+
+# #       # Step 4: Install dependencies
+# #       - name: Install dependencies
+# #         run: npm install
+
+# #       # Step 5: Set environment variables for BrowserStack
+# #       - name: Set environment variables
+# #         run: |
+# #           echo "BROWSERSTACK_USERNAME=amromoussa_KdSLyl" >> $GITHUB_ENV
+# #           echo "BROWSERSTACK_ACCESS_KEY=EKpQhuMmc4axaaDNcJqd" >> $GITHUB_ENV
+# #           echo "APK_PATH=./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk" >> $GITHUB_ENV
+
+# #       # Step 6: Download APK (if needed)
+# #       - name: Download APK
+# #         run: |
+# #           mkdir -p apps
+# #           curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
+
+# #       # Step 7: Run tests on BrowserStack
+# #       - name: Run tests on BrowserStack
+# #         env:
+# #           BROWSERSTACK_USERNAME: ${{ env.BROWSERSTACK_USERNAME }}
+# #           BROWSERSTACK_ACCESS_KEY: ${{ env.BROWSERSTACK_ACCESS_KEY }}
+# #         run: |
+# #           npm run test:ci
+
+# #       # Step 8: Generate Allure report
+# #       - name: Generate Allure report
+# #         run: npm run generate-report
+
+# #       # Step 9: Upload Allure report as an artifact
+# #       - name: Upload Allure report
+# #         uses: actions/upload-artifact@v3
+# #         with:
+# #           name: allure-report
+# #           path: allure-report
+# #           if-no-files-found: warn
