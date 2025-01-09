@@ -170,7 +170,7 @@ jobs:
 
       # Step 11: Run tests
       - name: Run tests
-        run: npm run test:ci
+        run: npm run test:local
 
       # Step 12: Generate Allure report
       - name: Generate Allure report
