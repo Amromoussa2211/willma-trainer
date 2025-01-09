@@ -38,16 +38,24 @@ jobs:
           rm cmdline-tools.zip
           echo "export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH" >> $GITHUB_ENV
 
+      - name: Set ANDROID_SDK_ROOT
+        run: |
+          echo "ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> $GITHUB_ENV
+          echo "export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> ~/.bashrc
+
       - name: Accept Android SDK Licenses
         run: |
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
 
-      - name: Install Android SDK Packages
+      - name: Install Android SDK Components
         run: |
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-30" "build-tools;30.0.3" "system-images;android-30;google_apis;x86_64"
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-30" "system-images;android-30;google_apis;x86_64"
 
-      - name: List Available Device Definitions
-        run: $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager list device
+      - name: Verify SDK Installation
+        run: |
+          ls -la $ANDROID_SDK_ROOT
+          ls -la $ANDROID_SDK_ROOT/platform-tools
+          ls -la $ANDROID_SDK_ROOT/platforms
 
       - name: Create and Start Emulator
         run: |
@@ -86,4 +94,5 @@ jobs:
         run: |
           echo $JAVA_HOME
           echo $ANDROID_HOME
+          echo $ANDROID_SDK_ROOT
           ls -la
