@@ -25,9 +25,9 @@ jobs:
         run: sudo apt-get install -y libgl1-mesa-glx
 
       - name: Setup Android Environment
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4  # Updated to latest version
         with:
-          cmdline-tools-version: '16.0.1'
+          cmdline-tools-version: '16.0.3'  # Use the latest available version
           packages: 'platforms;android-30 system-images;android-30;google_apis;x86_64'
           accept-android-sdk-licenses: true
 
