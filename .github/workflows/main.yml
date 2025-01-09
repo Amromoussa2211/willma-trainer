@@ -23,20 +23,29 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v2
-
-      - name: Install Android Emulator
-        run: |
-          android-sdk/cmdline-tools/latest/bin/sdkmanager --install 'emulator'
-          android-sdk/cmdline-tools/latest/bin/sdkmanager --install 'system-images;android-30;google_apis;x86'
+        with:
+          android-version: '30'
+          components: |
+            platform-tools
+            platforms;android-30
+            build-tools;30.0.3
+            emulator
+            system-images;android-30;google_apis;x86
 
       - name: Create AVD
         run: |
-          echo "no" | android-sdk/cmdline-tools/latest/bin/avdmanager create avd --name testAVD --package 'system-images;android-30;google_apis;x86' --force
+          echo "no" | $ANDROID_HOME/tools/bin/avdmanager create avd --name testAVD --package 'system-images;android-30;google_apis;x86' --force
 
       - name: Start Emulator
         run: |
-          nohup android-sdk/emulator/emulator -avd testAVD -no-audio -no-window &
+          nohup $ANDROID_HOME/emulator/emulator -avd testAVD -no-audio -no-window &
           sleep 300
+
+      - name: Wait for Device
+        run: adb wait-for-device
+
+      - name: List ADB Devices
+        run: adb devices
 
       - name: Install Dependencies
         run: npm install
@@ -49,4 +58,4 @@ jobs:
         run: adb install -r app.apk
 
       - name: Run Tests
-        run: npm run test:cia
+        run: npm run test:ci
