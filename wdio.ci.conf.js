@@ -20,7 +20,7 @@ const localConfig = {
         platformName: 'Android',
         'appium:deviceName': 'Google Pixel 5', // Replace with your desired device
         'appium:platformVersion': '12.0', // Replace with your desired Android version
-        'appium:app': process.env.APK_PATH || './apps/app-release-v15-0.3.2-2024-12-25-18-13.apk',
+"appium:app": "https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk",
         'appium:appPackage': 'com.willma.client.staging',
         'appium:appActivity': 'com.willma.client.staging.MainActivity',
         'appium:automationName': 'UiAutomator2',
