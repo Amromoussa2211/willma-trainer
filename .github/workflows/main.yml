@@ -1,16 +1,8 @@
-name: Android E2E Tests
-
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-
 jobs:
   e2e-tests:
     runs-on: ubuntu-latest
+    env:
+      JAVA_TOOL_OPTIONS: "--add-modules=jakarta.xml.bind"
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -24,7 +16,7 @@ jobs:
         uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
-          java-version: '11'
+          java-version: '17'
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
