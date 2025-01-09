@@ -49,7 +49,7 @@ jobs:
 
       - name: Install Android SDK Components
         run: |
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-30" "system-images;android-30;google_apis;x86_64"
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-30" "system-images;android-30;google_apis;x86"
 
       - name: Verify SDK Installation
         run: |
@@ -59,9 +59,9 @@ jobs:
 
       - name: Create and Start Emulator
         run: |
-          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd --force --name testAVD --package 'system-images;android-30;google_apis;x86_64' --device 'pixel_5'
-          $ANDROID_HOME/emulator/emulator @testAVD -no-window -no-audio -no-boot-anim -no-snapshot -boot-timeout 500 -qemu -m 2048 -smp 2 &
-          sleep 30  # Wait for emulator to start
+          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd --force --name testAVD --package 'system-images;android-30;google_apis;x86' --device 'pixel_5'
+          $ANDROID_HOME/emulator/emulator @testAVD -no-window -no-audio -no-boot-anim -no-snapshot -boot-timeout 500 -qemu -m 1024 -smp 1 &
+          sleep 120  # Wait for emulator to start (increased to 120 seconds)
 
       - name: Wait for Emulator
         run: |
