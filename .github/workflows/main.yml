@@ -9,8 +9,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    container:
-      image: ''
+    container: {}  # Run the job directly on the host machine without a container
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
