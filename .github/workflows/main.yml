@@ -1,48 +1,38 @@
-name: Android E2E Tests
-
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-
 jobs:
   e2e-tests:
     runs-on: ubuntu-latest
     container:
-      image: selenium/standalone-chrome:119.0
-      options: --privileged
+      image: node:18
+      options: --user node -w /github/workspace
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
 
-    - name: Install Dependencies
-      run: npm install
+      - name: Install Dependencies
+        run: npm install
 
-    - name: Download APK
-      run: |
-        curl -L -o app.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
+      - name: Download APK
+        run: |
+          curl -L -o /github/workspace/app.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-    - name: Start Appium and Emulator
-      run: |
-        # Start Appium in the background
-        appium &
-        # Start the emulator
-        emulator -avd Nexus_5X_API_30 -no-window -no-audio -gpu swiftshader_indirect -no-boot-anim &
-        # Wait for the device to be online
-        adb wait-for-device
-        adb shell getprop sys.boot_completed | grep -q 1
+      - name: Start Appium and Emulator
+        run: |
+          # Start Appium in the background
+          appium &
+          # Start the emulator
+          emulator -avd Nexus_5X_API_30 -no-window -no-audio -gpu swiftshader_indirect -no-boot-anim &
+          # Wait for the device to be online
+          adb wait-for-device
+          adb shell getprop sys.boot_completed | grep -q 1
 
-    - name: Install APK
-      run: adb install -r /github/workspace/app.apk
+      - name: Install APK
+        run: adb install -r /github/workspace/app.apk
 
-    - name: Run Tests
-      run: npm run test:ci
+      - name: Run Tests
+        run: npm run test:ci
