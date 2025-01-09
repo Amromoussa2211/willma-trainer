@@ -28,11 +28,11 @@ jobs:
         run: sudo apt-get install -y libgl1-mesa-glx
 
       - name: Setup Android Environment
-        uses: android-actions/setup-android@v3
+        uses: spencerwiting/setup-android@v2
         with:
-          cmdline-tools-version: '8085253'
+          android-version: '16.0.1'
           packages: 'platforms;android-30,build-tools;30.0.3,system-images;android-30;google_apis;x86_64'
-          accept-android-sdk-licenses: true
+          accept-licenses: true
 
       - name: List Available Packages
         run: sdkmanager --list
