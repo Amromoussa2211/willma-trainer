@@ -12,12 +12,17 @@ jobs:
   e2e-tests:
     runs-on: ubuntu-latest
     container:
-      image: appium/docker-android-emulator:latest
+      image: selenium/standalone-chrome:119.0
       options: --privileged
 
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
 
     - name: Install Dependencies
       run: npm install
@@ -31,7 +36,7 @@ jobs:
         # Start Appium in the background
         appium &
         # Start the emulator
-        emulator -avd AndroidEmulator -no-window -no-audio -gpu swiftshader_indirect -no-boot-anim &
+        emulator -avd Nexus_5X_API_30 -no-window -no-audio -gpu swiftshader_indirect -no-boot-anim &
         # Wait for the device to be online
         adb wait-for-device
         adb shell getprop sys.boot_completed | grep -q 1
