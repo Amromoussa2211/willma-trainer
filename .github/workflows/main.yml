@@ -99,8 +99,6 @@ jobs:
             echo "Appium is not running or not ready."
             exit 1
           fi
-          
+
       - name: Run Tests
         run: npm run test:ci
-
-      
