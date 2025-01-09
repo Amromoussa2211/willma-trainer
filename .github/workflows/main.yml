@@ -9,52 +9,32 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    container: null  # Correctly specifies no container
+    container: null  # Run the job directly on the host machine
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
         with:
-          node-version: 18
-          cache: 'npm'
+          java-version: '17'
+          distribution: 'adopt'
+          cache: 'gradle'
+
+      - name: Check Java version
+        run: |
+          java -version
+          echo $JAVA_HOME
 
       - name: Install dependencies
-        run: npm install
-
-      - name: Enable KVM
-        run: |
-          if [ -c /dev/kvm ]; then
-            echo "KVM is already available."
-          else
-            sudo modprobe kvm
-            if grep -q 'vendor_id.*GenuineIntel' /proc/cpuinfo; then
-              sudo modprobe kvm_intel
-            elif grep -q 'vendor_id.*AMD' /proc/cpuinfo; then
-              sudo modprobe kvm_amd
-            fi
-            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0660"' | sudo tee /etc/udev/rules.d/99-kvm.rules
-            sudo udevadm control --reload-rules
-            sudo udevadm trigger --subsystem-match=kvm
-          fi
-
-      - name: Cache AVD
-        uses: actions/cache@v4
-        id: avd-cache
-        with:
-          path: |
-            ~/.android/avd/*
-            ~/.android/adb*
-          key: avd-30-x86_64  # Update key if API level or architecture changes
+        run: sudo apt-get install -y libgl1-mesa-glx
 
       - name: Setup Android Environment
         uses: android-actions/setup-android@v3
         with:
-          android-version: '30'  # API level
-          android-arch: 'x86_64'
-          android-license: 'android-sdk-license-.+'
+          packages: 'platforms;android-30,system-images;android-30;google_apis;x86_64'
+          accept-android-sdk-licenses: true
 
       - name: Create and Start Emulator
         run: |
