@@ -27,7 +27,8 @@ jobs:
       - name: Setup Android Environment
         uses: android-actions/setup-android@v3
         with:
-          packages: 'platforms;android-30,system-images;android-30;google_apis;x86_64'
+          cmdline-tools-version: '16.0.1'
+          packages: 'platforms;android-30 system-images;android-30;google_apis;x86_64'
           accept-android-sdk-licenses: true
 
       - name: Create and Start Emulator
