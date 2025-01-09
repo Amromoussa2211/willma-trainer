@@ -46,19 +46,22 @@
 
 
 
-capabilities: [
-  {
-    platformName: 'Android',
-    'appium:deviceName': 'emulator-5554',
-    'appium:platformVersion': '13', // Update this to match the emulator's Android version
-    'appium:app': process.env.APK_PATH,
-    'appium:appPackage': 'com.willma.client.staging',
-    'appium:appActivity': 'com.willma.client.staging.MainActivity',
-    'appium:automationName': 'UiAutomator2',
-    'appium:newCommandTimeout': 120,
-    'appium:autoGrantPermissions': true,
-    'appium:noReset': true,
-    'appium:fullReset': false,
-  },
-],
- exports.config = { ...require('./wdio.conf.js').config, ...localConfig };
+const ciConfig = {
+  capabilities: [
+    {
+      platformName: 'Android',
+      'appium:deviceName': 'emulator-5554', // Use an emulator or cloud device
+      'appium:platformVersion': '13', // Update to match the emulator's Android version
+      'appium:app': process.env.APK_PATH, // Ensure APK_PATH is set in your CI environment
+      'appium:appPackage': 'com.willma.client.staging',
+      'appium:appActivity': 'com.willma.client.staging.MainActivity',
+      'appium:automationName': 'UiAutomator2',
+      'appium:newCommandTimeout': 120,
+      'appium:autoGrantPermissions': true,
+      'appium:noReset': true,
+      'appium:fullReset': false,
+    },
+  ],
+};
+
+exports.config = { ...require('./wdio.conf.js').config, ...ciConfig };
