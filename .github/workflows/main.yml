@@ -99,9 +99,12 @@ jobs:
             echo "Appium is not running or not ready."
             exit 1
           fi
-      - name: Print Appium Logs
-         run: |
-           cat appium.log
+      
 
       - name: Run Tests
         run: npm run test:ci
+
+       - name: Stop Appium
+        run: |
+          pkill -f appium
+          sleep 5 # Wait for Appium to stop
