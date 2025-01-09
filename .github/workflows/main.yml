@@ -9,7 +9,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-
+    container: none  # Run the job directly on the host machine
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -25,11 +25,19 @@ jobs:
 
       - name: Enable KVM
         run: |
-          sudo modprobe kvm
-          sudo modprobe kvm_intel
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0660"' | sudo tee /etc/udev/rules.d/99-kvm.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --subsystem-match=kvm
+          if [ -c /dev/kvm ]; then
+            echo "KVM is already available."
+          else
+            sudo modprobe kvm
+            if grep -q 'vendor_id.*GenuineIntel' /proc/cpuinfo; then
+              sudo modprobe kvm_intel
+            elif grep -q 'vendor_id.*AMD' /proc/cpuinfo; then
+              sudo modprobe kvm_amd
+            fi
+            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0660"' | sudo tee /etc/udev/rules.d/99-kvm.rules
+            sudo udevadm control --reload-rules
+            sudo udevadm trigger --subsystem-match=kvm
+          fi
 
       - name: Cache AVD
         uses: actions/cache@v4
