@@ -1,5 +1,3 @@
-name: Android Emulator Tests
-
 on:
   push:
     branches:
@@ -42,15 +40,18 @@ jobs:
             ~/.android/adb*
           key: avd-30-x86_64  # Update key if API level or architecture changes
 
-      - name: Start Android Emulator
-        uses: android-actions/emulator@v1
+      - name: Setup Android Environment
+        uses: android-actions/setup-android@v3
         with:
-          api-level: 30
-          system-image: 'google_apis/x86_64'
-          tag: 'latest'
-          args: '-no-window -no-audio -no-boot-anim -no-snapshot -boot-timeout 500'
-          ram-size: 2048
-          core-count: 2
+          android-version: '30'  # API level
+          android-arch: 'x86_64'
+          android-license: 'android-sdk-license-.+'
+
+      - name: Create and Start Emulator
+        run: |
+          echo "no" | avdmanager create avd --force --name testAVD --package 'system-images;android-30;google_apis;x86_64' --device 'Pixel 5'
+          emulator @testAVD -no-window -no-audio -no-boot-anim -no-snapshot -boot-timeout 500 -qemu -m 2048 -smp 2 &
+          sleep 30  # Wait for emulator to start
 
       - name: Wait for Emulator
         run: |
