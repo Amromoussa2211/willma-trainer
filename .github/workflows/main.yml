@@ -88,14 +88,20 @@ jobs:
 
       - name: Verify Appium is Running
         run: |
-          response=$(curl -s http://localhost:4723/wd/hub/status)
+          # Check if Appium is running by accessing the root endpoint
+          response=$(curl -s http://localhost:4723/)
           echo "Appium response: $response"
-          if echo "$response" | grep -q '"ready":true'; then
+          
+          # Check if the response contains "Appium REST http interface"
+          if echo "$response" | grep -q "Appium REST http interface"; then
             echo "Appium is running and ready."
           else
             echo "Appium is not running or not ready."
             exit 1
           fi
+      - name: Print Appium Logs
+         run: |
+           cat appium.log
 
       - name: Run Tests
         run: npm run test:ci
