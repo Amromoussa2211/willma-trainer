@@ -1,4 +1,4 @@
-name: Android E2E Tests (Fixed Appium Path)
+name: Android E2E Tests
 
 on:
   push:
@@ -11,9 +11,6 @@ on:
 jobs:
   e2e-tests:
     runs-on: ubuntu-latest
-    container:
-      image: node:18
-      options: --user node -w /github/workspace
 
     steps:
       - name: Checkout Code
@@ -23,6 +20,19 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '18'
+
+      - name: Install Appium
+        run: npm install -g appium
+
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v2
+
+      - name: Create Android Emulator
+        uses: android-actions/android-emulator@v1
+        with:
+          avd-name: Nexus_5X_API_30
+          avd-api-level: 30
+          avd-system-image: 'google_apis_x86'
 
       - name: Install Dependencies
         run: npm install
@@ -46,3 +56,8 @@ jobs:
 
       - name: Run Tests
         run: npm run test:ci
+
+      - name: Stop Emulator and Appium
+        run: |
+          adb emu kill
+          pkill -f appium
