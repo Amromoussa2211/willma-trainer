@@ -40,6 +40,17 @@ jobs:
         run: |
           echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd --name testAVD --package 'system-images;android-33;google_apis_playstore;x86_64' --force
 
+      - name: Fix KVM permissions
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
+          sudo gpasswd -a $USER kvm
+          sudo chmod 666 /dev/kvm
+
+      - name: Verify KVM
+        run: |
+          kvm-ok
+
       - name: Start Emulator
         run: |
           nohup $ANDROID_HOME/emulator/emulator -avd testAVD -no-audio -no-window &
