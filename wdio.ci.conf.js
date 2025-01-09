@@ -12,14 +12,16 @@ const localConfig = {
       "appium:noReset": true,
       "appium:fullReset": false,
   
-      // BrowserStack-specific capabilities
-      "browserstack.user": process.env.BROWSERSTACK_USERNAME,
-      "browserstack.key": process.env.BROWSERSTACK_ACCESS_KEY,
-      "browserstack.debug": true,  // Enable debugging logs
-      "browserstack.networkLogs": true,  // Enable network logs
-      "browserstack.appiumLogs": true,  // Enable Appium logs
-      "browserstack.deviceLogs": true,  // Enable device logs
-      "browserstack.geoLocation": "US",  // Set geolocation (optional)
+      // BrowserStack-specific capabilities under "bstack:options"
+      "bstack:options": {
+        userName: process.env.BROWSERSTACK_USERNAME,
+        accessKey: process.env.BROWSERSTACK_ACCESS_KEY,
+        debug: true,  // Enable debugging logs
+        networkLogs: true,  // Enable network logs
+        appiumLogs: true,  // Enable Appium logs
+        deviceLogs: true,  // Enable device logs
+        geoLocation: "US",  // Set geolocation (optional)
+      }
     }]
   };
   
