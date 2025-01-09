@@ -11,6 +11,10 @@ const localConfig = {
       ],
     ],
   
+    hostname: 'hub.browserstack.com', // Use BrowserStack's hub
+    protocol: 'https', // Use HTTPS for BrowserStack
+    port: 443, // BrowserStack's port
+  
     capabilities: [
       {
         platformName: 'Android',
