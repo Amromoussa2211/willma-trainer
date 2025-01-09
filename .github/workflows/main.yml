@@ -34,71 +34,32 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # Step 5: Set up Android SDK
-      - name: Set up Android SDK
-        run: |
-          mkdir -p $ANDROID_HOME
-          wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-          unzip -q cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools
-          mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
-          rm cmdline-tools.zip
-          echo "export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH" >> $GITHUB_ENV
-
-      # Step 6: Accept Android SDK licenses
-      - name: Accept Android SDK licenses
-        run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
-
-      # Step 7: Install required Android SDK components
-      - name: Install Android SDK components
-        run: |
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-30"
-
-      # Step 8: Set environment variables for the real device
+      # Step 5: Set environment variables for BrowserStack
       - name: Set environment variables
         run: |
-          echo "DEVICE_NAME=CPH1937" >> $GITHUB_ENV
-          echo "UDID=93bb1813" >> $GITHUB_ENV
+          echo "BROWSERSTACK_USERNAME=amromoussa_KdSLyl" >> $GITHUB_ENV
+          echo "BROWSERSTACK_ACCESS_KEY=EKpQhuMmc4axaaDNcJqd" >> $GITHUB_ENV
           echo "APK_PATH=./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk" >> $GITHUB_ENV
 
-      # Step 9: Check ADB devices
-      - name: Check ADB devices
+      # Step 6: Download APK (if needed)
+      - name: Download APK
         run: |
-          $ANDROID_HOME/platform-tools/adb devices
-          if [ -z "$($ANDROID_HOME/platform-tools/adb devices | grep -w 'device')" ]; then
-            echo "No device connected. Exiting..."
-            exit 1
-          fi
+          mkdir -p apps
+          curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-      # Step 10: Check if APK is installed
-      - name: Check if APK is installed
+      # Step 7: Run tests on BrowserStack
+      - name: Run tests on BrowserStack
+        env:
+          BROWSERSTACK_USERNAME: ${{ env.BROWSERSTACK_USERNAME }}
+          BROWSERSTACK_ACCESS_KEY: ${{ env.BROWSERSTACK_ACCESS_KEY }}
         run: |
-          if $ANDROID_HOME/platform-tools/adb shell pm list packages | grep -q "com.willma.client.staging"; then
-            echo "APK is already installed."
-          else
-            echo "APK is not installed. Installing..."
-            mkdir -p apps
-            curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
-            $ANDROID_HOME/platform-tools/adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
-          fi
+          npm run test:ci
 
-      # Step 11: Start Appium server
-      - name: Start Appium server
-        run: npm run start:appium &
-
-      # Step 12: Wait for Appium to start
-      - name: Wait for Appium
-        run: sleep 30
-
-      # Step 13: Run tests
-      - name: Run tests
-        run: npm run test:local
-
-      # Step 14: Generate Allure report
+      # Step 8: Generate Allure report
       - name: Generate Allure report
         run: npm run generate-report
 
-      # Step 15: Upload Allure report as an artifact
+      # Step 9: Upload Allure report as an artifact
       - name: Upload Allure report
         uses: actions/upload-artifact@v3
         with:
