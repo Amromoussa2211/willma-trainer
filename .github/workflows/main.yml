@@ -10,7 +10,7 @@ on:
 
 jobs:
   e2e-tests:
-    runs-on: ubuntu-22.04
+    runs-on: macos-latest
 
     services:
       appium:
@@ -42,37 +42,37 @@ jobs:
       uses: android-actions/setup-android@v2
 
     - name: Install dependencies
-      run: npm install
+      run: |
+        npm install
+        npm audit fix --force
 
     - name: Start Android Emulator
-      uses: reactivecircus/android-emulator-runner@v2
+      uses: android-actions/emulator@v1
       with:
         api-level: 30
-        target: google_apis
-        arch: x86_64
-        profile: Pixel_4_API_30
-        emulator-options: "-no-window -no-audio -gpu swiftshader_indirect -no-boot-anim"
-        disable-animations: true
-        force-avd-creation: true
-        cores: 2
-        avd-name: test
-        emulator-boot-timeout: 600
-        emulator-port: 5554
-        disable-spellchecker: false
-        disable-linux-hw-accel: true
-        enable-hw-keyboard: false
-        channel: stable
+        system-image: 'google_apis_x86_64'
+        tag: Pixel_4_API_30
+        timeout: 600
+        options: '-no-window -no-audio -gpu swiftshader_indirect -no-boot-anim'
 
-    - name: Verify emulator boot
+    - name: Wait for emulator to boot
       run: |
         adb wait-for-device
-        adb shell getprop sys.boot_completed | grep 1
+        adb shell getprop sys.boot_completed | grep -q 1
+
+    - name: Uninstall existing app
+      run: adb uninstall com.willma.client.staging || true
 
     - name: Download and install APK
       run: |
         mkdir -p apps
         curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
-        adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
+        adb install -r ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
+
+    - name: Take screenshot
+      run: |
+        adb shell screencap -p /sdcard/screenshot.png
+        adb pull /sdcard/screenshot.png ./screenshot.png
 
     - name: Run E2E tests
       env:
