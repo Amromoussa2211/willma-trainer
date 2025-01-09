@@ -9,7 +9,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    container: {}  # Run the job directly on the host machine without a container
+    container: null  # Correctly specifies no container
 
     steps:
       - name: Checkout code
