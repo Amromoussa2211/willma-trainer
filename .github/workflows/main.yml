@@ -46,9 +46,12 @@ jobs:
         run: |
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-30" "build-tools;30.0.3" "system-images;android-30;google_apis;x86_64"
 
+      - name: List Available Device Definitions
+        run: $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager list device
+
       - name: Create and Start Emulator
         run: |
-          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd --force --name testAVD --package 'system-images;android-30;google_apis;x86_64' --device 'Pixel 5'
+          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd --force --name testAVD --package 'system-images;android-30;google_apis;x86_64' --device 'pixel_5'
           $ANDROID_HOME/emulator/emulator @testAVD -no-window -no-audio -no-boot-anim -no-snapshot -boot-timeout 500 -qemu -m 2048 -smp 2 &
           sleep 30  # Wait for emulator to start
 
