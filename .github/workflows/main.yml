@@ -21,43 +21,32 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install Appium
-        run: npm install -g appium
-
-      - name: Install Android SDK
+      - name: Set up Android SDK
         uses: android-actions/setup-android@v2
 
-      - name: Create Android Emulator
-        uses: android-actions/android-emulator@v1
-        with:
-          avd-name: Nexus_5X_API_30
-          avd-api-level: 30
-          avd-system-image: 'google_apis_x86'
+      - name: Install Android Emulator
+        run: |
+          android-sdk/cmdline-tools/latest/bin/sdkmanager --install 'emulator'
+          android-sdk/cmdline-tools/latest/bin/sdkmanager --install 'system-images;android-30;google_apis;x86'
+
+      - name: Create AVD
+        run: |
+          echo "no" | android-sdk/cmdline-tools/latest/bin/avdmanager create avd --name testAVD --package 'system-images;android-30;google_apis;x86' --force
+
+      - name: Start Emulator
+        run: |
+          nohup android-sdk/emulator/emulator -avd testAVD -no-audio -no-window &
+          sleep 300
 
       - name: Install Dependencies
         run: npm install
 
       - name: Download APK
         run: |
-          curl -L -o /github/workspace/app.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
-
-      - name: Start Appium and Emulator
-        run: |
-          # Start Appium in the background
-          appium &
-          # Start the emulator
-          emulator -avd Nexus_5X_API_30 -no-window -no-audio -gpu swiftshader_indirect -no-boot-anim &
-          # Wait for the device to be online
-          adb wait-for-device
-          adb shell getprop sys.boot_completed | grep -q 1
+          curl -L -o app.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
       - name: Install APK
-        run: adb install -r /github/workspace/app.apk
+        run: adb install -r app.apk
 
       - name: Run Tests
-        run: npm run test:ci
-
-      - name: Stop Emulator and Appium
-        run: |
-          adb emu kill
-          pkill -f appium
+        run: npm run test:cia
