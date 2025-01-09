@@ -25,37 +25,46 @@ jobs:
         run: export JAVA_HOME=$(java -XshowSettings:properties -version 2>&1 | grep "java.home" | cut -d' ' -f2 | cut -d'=' -f2)
 
       - name: Install dependencies
-        run: sudo apt-get install -y libgl1-mesa-glx
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-glx unzip
 
-      - name: Setup Android Environment
-        uses: spencerwiting/setup-android@v2
-        with:
-          android-version: '16.0.1'
-          packages: 'platforms;android-30,build-tools;30.0.3,system-images;android-30;google_apis;x86_64'
-          accept-licenses: true
+      - name: Download and Install Android Command Line Tools
+        run: |
+          mkdir -p $ANDROID_HOME
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+          unzip -q cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools
+          mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+          rm cmdline-tools.zip
+          echo "export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH" >> $GITHUB_ENV
 
-      - name: List Available Packages
-        run: sdkmanager --list
+      - name: Accept Android SDK Licenses
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+
+      - name: Install Android SDK Packages
+        run: |
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-30" "build-tools;30.0.3" "system-images;android-30;google_apis;x86_64"
 
       - name: Create and Start Emulator
         run: |
-          echo "no" | avdmanager create avd --force --name testAVD --package 'system-images;android-30;google_apis;x86_64' --device 'Pixel 5'
-          emulator @testAVD -no-window -no-audio -no-boot-anim -no-snapshot -boot-timeout 500 -qemu -m 2048 -smp 2 &
+          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd --force --name testAVD --package 'system-images;android-30;google_apis;x86_64' --device 'Pixel 5'
+          $ANDROID_HOME/emulator/emulator @testAVD -no-window -no-audio -no-boot-anim -no-snapshot -boot-timeout 500 -qemu -m 2048 -smp 2 &
           sleep 30  # Wait for emulator to start
 
       - name: Wait for Emulator
         run: |
-          adb wait-for-device
-          adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done; input keyevent 82'
+          $ANDROID_HOME/platform-tools/adb wait-for-device
+          $ANDROID_HOME/platform-tools/adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done; input keyevent 82'
 
       - name: List ADB Devices
-        run: adb devices
+        run: $ANDROID_HOME/platform-tools/adb devices
 
       - name: Download and Install APK
         run: |
           mkdir -p apps
           curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
-          adb install -r ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
+          $ANDROID_HOME/platform-tools/adb install -r ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
       - name: Run E2E Tests
         run: |
@@ -73,4 +82,5 @@ jobs:
       - name: Debug Environment
         run: |
           echo $JAVA_HOME
+          echo $ANDROID_HOME
           ls -la
