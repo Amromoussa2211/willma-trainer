@@ -1,4 +1,4 @@
-name: Android E2E Tests (Fixed Appium Path)
+name: Android Emulator Tests
 
 on:
   push:
@@ -9,96 +9,72 @@ on:
       - main
 
 jobs:
-  e2e-tests:
-    runs-on: ubuntu-22.04
-
-    services:
-      appium:
-        image: appium/appium:latest
-        ports:
-          - 4723:4723
-        options: >-
-          --health-cmd "curl -f http://localhost:4723/status || exit 1"
-          --health-interval 10s
-          --health-timeout 30s
-          --health-retries 5
+  test:
+    runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: 18
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
 
-    - name: Cache Node.js modules
-      uses: actions/cache@v3
-      with:
-        path: ~/.npm
-        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-node-
+      - name: Install dependencies
+        run: npm install
 
-    - name: Set up Android SDK
-      uses: android-actions/setup-android@v2
-      with:
-        android-tools-component: 'platform-tools,build-tools-30.0.3,android-30,google-apis'
-        install-component: 'platform-tools,build-tools-30.0.3,android-30,google-apis,emulator,sys-img-x86_64-google_apis-30'
+      - name: Enable KVM
+        run: |
+          sudo modprobe kvm
+          sudo modprobe kvm_intel
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0660"' | sudo tee /etc/udev/rules.d/99-kvm.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --subsystem-match=kvm
 
-    - name: List Installed SDK Packages
-      run: sdkmanager --list
+      - name: Cache AVD
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-30-x86_64  # Update key if API level or architecture changes
 
-    - name: Install dependencies
-      run: npm install
+      - name: Start Android Emulator
+        uses: android-actions/emulator@v1
+        with:
+          api-level: 30
+          system-image: 'google_apis/x86_64'
+          tag: 'latest'
+          args: '-no-window -no-audio -no-boot-anim -no-snapshot -boot-timeout 500'
+          ram-size: 2048
+          core-count: 2
 
-    - name: Start Android Emulator and Run Tests
-      uses: reactivecircus/android-emulator-runner@v2
-      with:
-        api-level: 30
-        target: google_apis
-        arch: x86_64
-        profile: pixel
-        emulator-options: "-no-window -no-audio -no-boot-anim -no-snapshot -no-accel -boot-timeout 500"
-        disable-animations: true
-        force-avd-creation: true
-        emulator-boot-timeout: 900
-        script: |
-          echo "Waiting for emulator to boot..."
+      - name: Wait for Emulator
+        run: |
           adb wait-for-device
-          while ! adb shell getprop sys.boot_completed | grep 1; do
-            sleep 15
-          done
-          echo "Emulator booted successfully!"
+          adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done; input keyevent 82'
 
-          echo "Downloading and installing APK..."
+      - name: List ADB Devices
+        run: adb devices
+
+      - name: Download and Install APK
+        run: |
           mkdir -p apps
           curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
-          if [ -f ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk ]; then
-            adb wait-for-device
-            adb install -r ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
-            if [ $? -eq 0 ]; then
-              echo "APK installed successfully!"
-            else
-              echo "Failed to install APK!"
-              exit 1
-            fi
-          else
-            echo "APK download failed!"
-            exit 1
-          fi
+          adb install -r ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-          echo "Running E2E tests..."
+      - name: Run E2E Tests
+        run: |
+          npm run start:appium &
+          sleep 30  # Increased wait time for Appium to start
           npm run test:ci
 
-    - name: Verify ADB Connection
-      run: |
-        adb wait-for-device
-        adb devices
-
-    - name: Upload test artifacts
-      if: always()
-      uses: actions/upload-artifact@v3
-      with:
-        name: test-results
-        path: allure-results
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: allure-results
+          if-no-files-found: warn
