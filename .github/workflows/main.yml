@@ -1,4 +1,4 @@
-name: Android E2E Tests (Fixed Appium Path)
+name: Android E2E Tests
 
 on:
   push:
@@ -10,75 +10,34 @@ on:
 
 jobs:
   e2e-tests:
-    runs-on: macos-latest
-
-    services:
-      appium:
-        image: appium/appium:latest
-        ports:
-          - 4723:4723
-        options: >-
-          --health-cmd "curl -f http://localhost:4723/status || exit 1"
-          --health-interval 10s
-          --health-timeout 30s
-          --health-retries 5
+    runs-on: ubuntu-latest
+    container:
+      image: appium/docker-android-emulator:latest
+      options: --privileged
 
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: 18
+    - name: Install Dependencies
+      run: npm install
 
-    - name: Set up Java
-      uses: actions/setup-java@v3
-      with:
-        distribution: 'zulu'
-        java-version: '17'
-
-    - name: Set up Android SDK
-      uses: android-actions/setup-android@v2
-
-    - name: Install dependencies
+    - name: Download APK
       run: |
-        npm install
-        npm audit fix --force
+        curl -L -o app.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
 
-    - name: Start Android Emulator
-      uses: android-actions/emulator@v1
-      with:
-        api-level: 30
-        system-image: 'google_apis_x86_64'
-        tag: Pixel_4_API_30
-        timeout: 600
-        options: '-no-window -no-audio -gpu swiftshader_indirect -no-boot-anim'
-
-    - name: Wait for emulator to boot
+    - name: Start Appium and Emulator
       run: |
+        # Start Appium in the background
+        appium &
+        # Start the emulator
+        emulator -avd AndroidEmulator -no-window -no-audio -gpu swiftshader_indirect -no-boot-anim &
+        # Wait for the device to be online
         adb wait-for-device
         adb shell getprop sys.boot_completed | grep -q 1
 
-    - name: Uninstall existing app
-      run: adb uninstall com.willma.client.staging || true
+    - name: Install APK
+      run: adb install -r /github/workspace/app.apk
 
-    - name: Download and install APK
-      run: |
-        mkdir -p apps
-        curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
-        adb install -r ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
-
-    - name: Take screenshot
-      run: |
-        adb shell screencap -p /sdcard/screenshot.png
-        adb pull /sdcard/screenshot.png ./screenshot.png
-
-    - name: Run E2E tests
-      env:
-        DEVICE_NAME: "emulator-5554"
-        APK_PATH: "./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk"
-        APPIUM_HOST: "localhost"
-        APPIUM_PORT: "4723"
-        APPIUM_PATH: "/"
+    - name: Run Tests
       run: npm run test:ci
