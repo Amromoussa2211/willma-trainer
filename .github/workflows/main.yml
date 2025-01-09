@@ -157,6 +157,10 @@ jobs:
             echo "APK installation failed."
             exit 1
           fi
-
+      -name: start appium
+        run: |
+         npx appium --log-level error &
+         sleep 10 # Wait for Appium to start
+         
       - name: Run Tests
         run: npm run test:ci
