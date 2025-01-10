@@ -46,10 +46,22 @@ jobs:
       - name: Start Emulator
         run: |
           nohup $ANDROID_HOME/emulator/emulator -avd testAVD -no-audio -no-window -gpu swiftshader_indirect -memory 4096 -cores 4 &
-          sleep 300
+          sleep 600  # Wait for 10 minutes
 
-      - name: Wait for Device
-        run: adb wait-for-device
+      - name: Restart ADB Server
+        run: |
+          adb kill-server
+          adb start-server
+
+      - name: Verify Emulator Connection
+        run: |
+          adb devices
+          if adb devices | grep -q "emulator"; then
+            echo "Emulator is connected."
+          else
+            echo "Emulator is not connected."
+            exit 1
+          fi
 
       - name: Install Dependencies
         run: npm install
