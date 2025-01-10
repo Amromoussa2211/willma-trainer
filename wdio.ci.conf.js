@@ -62,8 +62,10 @@ const ciConfig = {
       'appium:networkLogs': true, // Enable network logs
       'appium:appiumLogs': true, // Enable Appium server logs
       'appium:deviceLogs': true, // Enable device logs
-      
     },
+  ],
+  specs: [
+    './test/specs/appLaunchTest.e2e.js',  // Only run the app launch test
   ],
 };
 

@@ -15,9 +15,9 @@ exports.config = {
     maxInstances: 1,
     logLevel: 'info',
     bail: 0,
-    waitforTimeout: 30000, // Increased from 15000 to 30000
-    connectionRetryTimeout: 300000, // Increased from 200000 to 300000
-    connectionRetryCount: 2,
+    waitforTimeout: 15000, // Increased from 15000 to 30000
+    connectionRetryTimeout: 200000, // Increased from 200000 to 300000
+    //connectionRetryCount: 2,
     framework: 'mocha',
     reporters: [
         'spec',
