@@ -46,7 +46,7 @@ jobs:
 
       - name: Start Emulator
         run: |
-          nohup $ANDROID_HOME/emulator/emulator -avd testAVD -no-audio -no-window -gpu swiftshader_indirect -memory 4096 -cores 4 &
+          nohup $ANDROID_HOME/emulator/emulator -avd testAVD -no-audio -no-window -gpu swiftshader_indirect -memory 2048 -cores 2 &
           sleep 600  # Wait for 10 minutes
 
       - name: Wait for Device
@@ -85,7 +85,7 @@ jobs:
             echo "Appium is running and ready."
           else
             echo "Appium is not running or not ready."
-            cat appium.log
+            cat appium.log  # Print Appium logs for debugging
             exit 1
           fi
 
@@ -109,8 +109,12 @@ jobs:
             echo "No logcat process found to stop."
           fi
 
-      - name: List Files (Debug)
-        run: ls -l
+      - name: Upload Screenshots as Artifacts
+        if: always()  # Run this step even if previous steps fail
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-screenshots
+          path: screenshots/
 
       - name: Upload Logs as Artifacts
         if: always()  # Run this step even if previous steps fail

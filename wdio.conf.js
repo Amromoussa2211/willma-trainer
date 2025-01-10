@@ -28,10 +28,10 @@ exports.config = {
         }]
     ],
     mochaOpts: {
-      ui: 'bdd',
-      timeout: 360000,  // 6 minutes
-      retries: 2,  // Retry failed tests up to 2 times
-  },
+        ui: 'bdd',
+        timeout: 360000,  // 6 minutes
+        retries: 2,  // Retry failed tests up to 2 times
+    },
     onPrepare: async function (config, capabilities) {
         console.log('Skipping device check and APK installation...');
         // Add any other setup logic here
@@ -39,13 +39,22 @@ exports.config = {
     afterTest: async function (test, context, { error }) {
         const screenshotDir = path.join(__dirname, 'screenshots');
         if (!fs.existsSync(screenshotDir)) {
-          fs.mkdirSync(screenshotDir, { recursive: true });
+            fs.mkdirSync(screenshotDir, { recursive: true });
         }
-        if (error) {
-          const fileName = path.join(screenshotDir, `${test.title.replace(/[^a-zA-Z0-9]/g, '_')}_FAILED.png`);
-          await browser.saveScreenshot(fileName);
-          console.log(`Screenshot saved: ${fileName}`);
-          await allure.createAttachment('Failed Screenshot', Buffer.from(await browser.takeScreenshot(), 'base64'), 'image/png');
+
+        // Generate a unique file name for the screenshot
+        const status = error ? 'FAILED' : 'PASSED';
+        const fileName = path.join(screenshotDir, `${test.title.replace(/[^a-zA-Z0-9]/g, '_')}_${status}.png`);
+
+        try {
+            // Take and save the screenshot
+            await browser.saveScreenshot(fileName);
+            console.log(`Screenshot saved: ${fileName}`);
+
+            // Attach the screenshot to the Allure report (optional)
+            await allure.createAttachment(`Screenshot (${status})`, Buffer.from(await browser.takeScreenshot(), 'base64'), 'image/png');
+        } catch (err) {
+            console.error(`Failed to save screenshot: ${err.message}`);
         }
-      },
+    },
 };
