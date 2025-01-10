@@ -84,7 +84,7 @@ jobs:
       - name: Start Appium
         run: |
           npx appium --log-level error --log-timestamp --local-timezone > appium.log 2>&1 &
-          sleep 30 # Wait for Appium to start
+          sleep 60 # Wait for Appium to start
 
       - name: Verify Appium is Running
         run: |
