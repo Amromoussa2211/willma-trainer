@@ -9,7 +9,7 @@ describe('App Launch Test', () => {
         expect(isInstalled).toBe(true);
 
         // Launch the app using the correct method for Android
-        await driver.execute('mobile: activateApp', { appPackage: 'com.willma.client.staging' });
+        await driver.execute('mobile: activateApp', { appId: 'com.willma.client.staging' });
         console.log('App launched');
 
         // Wait for the app to load and verify the main screen
