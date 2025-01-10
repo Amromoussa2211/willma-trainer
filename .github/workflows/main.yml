@@ -83,20 +83,17 @@ jobs:
 
       - name: Start Appium
         run: |
-          npm run start:appium &  # Start Appium in the background
+          npm run start:appium > appium.log 2>&1 &  # Start Appium and redirect logs to a file
           sleep 30  # Wait for Appium to start
 
       - name: Verify Appium is Running
         run: |
-          # Check if Appium is running by accessing the root endpoint
-          response=$(curl -s http://localhost:4723/)
-          echo "Appium response: $response"
-          
-          # Check if the response contains "Appium REST http interface"
-          if echo "$response" | grep -q "Appium REST http interface"; then
+          # Check Appium logs to confirm it started successfully
+          if grep -q "Appium REST http interface listener started on" appium.log; then
             echo "Appium is running and ready."
           else
             echo "Appium is not running or not ready."
+            cat appium.log  # Print Appium logs for debugging
             exit 1
           fi
 
