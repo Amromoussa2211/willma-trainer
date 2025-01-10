@@ -58,6 +58,11 @@ const ciConfig = {
       'appium:autoGrantPermissions': true,
       'appium:noReset': true,
       'appium:fullReset': false,
+      'appium:debug': true, // Enable Appium debug logs
+      'appium:networkLogs': true, // Enable network logs
+      'appium:appiumLogs': true, // Enable Appium server logs
+      'appium:deviceLogs': true, // Enable device logs
+      
     },
   ],
 };
