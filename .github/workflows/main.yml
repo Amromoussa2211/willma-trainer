@@ -1,3 +1,12 @@
+name: Android E2E Tests (Fixed Appium Path)
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 jobs:
   e2e-tests:
     runs-on: ubuntu-latest
