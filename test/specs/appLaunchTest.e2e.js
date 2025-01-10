@@ -1,3 +1,6 @@
+const path = require('path');
+const fs = require('fs');
+
 describe('App Launch Test', () => {
     it('should verify that the app is installed and launched successfully', async () => {
         // Verify that the app is installed
@@ -5,8 +8,8 @@ describe('App Launch Test', () => {
         console.log(`App installed: ${isInstalled}`);
         expect(isInstalled).toBe(true);
 
-        // Launch the app
-        await driver.launchApp();
+        // Launch the app using the correct method for Android
+        await driver.execute('mobile: activateApp', { appPackage: 'com.willma.client.staging' });
         console.log('App launched');
 
         // Wait for the app to load and verify the main screen
