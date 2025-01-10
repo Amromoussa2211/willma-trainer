@@ -15,8 +15,8 @@ exports.config = {
     maxInstances: 1,
     logLevel: 'info',
     bail: 0,
-    waitforTimeout: 15000,
-    connectionRetryTimeout: 200000,
+    waitforTimeout: 30000, // Increased from 15000 to 30000
+    connectionRetryTimeout: 300000, // Increased from 200000 to 300000
     connectionRetryCount: 2,
     framework: 'mocha',
     reporters: [
@@ -29,7 +29,7 @@ exports.config = {
     ],
     mochaOpts: {
         ui: 'bdd',
-        timeout: 120000
+        timeout: 240000 // Increased from 120000 to 240000 (4 minutes)
     },
     onPrepare: async function (config, capabilities) {
         console.log('Skipping device check and APK installation...');

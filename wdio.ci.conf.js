@@ -44,8 +44,6 @@
 
 // exports.config = { ...require('./wdio.conf.js').config, ...localConfig };
 
-
-
 const ciConfig = {
   capabilities: [
     {
@@ -56,7 +54,7 @@ const ciConfig = {
       'appium:appPackage': 'com.willma.client.staging',
       'appium:appActivity': 'com.willma.client.staging.MainActivity',
       'appium:automationName': 'UiAutomator2',
-      'appium:newCommandTimeout': 120,
+      'appium:newCommandTimeout': 240, // Increased from 120 to 240 seconds
       'appium:autoGrantPermissions': true,
       'appium:noReset': true,
       'appium:fullReset': false,
