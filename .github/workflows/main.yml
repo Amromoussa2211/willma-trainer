@@ -83,8 +83,8 @@ jobs:
 
       - name: Start Appium
         run: |
-          npx appium --log-level error --log-timestamp --local-timezone > appium.log 2>&1 &
-          sleep 60 # Wait for Appium to start
+          npm run start:appium &  # Start Appium in the background
+          sleep 30  # Wait for Appium to start
 
       - name: Verify Appium is Running
         run: |
@@ -97,7 +97,6 @@ jobs:
             echo "Appium is running and ready."
           else
             echo "Appium is not running or not ready."
-            cat appium.log # Print Appium logs for debugging
             exit 1
           fi
 
