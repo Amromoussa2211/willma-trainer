@@ -85,7 +85,7 @@ jobs:
             echo "Appium is running and ready."
           else
             echo "Appium is not running or not ready."
-            cat appium.log  # Print Appium logs for debugging
+            cat appium.log
             exit 1
           fi
 
@@ -109,7 +109,11 @@ jobs:
             echo "No logcat process found to stop."
           fi
 
+      - name: List Files (Debug)
+        run: ls -l
+
       - name: Upload Logs as Artifacts
+        if: always()  # Run this step even if previous steps fail
         uses: actions/upload-artifact@v3
         with:
           name: test-logs
