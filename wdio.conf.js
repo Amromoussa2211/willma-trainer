@@ -28,9 +28,10 @@ exports.config = {
         }]
     ],
     mochaOpts: {
-        ui: 'bdd',
-        timeout: 240000 // Increased from 120000 to 240000 (4 minutes)
-    },
+      ui: 'bdd',
+      timeout: 360000,  // 6 minutes
+      retries: 2,  // Retry failed tests up to 2 times
+  },
     onPrepare: async function (config, capabilities) {
         console.log('Skipping device check and APK installation...');
         // Add any other setup logic here

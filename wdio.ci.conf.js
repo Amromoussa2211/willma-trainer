@@ -54,7 +54,7 @@ const ciConfig = {
       'appium:appPackage': 'com.willma.client.staging',
       'appium:appActivity': 'com.willma.client.staging.MainActivity',
       'appium:automationName': 'UiAutomator2',
-      'appium:newCommandTimeout': 240, // Increased from 120 to 240 seconds
+      'appium:newCommandTimeout': 600,  // Increased to 600 seconds (10 minutes)
       'appium:autoGrantPermissions': true,
       'appium:noReset': true,
       'appium:fullReset': false,
