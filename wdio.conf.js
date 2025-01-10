@@ -38,12 +38,13 @@ exports.config = {
     afterTest: async function (test, context, { error }) {
         const screenshotDir = path.join(__dirname, 'screenshots');
         if (!fs.existsSync(screenshotDir)) {
-            fs.mkdirSync(screenshotDir, { recursive: true });
+          fs.mkdirSync(screenshotDir, { recursive: true });
         }
         if (error) {
-            const fileName = path.join(screenshotDir, `${test.title.replace(/[^a-zA-Z0-9]/g, '_')}_FAILED.png`);
-            await browser.saveScreenshot(fileName);
-            await allure.addAttachment('Failed Screenshot', fs.readFileSync(fileName), 'image/png');
+          const fileName = path.join(screenshotDir, `${test.title.replace(/[^a-zA-Z0-9]/g, '_')}_FAILED.png`);
+          await browser.saveScreenshot(fileName);
+          console.log(`Screenshot saved: ${fileName}`);
+          await allure.createAttachment('Failed Screenshot', Buffer.from(await browser.takeScreenshot(), 'base64'), 'image/png');
         }
-    },
+      },
 };
