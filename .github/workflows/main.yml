@@ -93,6 +93,7 @@ jobs:
         run: |
           adb logcat -c  # Clear existing logs
           adb logcat > device.log 2>&1 &  # Start capturing device logs in the background
+          echo $! > logcat_pid.txt  # Save the PID of the logcat process
           echo "Device logs are being captured in device.log"
 
       - name: Run Tests
@@ -100,8 +101,13 @@ jobs:
 
       - name: Stop Device Logs Capture
         run: |
-          pkill -f "adb logcat"  # Stop the logcat process
-          echo "Device logs capture stopped."
+          if [ -f logcat_pid.txt ]; then
+            LOGCAT_PID=$(cat logcat_pid.txt)
+            kill -TERM $LOGCAT_PID  # Terminate the logcat process
+            echo "Stopped logcat process with PID $LOGCAT_PID"
+          else
+            echo "No logcat process found to stop."
+          fi
 
       - name: Upload Logs as Artifacts
         uses: actions/upload-artifact@v3
