@@ -49,7 +49,7 @@ const ciConfig = {
     {
       platformName: 'Android',
       'appium:deviceName': 'emulator-5554', // Use an emulator or cloud device
-      'appium:platformVersion': '13', // Update to match the emulator's Android version
+      'appium:platformVersion': '11', // Update to match the emulator's Android version
       'appium:app': process.env.APK_PATH, // Ensure APK_PATH is set in your CI environment
       'appium:appPackage': 'com.willma.client.staging',
       'appium:appActivity': 'com.willma.client.staging.MainActivity',
