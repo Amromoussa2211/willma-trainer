@@ -1,4 +1,4 @@
-name: Android E2E Tests (Capture Failed Logs)
+name: Android E2E Tests (Fixed Emulator Setup)
 
 on:
   push:
@@ -31,11 +31,20 @@ jobs:
         with:
           cmdline-tools-version: 'latest'
           accept-android-sdk-licenses: true
-          packages: platform-tools platforms;android-30 build-tools;33.0.0 emulator system-images;android-30;google_apis;x86
+          packages: |
+            platform-tools
+            platforms;android-30
+            build-tools;33.0.0
+            emulator
+            system-images;android-30;google_apis;x86
 
       - name: Create AVD
         run: |
-          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd --name testAVD --package 'system-images;android-30;google_apis;x86' --force
+          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
+            --name testAVD \
+            --package 'system-images;android-30;google_apis;x86' \
+            --device 'pixel' \
+            --force
 
       - name: Fix KVM permissions
         run: |
@@ -46,11 +55,23 @@ jobs:
 
       - name: Start Emulator
         run: |
-          nohup $ANDROID_HOME/emulator/emulator -avd testAVD -no-audio -no-window -gpu swiftshader_indirect -memory 2048 -cores 2 &
+          nohup $ANDROID_HOME/emulator/emulator -avd testAVD \
+            -no-audio \
+            -no-window \
+            -gpu swiftshader_indirect \
+            -memory 4096 \
+            -cores 4 \
+            -no-snapshot &
           sleep 600  # Wait for 10 minutes
 
-      - name: Wait for Device
-        run: adb wait-for-device
+      - name: Wait for Emulator Boot
+        run: |
+          adb wait-for-device
+          while [[ "$(adb shell getprop sys.boot_completed | tr -d '\r')" != "1" ]]; do
+            sleep 5
+            echo "Waiting for emulator to boot..."
+          done
+          echo "Emulator is fully booted."
 
       - name: List ADB Devices
         run: adb devices
@@ -76,7 +97,7 @@ jobs:
 
       - name: Start Appium
         run: |
-          npm run start:appium > appium.log 2>&1 &  # Start Appium and redirect logs to a file
+          npm run start:appium > appium.log 2>&1 &
           sleep 30  # Wait for Appium to start
 
       - name: Verify Appium is Running
@@ -89,29 +110,38 @@ jobs:
             exit 1
           fi
 
+      - name: Capture Device Logs
+        run: |
+          adb logcat -c  # Clear existing logs
+          adb logcat > device.log 2>&1 &  # Start capturing device logs in the background
+          echo $! > logcat_pid.txt  # Save the PID of the logcat process
+          echo "Device logs are being captured in device.log"
+
       - name: Run Tests
         run: npm run test:ci
 
-      - name: Capture Failed Logs
-        if: failure()  # Run this step only if the previous step fails
+      - name: Stop Device Logs Capture
         run: |
-          # Capture Appium logs
-          mkdir -p logs
-          cp appium.log logs/appium_failure.log
-
-          # Capture device logs (logcat) with error-level filtering
-          adb logcat -d -v time *:E > logs/device_failure.log
-
-      - name: Upload Failed Logs as Artifacts
-        if: failure()  # Run this step only if the previous step fails
-        uses: actions/upload-artifact@v3
-        with:
-          name: failed-logs
-          path: logs/
+          if [ -f logcat_pid.txt ]; then
+            LOGCAT_PID=$(cat logcat_pid.txt)
+            kill -TERM $LOGCAT_PID
+            echo "Stopped logcat process with PID $LOGCAT_PID"
+          else
+            echo "No logcat process found to stop."
+          fi
 
       - name: Upload Screenshots as Artifacts
-        if: always()  # Run this step even if previous steps fail
+        if: always()
         uses: actions/upload-artifact@v3
         with:
           name: test-screenshots
           path: screenshots/
+
+      - name: Upload Logs as Artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-logs
+          path: |
+            appium.log
+            device.log
