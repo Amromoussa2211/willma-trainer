@@ -1,4 +1,4 @@
-name: Android E2E Tests (Fixed adb Setup)
+name: Android E2E Tests (Fixed APK Path)
 
 on:
   push:
@@ -101,6 +101,10 @@ jobs:
           mkdir -p apps
           curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
           adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
+
+      - name: Set APK_PATH Environment Variable
+        run: |
+          echo "APK_PATH=$(pwd)/apps/app-release-v15-0.3.2-2024-12-25-18-13.apk" >> $GITHUB_ENV
 
       - name: Verify APK Installation
         run: |
