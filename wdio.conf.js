@@ -56,5 +56,12 @@ exports.config = {
         } catch (err) {
             console.error(`Failed to save screenshot: ${err.message}`);
         }
+        const appiumLogFile = path.join(appiumLogDir, `appium_failure_${Date.now()}.log`);
+        fs.writeFileSync(appiumLogFile, fs.readFileSync('appium.log'));
+  
+        // Capture device logs (logcat) on failure
+        const deviceLogDir = path.join(__dirname, 'logs');
+        const deviceLogFile = path.join(deviceLogDir, `device_failure_${Date.now()}.log`);
+        execSync(`adb logcat -d -v time > ${deviceLogFile}`);
     },
 };

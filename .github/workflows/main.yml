@@ -1,4 +1,4 @@
-name: Android E2E Tests (Fixed Appium Path)
+name: Android E2E Tests (Capture Failed Logs)
 
 on:
   push:
@@ -89,25 +89,25 @@ jobs:
             exit 1
           fi
 
-      - name: Capture Device Logs (logcat)
-        run: |
-          adb logcat -c  # Clear existing logs
-          adb logcat > device.log 2>&1 &  # Start capturing device logs in the background
-          echo $! > logcat_pid.txt  # Save the PID of the logcat process
-          echo "Device logs are being captured in device.log"
-
       - name: Run Tests
         run: npm run test:ci
 
-      - name: Stop Device Logs Capture
+      - name: Capture Failed Logs
+        if: failure()  # Run this step only if the previous step fails
         run: |
-          if [ -f logcat_pid.txt ]; then
-            LOGCAT_PID=$(cat logcat_pid.txt)
-            kill -TERM $LOGCAT_PID  # Terminate the logcat process
-            echo "Stopped logcat process with PID $LOGCAT_PID"
-          else
-            echo "No logcat process found to stop."
-          fi
+          # Capture Appium logs
+          mkdir -p logs
+          cp appium.log logs/appium_failure.log
+
+          # Capture device logs (logcat) with error-level filtering
+          adb logcat -d -v time *:E > logs/device_failure.log
+
+      - name: Upload Failed Logs as Artifacts
+        if: failure()  # Run this step only if the previous step fails
+        uses: actions/upload-artifact@v3
+        with:
+          name: failed-logs
+          path: logs/
 
       - name: Upload Screenshots as Artifacts
         if: always()  # Run this step even if previous steps fail
@@ -115,12 +115,3 @@ jobs:
         with:
           name: test-screenshots
           path: screenshots/
-
-      - name: Upload Logs as Artifacts
-        if: always()  # Run this step even if previous steps fail
-        uses: actions/upload-artifact@v3
-        with:
-          name: test-logs
-          path: |
-            appium.log
-            device.log
