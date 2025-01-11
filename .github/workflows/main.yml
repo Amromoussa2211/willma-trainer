@@ -1,4 +1,4 @@
-name: Android E2E Tests (Manual SDK Setup)
+name: Android E2E Tests (Fixed SDK Setup)
 
 on:
   push:
@@ -26,6 +26,10 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
+      - name: Clear SDK Cache
+        run: |
+          rm -rf $ANDROID_HOME/licenses $ANDROID_HOME/tools $ANDROID_HOME/cmdline-tools
+
       - name: Download Android Command Line Tools
         run: |
           mkdir -p $ANDROID_HOME/cmdline-tools
@@ -42,16 +46,20 @@ jobs:
         run: |
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install \
             "platform-tools" \
-            "platforms;android-31" \
+            "platforms;android-30" \
             "build-tools;33.0.0" \
             "emulator" \
-            "system-images;android-31;google_apis;x86"
+            "system-images;android-30;google_apis;x86"
+
+      - name: List Available Packages
+        run: |
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --list
 
       - name: Create AVD
         run: |
           echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
             --name testAVD \
-            --package 'system-images;android-31;google_apis;x86' \
+            --package 'system-images;android-30;google_apis;x86' \
             --device 'pixel' \
             --force
 
