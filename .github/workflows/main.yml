@@ -1,4 +1,4 @@
-name: Android E2E Tests (Fixed SDK Setup)
+name: Android E2E Tests (Fixed adb Setup)
 
 on:
   push:
@@ -51,9 +51,9 @@ jobs:
             "emulator" \
             "system-images;android-30;google_apis;x86"
 
-      - name: List Available Packages
+      - name: Add adb to PATH
         run: |
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --list
+          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
 
       - name: Create AVD
         run: |
