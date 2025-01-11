@@ -46,15 +46,15 @@ exports.config = {
         const status = error ? 'FAILED' : 'PASSED';
         const fileName = path.join(screenshotDir, `${test.title.replace(/[^a-zA-Z0-9]/g, '_')}_${status}.png`);
 
-        // try {
-        //     // Take and save the screenshot
-        //     await browser.saveScreenshot(fileName);
-        //     console.log(`Screenshot saved: ${fileName}`);
+        try {
+            // Take and save the screenshot
+            await browser.saveScreenshot(fileName);
+            console.log(`Screenshot saved: ${fileName}`);
 
-        //     // Attach the screenshot to the Allure report (optional)
-        //     await allure.createAttachment(`Screenshot (${status})`, Buffer.from(await browser.takeScreenshot(), 'base64'), 'image/png');
-        // } catch (err) {
-        //     console.error(`Failed to save screenshot: ${err.message}`);
-        // }
+            // Attach the screenshot to the Allure report (optional)
+            await allure.createAttachment(`Screenshot (${status})`, Buffer.from(await browser.takeScreenshot(), 'base64'), 'image/png');
+        } catch (err) {
+            console.error(`Failed to save screenshot: ${err.message}`);
+        }
     },
 };
