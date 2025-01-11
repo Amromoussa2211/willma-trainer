@@ -26,6 +26,10 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
+      - name: Clear SDK Cache
+        run: |
+          rm -rf $ANDROID_HOME/licenses $ANDROID_HOME/tools $ANDROID_HOME/cmdline-tools
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
@@ -33,11 +37,10 @@ jobs:
           accept-android-sdk-licenses: true
           packages: |
             platform-tools
-            platforms;android-30
+            platforms;android-31
             build-tools;33.0.0
             emulator
-            system-images;android-30;google_apis;x86
-          sdkmanager-path: '/usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager'
+            system-images;android-31;google_apis;x86
 
       - name: List Available Packages
         run: |
@@ -47,7 +50,7 @@ jobs:
         run: |
           echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
             --name testAVD \
-            --package 'system-images;android-30;google_apis;x86' \
+            --package 'system-images;android-31;google_apis;x86' \
             --device 'pixel' \
             --force
 
