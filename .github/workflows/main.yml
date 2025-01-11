@@ -1,4 +1,4 @@
-name: Android E2E Tests (Fixed SDK Setup)
+name: Android E2E Tests (Manual SDK Setup)
 
 on:
   push:
@@ -26,25 +26,26 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Clear SDK Cache
+      - name: Download Android Command Line Tools
         run: |
-          rm -rf $ANDROID_HOME/licenses $ANDROID_HOME/tools $ANDROID_HOME/cmdline-tools
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+          unzip cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools
+          mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+          rm cmdline-tools.zip
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          cmdline-tools-version: 'latest'
-          accept-android-sdk-licenses: true
-          packages: |
-            platform-tools
-            platforms;android-31
-            build-tools;33.0.0
-            emulator
-            system-images;android-31;google_apis;x86
-
-      - name: List Available Packages
+      - name: Accept Android SDK Licenses
         run: |
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --list
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+
+      - name: Install Android SDK Packages
+        run: |
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-31" \
+            "build-tools;33.0.0" \
+            "emulator" \
+            "system-images;android-31;google_apis;x86"
 
       - name: Create AVD
         run: |
