@@ -26,7 +26,7 @@
     "@wdio/spec-reporter": "^9.4.4",
     "allure-commandline": "^2.19.0",
     "appium": "^2.13.1",
-    "appium-uiautomator2-driver": "^3.9.5"
+    "appium-uiautomator2-driver": "^3.9.8"
   },
   "keywords": [
     "appium",
