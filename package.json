@@ -16,7 +16,8 @@
     "@wdio/cli": "^9.4.5",
     "dotenv": "^16.4.7",
     "eslint": "latest",
-    "webdriverio": "latest"
+    "webdriverio": "latest",
+    "chai": "^4.3.6"
   },
   "devDependencies": {
     "@wdio/appium-service": "^9.4.5",

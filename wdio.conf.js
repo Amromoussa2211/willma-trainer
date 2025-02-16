@@ -32,6 +32,8 @@ exports.config = {
         timeout: 360000,  // 6 minutes
         retries: 2,  // Retry failed tests up to 2 times
     },
+    // Define appiumLogDir
+    appiumLogDir: './logs/appium',
     onPrepare: async function (config, capabilities) {
         console.log('Skipping device check and APK installation...');
         // Add any other setup logic here

@@ -5,17 +5,14 @@ const localConfig = {
       'appium:automationName': 'UiAutomator2',
       'appium:deviceName': 'CPH1937',
       'appium:udid': '93bb1813',
-      'appium:app': 'C:\\Users\\ZBOOK\\Desktop\\appium\\Trainer\\apps\\app-release-v4-0.3.0-2025-01-20-20-32.apk',
+      "appium:appPackage": "com.willma.staging",
+      "appium:appActivity": "com.willma.staging.MainActivity",
+      'appium:app': 'C:\\Users\\ZBOOK\\Desktop\\appium\\Trainer\\apps\\app-release-v13-0.3.4-2025-02-11-15-46.apk',
       'appium:noReset': true,
       'appium:fullReset': false,
-      'appium:autoGrantPermissions': false,
-      'appium:newCommandTimeout': 300,
-      'appium:enforceAppInstall': false,
-      'appium:newCommandTimeout': 600,  // Increased to 600 seconds (10 minutes)
       'appium:autoGrantPermissions': true,
-      'appium:noReset': true,
-      'appium:fullReset': false,
-      "appium:ignoreHiddenApiPolicyError": true,
+      'appium:newCommandTimeout': 600, // Increased to 600 seconds (10 minutes)
+      'appium:ignoreHiddenApiPolicyError': true,
       'appium:skipServerInstallation': true,
       'appium:debug': true, // Enable Appium debug logs
       'appium:networkLogs': true, // Enable network logs
@@ -23,6 +20,6 @@ const localConfig = {
       'appium:deviceLogs': true, // Enable device logs
     }
   ]
-}; // <-- Added closing brace here
+};
 
 exports.config = { ...require('./wdio.conf.js').config, ...localConfig };
