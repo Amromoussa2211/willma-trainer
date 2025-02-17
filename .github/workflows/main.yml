@@ -79,7 +79,6 @@ jobs:
             -memory 4096 \
             -cores 4 \
             -no-snapshot &
-          sleep 600  # Wait for 10 minutes
 
       - name: Wait for Emulator Boot
         run: |
@@ -89,6 +88,16 @@ jobs:
             echo "Waiting for emulator to boot..."
           done
           echo "Emulator is fully booted."
+
+      - name: Verify Internet Connection
+        run: |
+          adb shell ping -c 4 google.com
+          if [ $? -eq 0 ]; then
+            echo "Internet connection is working."
+          else
+            echo "Internet connection is not working."
+            exit 1
+          fi
 
       - name: List ADB Devices
         run: adb devices
