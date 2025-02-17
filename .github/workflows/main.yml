@@ -89,6 +89,14 @@ jobs:
           done
           echo "Emulator is fully booted."
 
+      - name: Restart Network Service
+        run: |
+          adb shell svc wifi disable
+          adb shell svc wifi enable
+          adb shell svc data disable
+          adb shell svc data enable
+          sleep 30  # Wait for network services to restart
+
       - name: Verify Internet Connection
         run: |
           adb shell ping -c 4 8.8.8.8
