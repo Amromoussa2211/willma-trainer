@@ -1,4 +1,5 @@
 const localConfig = {
+  specs: ['./test/specs/**/*.js'], // Ensure this path matches your test files
   capabilities: [
     {
       platformName: 'Android',
@@ -7,7 +8,7 @@ const localConfig = {
       'appium:udid': '93bb1813',
       "appium:appPackage": "com.willma.staging",
       "appium:appActivity": "com.willma.staging.MainActivity",
-      'appium:app': 'C:\\Users\\ZBOOK\\Desktop\\appium\\Trainer\\apps\\app-release-v13-0.3.4-2025-02-11-15-46.apk',
+      'appium:app': 'C:\\Users\\ZBOOK\\Desktop\\appium\\Trainer\\apps\\app-release-v20-0.4.0-2025-03-24-03-10.apk',
       'appium:noReset': true,
       'appium:fullReset': false,
       'appium:autoGrantPermissions': true,
@@ -16,8 +17,6 @@ const localConfig = {
       'appium:skipServerInstallation': true,
       'appium:debug': true, // Enable Appium debug logs
       'appium:networkLogs': true, // Enable network logs
-      'appium:appiumLogs': true, // Enable Appium server logs
-      'appium:deviceLogs': true, // Enable device logs
     }
   ]
 };

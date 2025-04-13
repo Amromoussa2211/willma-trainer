@@ -1,0 +1,108 @@
+import { expect } from 'chai';
+
+async function clickWithRetry(element, retries = 3) {
+    while (retries > 0) {
+        try {
+            await element.click();
+            await driver.pause(2000); // Wait for 2 seconds
+            return;
+        } catch (error) {
+            console.error('Error clicking element:', error);
+            retries--;
+            if (retries === 0) throw error; // Rethrow error if out of retries
+        }
+    }
+}
+
+async function waitForElement(selector, timeout = 60000) {
+    try {
+        const element = await $(selector);
+        await element.waitForDisplayed({ timeout });
+        return element;
+    } catch (error) {
+        console.error(`Element with selector "${selector}" not found within ${timeout}ms.`);
+        throw error;
+    }
+}
+
+async function restartUiAutomator2Server() {
+    console.log('Restarting UiAutomator2 server...');
+    await driver.deleteSession(); // End the current session
+    await driver.startSession(); // Start a new session
+    console.log('UiAutomator2 server restarted.');
+}
+
+describe('Signup Flow', () => {
+    before(async () => {
+        try {
+            // Launch the app
+            await driver.startActivity(
+                'com.willma.staging',
+                'com.willma.staging.MainActivity'
+            );
+            console.log('App launched successfully.');
+        } catch (error) {
+            console.error('Error launching the app:', error);
+            await restartUiAutomator2Server(); // Restart UiAutomator2 if needed
+        }
+    });
+
+    it('should sign up successfully', async () => {
+        try {
+            // Wait for the sign-up button to appear
+            const signUpButton = await waitForElement('//android.widget.TextView[@resource-id="signup-button"]');
+            console.log('Sign Up button is displayed.');
+
+            // Click the sign-up button
+            await clickWithRetry(signUpButton);
+            console.log('Sign Up button clicked.');
+
+            // Enter username
+            const usernameInput = await waitForElement('//android.widget.EditText[@resource-id="username-input"]');
+            await usernameInput.setValue('automationtrainer automation trainer');
+            console.log('Entered username.');
+
+            // Enter email
+            const emailInput = await waitForElement('//android.widget.EditText[@resource-id="email-input"]');
+            await emailInput.setValue('test1@test.test');
+            console.log('Entered email.');
+
+            // Enter password
+            const passwordInput = await waitForElement('//android.widget.EditText[@resource-id="password-input"]');
+            await passwordInput.setValue('Abc@1234');
+            console.log('Entered password.');
+
+            // Confirm password
+            const confirmPasswordInput = await waitForElement('//android.widget.EditText[@resource-id="confirm-password-input"]');
+            await confirmPasswordInput.setValue('Abc@1234');
+            console.log('Confirmed password.');
+
+            // Select gender preference
+            const genderPreference = await waitForElement('//android.view.ViewGroup[@content-desc="Prefer not to say"]');
+            await clickWithRetry(genderPreference);
+            console.log('Selected gender preference.');
+
+            // Enter phone number
+            const phoneInput = await waitForElement('//android.widget.EditText[@resource-id="phone-input"]');
+            await phoneInput.setValue('01144438790');
+            console.log('Entered phone number.');
+
+            // Select the final option
+            const finalOption = await waitForElement('//android.widget.ScrollView/android.view.ViewGroup/android.view.ViewGroup[5]/android.view.ViewGroup');
+            await clickWithRetry(finalOption);
+            console.log('Selected the final option.');
+
+            // Verify if the "Sign Up" button becomes active
+            const signUpActivate = await waitForElement('//android.view.ViewGroup[@content-desc="Sign Up"]');
+            const isActive = await signUpActivate.isEnabled();
+            expect(isActive).to.be.true;
+            console.log('Verified that the "Sign Up" button is active.');
+        } catch (error) {
+            console.error('Error during the sign-up process:', error);
+            if (error.message.includes('UiAutomator2 server')) {
+                await restartUiAutomator2Server(); // Restart UiAutomator2 if it crashes
+            }
+            throw error; // Rethrow the error to fail the test
+        }
+    });
+});

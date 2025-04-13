@@ -1,0 +1,9 @@
+import axios from 'axios';
+import { expect } from '@wdio/globals';
+
+describe('API status check', () => {
+  it('should return status 200', async () => {
+    const res = await axios.get('https://your-api-endpoint.com/your-path');
+    expect(res.status).toBe(200);
+  });
+});
