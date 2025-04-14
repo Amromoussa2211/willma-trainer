@@ -239,6 +239,7 @@ describe('Signup Flow', () => {
                             const el3 = await driver.$('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(0)');
                             await el3.waitForDisplayed({ timeout: 60000 });
                             await el3.click();
+                            await el3.click();
                             console.log('✅ Clicked on first PathView.');
 
                             const el4 = await driver.$('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(4)');
