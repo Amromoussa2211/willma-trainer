@@ -13,7 +13,7 @@ exports.config = {
     specs: ['./test/specs/**/*.js'],
     exclude: [],
     maxInstances: 1,
-    logLevel: 'info',
+    logLevel: 'trace',
     bail: 0,
     waitforTimeout: 15000, // Increased from 15000 to 30000
     connectionRetryTimeout: 200000, // Increased from 200000 to 300000

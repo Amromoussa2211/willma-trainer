@@ -30,7 +30,7 @@ describe('Signup Flow', () => {
             await signUpButton.waitForDisplayed({ timeout: 60000 });
             await signUpButton.click();
             console.log('Sign Up button clicked.');
-
+ 
             // Wait for the username input to appear
             const usernameInput = await $('-android uiautomator:new UiSelector().resourceId("username-input")');
             await usernameInput.waitForDisplayed({ timeout: 60000 });

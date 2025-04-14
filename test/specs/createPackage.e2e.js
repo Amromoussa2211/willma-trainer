@@ -74,7 +74,7 @@ describe('Signup Flow', () => {
 
                 const packageNameInput = await $('android=new UiSelector().text("Enter package name")');
                 await packageNameInput.waitForDisplayed({ timeout: 60000 });    
-                await packageNameInput.setValue('Test Package Name');
+                await packageNameInput.setValue('automated Package');
                 console.log('Entered package name.');
                 
                 const packageDescriptionInputSelector = 'android=new UiSelector().text("Enter package description")';
@@ -90,7 +90,7 @@ describe('Signup Flow', () => {
                     console.log('Package description input is displayed.');
 
                     // Set value in the input field
-                    await packageDescriptionInput.setValue('Test Package Description');
+                    await packageDescriptionInput.setValue('automated package descreption');
                     console.log('Entered package description.');
 
                     // Open the keyboard and press "Enter"
@@ -109,63 +109,167 @@ describe('Signup Flow', () => {
                     await Packegetypenutration.waitForDisplayed({ timeout: 60000 });
                     await Packegetypenutration.click();
 
-                   
-               
-
-                const targetElement = await $('android=new UiSelector().description("Add up to 6 tags")');
-                await targetElement.waitForDisplayed({ timeout: 60000 });
-                console.log('"Add up to 6 tags" element is displayed.');
-
-                // Ensure the element is clickable
-                if (await targetElement.isClickable()) {
-                    await targetElement.click();
-                    console.log('Clicked on the "Add up to 6 tags" element.');
-                } else {
-                    console.error('"Add up to 6 tags" element is not clickable.');
-                }
-
-                await targetElement.click();
-                console.log('Clicked on the "Add up to 6 tags" element.');
-
-                const tagOption = await $('android=new UiSelector().text("Weight Loss")');
-                await tagOp
-                tion.waitForDisplayed({ timeout: 60000 });
-                await tagOption.click();
-                console.log('Selected "Weight Loss" tag from the dropdown.');
+                    let isElementFound = false;
+                    while (!isElementFound) {
+                        try {
+                            const addTagsElement = await $('//android.view.ViewGroup[@content-desc="Add up to 6 tags"]');
+                            if (await addTagsElement.isDisplayed()) {
+                                isElementFound = true;
+                                await addTagsElement.click();
+                                console.log('Clicked on "Add up to 6 tags" element.');
+                                const strengthTrainingOption = await $('android=new UiSelector().text("Strength Training")');
+                                await strengthTrainingOption.waitForDisplayed({ timeout: 60000 });
+                                await strengthTrainingOption.click();
+                                console.log('Clicked on "Strength Training" option.');
+                            }
+                        } catch (error) {
+                            console.log('Element not found, scrolling...');
+                            await driver.execute('mobile: scroll', { direction: 'down' });
+                        }
+                    }
 
             } catch (error) {
                 console.error('Error interacting with the package description input:', error);
                 throw error;
             }
-
-
-
-                
-                // Click on packageDescriptionInput to open the keyboard
-                // await packageDescriptionInput.click();
-                // console.log('Clicked on package description input to open the keyboard.');
-
-                // Press back to close the keyboard
-                // await driver.back();
-                // console.log('Closed the keyboard by pressing back.');
-                
-                // const scrollView = await $('//android.widget.ScrollView/android.view.ViewGroup');
-                // await scrollView.waitForDisplayed({ timeout: 60000 });
-                // await scrollView.click(); // Click on the ScrollView to ensure it's in view
-                // console.log('Clicked on ScrollView.');
-
-        
               
-              
-            //       // Wait for the app to navigate to the next screen after login
-               await driver.pause(5000); // Adjust the pause time as needed
-            //     });
-        } catch (error) {
-            console.error('Error during the sign-up process:', error);
-            if (error.message.includes('UiAutomator2 server')) {
-                await restartUiAutomator2Server(); // Restart UiAutomator2 if it crashes
+                    // Step 6: Click on "Next" button
+            const nextButton = await $('android=new UiSelector().description("Next")');
+            await nextButton.waitForDisplayed({ timeout: 60000 });
+            await nextButton.click();
+            console.log('Clicked on "Next" button.');
+
+            const selectItemElement = await driver.$('-android uiautomator:new UiSelector().text("Select item")');
+            await selectItemElement.waitForDisplayed({ timeout: 60000 });
+            await selectItemElement.click();
+            console.log('Clicked on "Select item".');
+
+            const packageFormElement = await driver.$('-android uiautomator:new UiSelector().text("packegeAmrForm AUto").instance(0)');
+            await packageFormElement.waitForDisplayed({ timeout: 60000 });
+            await packageFormElement.click();
+            console.log('Clicked on "packegeAmrForm AUto".');
+
+            const nextButtonElement1 = await driver.$('accessibility id:Next');
+            await nextButtonElement1.waitForDisplayed({ timeout: 60000 });
+            await nextButtonElement1.click();
+            console.log('Clicked on "Next".');
+
+            const inputFieldElement = await driver.$('class name:android.widget.EditText');
+            await inputFieldElement.waitForDisplayed({ timeout: 60000 });
+            await inputFieldElement.click();
+            await inputFieldElement.addValue('1000');
+            console.log('Entered value "1000".');
+
+            const viewGroupElement = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(16)');
+            await viewGroupElement.waitForDisplayed({ timeout: 60000 });
+            await viewGroupElement.click();
+            console.log('Clicked on element with instance 16.');
+
+            const nextButtonElement2 = await driver.$('accessibility id:Next');
+            await nextButtonElement2.waitForDisplayed({ timeout: 60000 });
+            await nextButtonElement2.click();
+            console.log('Clicked on "Next".');
+
+            ///review page and uploadpackege photo 
+            const uploadFileElementSelector = '//android.view.ViewGroup[@content-desc="Upload file, PNG, JPG (max size 5MB)"]';
+
+            try {
+                // Scroll to and click the upload element
+                await driver.execute('mobile: scroll', { strategy: 'accessibility id', selector: 'Upload file, PNG, JPG (max size 5MB)' });
+                const uploadFileElement = await $(uploadFileElementSelector);
+                await uploadFileElement.waitForDisplayed({ timeout: 60000 });
+                await uploadFileElement.click();
+                console.log('✅ Clicked upload file element');
+            } catch (error) {
+                console.error('❌ Error with upload file element:', error);
+                throw error;
             }
-            throw error; // Rethrow the error to fail the test
-        }
+            
+            // ✅ NEW: Wait for gallery to be fully open
+            try {
+                const galleryHeader = await $('android=new UiSelector().textContains("Photos")'); // adjust text if needed
+                await galleryHeader.waitForDisplayed({ timeout: 10000 });
+                console.log('✅ Gallery is fully open');
+            } catch (error) {
+                console.error('❌ Gallery did not open properly:', error);
+                throw error;
+            }
+            
+            // ✅ Now proceed to select an image
+            try {
+                let isGalleryItemFound = false;
+            
+                while (!isGalleryItemFound) {
+                    await browser.pause(1000); // wait for items to render
+            
+                    const galleryItems = await $$('android=new UiSelector().className("com.oplus.gallery.business_lib.timeline.view.TimelineView")');
+            
+                    console.log(`📸 Found ${galleryItems.length} gallery items`);
+            
+                    for (const item of galleryItems) {
+                        const desc = await item.getAttribute("contentDescription");
+                        console.log('🔍 Checking item:', desc);
+            
+                        if (desc && desc.includes("Photo")) {
+                            await item.click();
+                            console.log('✅ Clicked image with "Photo" in description');
+                            isGalleryItemFound = true;
+                            break;
+                        }
+                    }
+            
+                    if (!isGalleryItemFound) {
+                        console.log('🔁 Scrolling gallery to find more images...');
+                        await driver.execute('mobile: scroll', { direction: 'down' });
+                    }
+                }
+///////////////logout sequence
+
+                const Nextafterreview = await driver.$("accessibility id:Next");
+                await driver.execute('mobile: scroll', { strategy: 'accessibility id', selector: 'Next' });
+                await Nextafterreview.waitForDisplayed({ timeout: 60000 });
+                await Nextafterreview.click();
+               console.log('✅ Clicked on "Next".');
+
+                            const el2 = await driver.$("accessibility id:View Packages");
+                            await el2.waitForDisplayed({ timeout: 60000 });
+                            await el2.click();
+                            console.log('✅ Clicked on "View Packages".');
+
+                            const el3 = await driver.$('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(0)');
+                            await el3.waitForDisplayed({ timeout: 60000 });
+                            await el3.click();
+                            console.log('✅ Clicked on first PathView.');
+
+                            const el4 = await driver.$('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(4)');
+                            await el4.waitForDisplayed({ timeout: 60000 });
+                            await el4.click();
+                            console.log('✅ Clicked on fourth PathView.');
+
+                            const el5 = await driver.$("accessibility id:Logout");
+                            await el5.waitForDisplayed({ timeout: 60000 });
+                            await el5.click();
+                            console.log('✅ Clicked on "Logout".');
+
+                            const el6 = await driver.$("accessibility id:Yes");
+                            await el6.waitForDisplayed({ timeout: 60000 });
+                            await el6.click();
+                            console.log('✅ Clicked on "Yes".');
+
+                 
+                
+            } catch (error) {
+                console.error('❌ Error selecting image from gallery:', error);
+                throw error;
+            }
+            
+    await driver.pause(5000); // Adjust the pause time as needed
+} catch (error) {
+    console.error('Error during the sign-up process:', error);
+    if (error.message.includes('UiAutomator2 server')) {
+        await restartUiAutomator2Server(); // Restart UiAutomator2 if it crashes
+    }
+    throw error; // Rethrow the error to fail the test
+}
     });
 });
