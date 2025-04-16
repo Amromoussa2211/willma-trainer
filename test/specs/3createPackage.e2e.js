@@ -236,17 +236,33 @@ describe('Signup Flow', () => {
                             await el2.click();
                             console.log('✅ Clicked on "View Packages".');
 
-                            const el3 = await driver.$('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(0)');
-                            await el3.waitForDisplayed({ timeout: 60000 });
-                            await el3.click();
-                            await el3.click();
-                            console.log('✅ Clicked on first PathView.');
+                            // const el3 = await driver.$('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(0)');
+                            // await el3.waitForDisplayed({ timeout: 60000 });
+                            // driver.pause(2000); // Wait for 2 seconds
+                            // await el3.click();
 
-                            const el4 = await driver.$('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(4)');
-                            await el4.waitForDisplayed({ timeout: 60000 });
-                            await el4.click();
-                            console.log('✅ Clicked on fourth PathView.');
+                            
+                                const targetElement = await driver.$('//android.widget.FrameLayout[@resource-id="android:id/content"]/android.widget.FrameLayout/android.view.ViewGroup/android.view.ViewGroup/android.view.ViewGroup[2]/android.view.ViewGroup/android.view.ViewGroup/android.view.ViewGroup/android.view.ViewGroup/android.view.ViewGroup/android.view.ViewGroup/android.view.ViewGroup[2]/android.view.ViewGroup[1]/android.view.ViewGroup/com.horcrux.svg.SvgView/com.horcrux.svg.GroupView/com.horcrux.svg.PathView');
+                                if (await targetElement.isDisplayed()) {
+                                    await targetElement.click();
+                                    console.log('✅ Clicked on the target element using XPath.');
+                                } else {
+                                    console.log('❌ Target element not found using XPath.');
+                                }
 
+             
+
+                            const targetElementt = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(13)');
+                            await targetElementt.waitForDisplayed({ timeout: 60000 });
+                            if (await targetElementt.isDisplayed()) {
+                                await targetElementt.click();
+                                console.log('✅ Clicked on ViewGroup with instance 13.');
+                            } else {
+                                console.log('❌ Target ViewGroup not found.');
+                            }
+                            // Perform a back gesture
+                            await driver.back();
+                            console.log('✅ Performed a back gesture.');
                             const el5 = await driver.$("accessibility id:Logout");
                             await el5.waitForDisplayed({ timeout: 60000 });
                             await el5.click();
