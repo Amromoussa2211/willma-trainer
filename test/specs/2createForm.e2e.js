@@ -89,24 +89,22 @@ describe('Signup Flow', () => {
         await saveFormButton.waitForDisplayed({ timeout: 5000 });
         await saveFormButton.click();
 
+        await driver.back();
+                            console.log('✅ Performed a back gesture.');
+                            const el5 = await driver.$("accessibility id:Logout");
+                            await el5.waitForDisplayed({ timeout: 60000 });
+                            await el5.click();
+                            console.log('✅ Clicked on "Logout".');
+
+                            const el6 = await driver.$("accessibility id:Yes");
+                            await el6.waitForDisplayed({ timeout: 60000 });
+                            await el6.click();
+                            console.log('✅ Clicked on "Yes".');
+
+        
+
         console.log('Form creation flow completed successfully.');
         // Click on the SvgView element
-        const svgViewElement = await $('-android uiautomator:new UiSelector().className("com.horcrux.svg.SvgView").instance(0)');
-        await svgViewElement.waitForDisplayed({ timeout: 5000 });
-        await svgViewElement.click();
-
-        // Click on "Logout" using accessibility id
-        const logoutElement = await $('-android uiautomator:new UiSelector().description("Logout")');
-        await logoutElement.waitForDisplayed({ timeout: 5000 });
-        await logoutElement.click();
-
-        // Click on "Yes" using accessibility id
-        const yesElement = await $('-android uiautomator:new UiSelector().description("Yes")');
-        await yesElement.waitForDisplayed({ timeout: 5000 });
-        await yesElement.click();
-
-        console.log('Logout flow completed successfully.');
-
 
     });
 });
