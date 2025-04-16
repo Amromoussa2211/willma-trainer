@@ -81,15 +81,17 @@ describe('Create Plan Flow', () => {
             const searchInput = await $('//android.widget.FrameLayout[@resource-id="android:id/content"]/android.widget.FrameLayout/android.view.ViewGroup/android.view.ViewGroup/android.view.ViewGroup[2]/android.view.ViewGroup/android.view.ViewGroup/android.view.ViewGroup/android.view.ViewGroup/android.view.ViewGroup/android.view.ViewGroup[1]/android.widget.FrameLayout/android.view.ViewGroup/android.view.ViewGroup/android.view.ViewGroup[3]');
             await searchInput.waitForDisplayed({ timeout: 60000 });
             await searchInput.click(); // Ensure the element is focused
-            await driver.pressKeyCode(29); // KeyEvent for 'A'
-            await driver.pressKeyCode(41); // KeyEvent for 'm'
-            await driver.pressKeyCode(46); // KeyEvent for 'r'
-            await driver.pressKeyCode(62); // KeyEvent for space
-            await driver.pressKeyCode(41); // KeyEvent for 'm'
+            await driver.pause(1000); // Wait for 1 second before typing
+        
+            await searchInput.click(); // Ensure the element is focused
+            await driver.pressKeyCode(29); // KeyEvent for 'a'
+            await driver.pressKeyCode(47); // KeyEvent for 'u'
+            await driver.pressKeyCode(48); // KeyEvent for 't'
+            await driver.pressKeyCode(43); // KeyEvent for 'o'
             await driver.pressKeyCode(66); // KeyEvent for Enter
             await driver.pause(2000); // Wait for 2 seconds
 
-            const profileSection = await $('//android.view.ViewGroup[@content-desc="Amr moussa, Package 1: Package Test 2"]/android.view.ViewGroup');
+            const profileSection = await $('//android.view.ViewGroup[@content-desc="amrmoussaauto, Package 1: automated Package"]/android.view.ViewGroup/com.horcrux.svg.SvgView/com.horcrux.svg.GroupView/com.horcrux.svg.PathView');
             await profileSection.waitForDisplayed({ timeout: 60000 }); // Wait until the profile appears
             if (await profileSection.isDisplayed()) {
               await driver.pause(2000); // Wait for 2 seconds
@@ -134,7 +136,14 @@ describe('Create Plan Flow', () => {
                 await el5.waitForDisplayed({ timeout: 10000 });
                 await el5.click();
                 console.log('Clicked Next button');
-
+                const adjustineWarningMessage = await $('//android.widget.Button[@resource-id="android:id/button1"]');
+                if (await adjustineWarningMessage.isDisplayed()) {
+                  await adjustineWarningMessage.waitForEnabled({ timeout: 9000 }); // Ensure the button is enabled
+                  await adjustineWarningMessage.click();
+                  console.log('Clicked on adjustineWarningMessage');
+                } else {
+                  console.log('adjustineWarningMessage not found, continuing...');
+                }
                // Your added sequence
       const Day1 = await $('(//android.view.ViewGroup[@content-desc="Day 1"])[1]/android.view.ViewGroup');
       await Day1.waitForDisplayed({ timeout: 1200000 });
@@ -199,103 +208,87 @@ describe('Create Plan Flow', () => {
                            await cheetmeal.click();
 
 
-                            const Day7 = await $('//android.view.ViewGroup[@content-desc="Day 7"]');
-                            await Day7.waitForDisplayed({ timeout: 1200000 });
-                            await Day7.click();
-                            const Addmealday7 = await $('//android.view.ViewGroup[@content-desc="Add Meal/s"]');
-                            await Addmealday7.waitForDisplayed({ timeout: 1200000 });
-                             await Addmealday7.click();
-                               await cheetmeal.click();
-                               // adding ingrediant with search and chips in day 7
-                              const addMealButton = await driver.$("-android uiautomator:new UiSelector().text(\"Add Meal/s\")");
-                              await addMealButton.waitForDisplayed({ timeout: 1200000 });
-                              await addMealButton.click();
+                           const Day7 = await $('//android.view.ViewGroup[@content-desc="Day 7"]');
+                           await Day7.waitForDisplayed({ timeout: 1200000 });
+                           await Day7.click();
+                           const Addmealday7 = await $('//android.view.ViewGroup[@content-desc="Add Meal/s"]');
+                           await Addmealday7.waitForDisplayed({ timeout: 1200000 });
+                            await Addmealday7.click();
+                              await cheetmeal.click();
+                              // adding ingrediant with search and chips in day 7
+                             const addMealButton = await driver.$("-android uiautomator:new UiSelector().text(\"Add Meal/s\")");
+                             await addMealButton.waitForDisplayed({ timeout: 1200000 });
+                             await addMealButton.click();
+                             const fruitsCategory = await driver.$("-android uiautomator:new UiSelector().text(\"Fruits\")");
+                             await fruitsCategory.waitForDisplayed({ timeout: 1200000 });
+                             await fruitsCategory.click();
+                               const specificFruit = await driver.$("//android.widget.ScrollView/android.view.ViewGroup/android.view.ViewGroup/android.view.ViewGroup[1]/android.view.ViewGroup/android.view.ViewGroup[3]/android.view.ViewGroup");
+                               await specificFruit.waitForDisplayed({ timeout: 1200000 });
+                               await driver.pause(8000); // Wait for 2 seconds  
 
-                              const fruitsCategory = await driver.$("-android uiautomator:new UiSelector().text(\"Fruits\")");
-                              await fruitsCategory.waitForDisplayed({ timeout: 1200000 });
-                              await fruitsCategory.click();
+                               await specificFruit.click();
+                             const svgElement = await driver.$("-android uiautomator:new UiSelector().className(\"com.horcrux.svg.SvgView\").instance(8)");
+                             await svgElement.waitForDisplayed({ timeout: 1200000 });
+                             await driver.pause(8000); // Wait for 2 seconds  
+                             await svgElement.click(); // Click again to ensure the action is registered
+                             const searchField = await driver.$("-android uiautomator:new UiSelector().text(\"Search\")");
+                             await searchField.waitForDisplayed({ timeout: 1200000 });
+                             await searchField.click();
+                             await searchField.addValue("orange");
+                             const searchResult = await driver.$("-android uiautomator:new UiSelector().className(\"android.view.ViewGroup\").instance(39)");
+                             await searchResult.waitForDisplayed({ timeout: 1200000 });
+                             await searchResult.click();
+                             const selectedMeal = await driver.$("accessibility id:1, 192 cal • 0g Fat • 0g Protein • 46g Carbs");
+                             await selectedMeal.waitForDisplayed({ timeout: 1200000 });
+                             await selectedMeal.click();
+                             const nextButton = await driver.$("accessibility id:Next");
+                             await nextButton.waitForDisplayed({ timeout: 1200000 });
+                             await nextButton.click();
+                               const button1 = await driver.$('-android uiautomator:new UiSelector().resourceId("android:id/button1")');
+                               await driver.pause(8000); // Wait for 2 seconds  
 
-                                const specificFruit = await driver.$("//android.widget.ScrollView/android.view.ViewGroup/android.view.ViewGroup/android.view.ViewGroup[1]/android.view.ViewGroup/android.view.ViewGroup[3]/android.view.ViewGroup");
-                                await specificFruit.waitForDisplayed({ timeout: 1200000 });
-                                await specificFruit.click();
-
-                              const svgElement = await driver.$("-android uiautomator:new UiSelector().className(\"com.horcrux.svg.SvgView\").instance(8)");
-                              await svgElement.waitForDisplayed({ timeout: 1200000 });
-                              await driver.pause(2000); // Wait for 2 seconds  
-                              await svgElement.click(); // Click again to ensure the action is registered
-                            
-                              
-                              
-                              const searchField = await driver.$("-android uiautomator:new UiSelector().text(\"Search\")");
-                              await searchField.waitForDisplayed({ timeout: 1200000 });
-                              await searchField.click();
-                              await searchField.addValue("orange");
-
-                              const searchResult = await driver.$("-android uiautomator:new UiSelector().className(\"android.view.ViewGroup\").instance(39)");
-                              await searchResult.waitForDisplayed({ timeout: 1200000 });
-                              await searchResult.click();
-
-                              const selectedMeal = await driver.$("accessibility id:1, 192 cal • 0g Fat • 0g Protein • 46g Carbs");
-                              await selectedMeal.waitForDisplayed({ timeout: 1200000 });
-                              await selectedMeal.click();
-
-                              const nextButton = await driver.$("accessibility id:Next");
-                              await nextButton.waitForDisplayed({ timeout: 1200000 });
-                              await nextButton.click();
-
-                                const button1 = await driver.$('-android uiautomator:new UiSelector().resourceId("android:id/button1")');
-                                if (await button1.isDisplayed()) {
-                                  await button1.waitForEnabled({ timeout: 9000 }); // Ensure the button is enabled
-                                  await button1.click();
-                                  console.log('Clicked on button1');
-                                } else {
-                                  const selectFormButton = await driver.$("-android uiautomator:new UiSelector().className(\"android.view.ViewGroup\").instance(21)");
-                                  await selectFormButton.waitForDisplayed({ timeout: 1200000 });
-                                  if (await selectFormButton.isDisplayed()) {
-                                  await selectFormButton.click();
-                                  console.log('Clicked on selectFormButton');
+                               if (await button1.isDisplayed()) {
+                                 await button1.waitForEnabled({ timeout: 90000 }); // Ensure the button is enabled
+                                 await button1.click();
+                                 console.log('Clicked on button1');
+                               } else {
+                                 const selectFormButton = await driver.$("-android uiautomator:new UiSelector().className(\"android.view.ViewGroup\").instance(21)");
+                                 await selectFormButton.waitForDisplayed({ timeout: 1200000 });
+                                 if (await selectFormButton.isDisplayed()) {
+                                 await selectFormButton.click();
+                                 console.log('Clicked on selectFormButton');
+                                 }
+                               }
+                               const flowForm = await driver.$("-android uiautomator:new UiSelector().resourceId(\"Flow Form\").instance(0)");
+                               await flowForm.waitForDisplayed({ timeout: 1200000 });
+                               if (await flowForm.isDisplayed()) {
+                                 await flowForm.click();
+                                 console.log('Clicked on flowForm');
+                               }
+                             const scheduleNextButton = await driver.$("accessibility id:Next");
+                             await scheduleNextButton.waitForDisplayed({ timeout: 1200000 });
+                             await scheduleNextButton.click();
+                             const scheduleFinishButton = await driver.$("accessibility id:Schedule & Finish");
+                             await scheduleFinishButton.waitForDisplayed({ timeout: 1200000 });
+                             await scheduleFinishButton.click();
+                             const homeButton = await driver.$("accessibility id:Home");
+                             await homeButton.waitForDisplayed({ timeout: 1200000 });
+                             await homeButton.click();
+                             const menuButton = await driver.$("accessibility id:Menu");
+                             await menuButton.waitForDisplayed({ timeout: 1200000 });
+                             await menuButton.click();
+                             const logoutButton = await driver.$("accessibility id:Logout");
+                             await logoutButton.waitForDisplayed({ timeout: 1200000 });
+                             await logoutButton.click();
+                             const confirmLogoutButton = await driver.$("accessibility id:Yes");
+                             await confirmLogoutButton.waitForDisplayed({ timeout: 1200000 });
+                             await confirmLogoutButton.click();
+                                  } catch (error) {
+                                    console.error('Test failed:', error);
+                                    throw error;
                                   }
                                 }
-                                  
-                                const flowForm = await driver.$("-android uiautomator:new UiSelector().resourceId(\"Flow Form\").instance(0)");
-                                await flowForm.waitForDisplayed({ timeout: 1200000 });
-                                if (await flowForm.isDisplayed()) {
-                                  await flowForm.click();
-                                  console.log('Clicked on flowForm');
-                                }
-
-                              const scheduleNextButton = await driver.$("accessibility id:Next");
-                              await scheduleNextButton.waitForDisplayed({ timeout: 1200000 });
-                              await scheduleNextButton.click();
-
-                              const scheduleFinishButton = await driver.$("accessibility id:Schedule & Finish");
-                              await scheduleFinishButton.waitForDisplayed({ timeout: 1200000 });
-                              await scheduleFinishButton.click();
-
-                              const homeButton = await driver.$("accessibility id:Home");
-                              await homeButton.waitForDisplayed({ timeout: 1200000 });
-                              await homeButton.click();
-
-                              const menuButton = await driver.$("accessibility id:Menu");
-                              await menuButton.waitForDisplayed({ timeout: 1200000 });
-                              await menuButton.click();
-
-                              const logoutButton = await driver.$("accessibility id:Logout");
-                              await logoutButton.waitForDisplayed({ timeout: 1200000 });
-                              await logoutButton.click();
-
-                              const confirmLogoutButton = await driver.$("accessibility id:Yes");
-                              await confirmLogoutButton.waitForDisplayed({ timeout: 1200000 });
-                              await confirmLogoutButton.click();
- 
-                                   } catch (error) {
-                                     console.error('Test failed:', error);
-                                     throw error;
-                                   }
-                                 }
-                               
-                                 it('should create a complete workout plan with exercises and scheduling', async () => {
-                                   //await runTest();
-                                 });
-                               });
-                               
+                                it('should create a complete workout plan with exercises and scheduling', async () => {
+                                  //await runTest();
+                                });
+                              });
