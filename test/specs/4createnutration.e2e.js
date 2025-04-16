@@ -123,7 +123,7 @@ describe('Create Plan Flow', () => {
                 const el2 = await $('android=new UiSelector().text("Enter plan name")');
                 await el2.waitForDisplayed({ timeout: 10000 });
                 await el2.click();
-                await el2.setValue('nutrationplan');
+                await el2.setValue('nutrationautoma');
                 console.log('Entered plan name');
 
                 const el3 = await $('//android.widget.TextView[@text="Nutrition"]');
