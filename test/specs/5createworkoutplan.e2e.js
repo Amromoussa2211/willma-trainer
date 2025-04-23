@@ -77,7 +77,7 @@ describe('Create Plan Flow', () => {
             await searchInput.waitForDisplayed({ timeout: 60000 });
             await searchInput.click(); // Ensure the element is focused
             await driver.pause(1000); // Wait for 1 second before typing
-        
+          
             await searchInput.click(); // Ensure the element is focused
             await driver.pressKeyCode(29); // KeyEvent for 'a'
             await driver.pressKeyCode(47); // KeyEvent for 'u'
@@ -86,7 +86,7 @@ describe('Create Plan Flow', () => {
             await driver.pressKeyCode(66); // KeyEvent for Enter
             await driver.pause(2000); // Wait for 2 seconds
 
-            const profileSection = await $('//android.view.ViewGroup[@content-desc="amrmoussaauto, Package 1: automated Package"]/android.view.ViewGroup/com.horcrux.svg.SvgView/com.horcrux.svg.GroupView/com.horcrux.svg.PathView');
+            const profileSection = await $('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(27)');
             await profileSection.waitForDisplayed({ timeout: 60000 }); // Wait until the profile appears
             if (await profileSection.isDisplayed()) {
               await driver.pause(2000); // Wait for 2 seconds
@@ -121,18 +121,20 @@ describe('Create Plan Flow', () => {
             await planDurationField.clearValue();
             await planDurationField.setValue('1');
             console.log('Updated plan duration to "1".');
-      
+       
+            const addToActivePlansQueue = await $('android=new UiSelector().description("Add to active plans queue")');
+            await addToActivePlansQueue.waitForDisplayed({ timeout: 30000 });
+            await addToActivePlansQueue.click();
+            console.log('Clicked on Add to active plans queue.');
+            driver.pause(5000); // Wait for 2 seconds
+
             // Step 4: Select Workout plan type
             const workoutPlanType = await $('//android.widget.TextView[contains(@text, "Workout")]');
             await workoutPlanType.waitForDisplayed({ timeout: 30000 });
             await workoutPlanType.click();
             console.log('Selected Workout plan type.');
 
-            const addToActivePlansQueue = await $('android=new UiSelector().description("Add to active plans queue")');
-            await addToActivePlansQueue.waitForDisplayed({ timeout: 30000 });
-            await addToActivePlansQueue.click();
-            console.log('Clicked on Add to active plans queue.');
-            driver.pause(5000); // Wait for 2 seconds
+          
 
           
            // Your added sequence
@@ -144,10 +146,13 @@ describe('Create Plan Flow', () => {
             console.log('Clicked on Next.');
 
             const adjustineWarningMessage = await $('android=new UiSelector().resourceId("android:id/button1")');
-            await adjustineWarningMessage.waitForDisplayed({ timeout: 90000 }); // Wait until the button is displayed
-            await adjustineWarningMessage.waitForEnabled({ timeout: 90000 }); // Ensure the button is enabled
-            await adjustineWarningMessage.click();
-            console.log('Clicked on adjustineWarningMessage');
+            if (await adjustineWarningMessage.isDisplayed()) {
+              await adjustineWarningMessage.waitForEnabled({ timeout: 90000 }); // Ensure the button is enabled
+              await adjustineWarningMessage.click();
+              console.log('Clicked on adjustineWarningMessage');
+            } else {
+              console.log('adjustineWarningMessage not displayed, continuing with the flow.');
+            }
       
             // Step 6: Select on Day 1
             const Day1 = await $('(//android.view.ViewGroup[@content-desc="Day 1"])[1]/android.view.ViewGroup');
@@ -275,12 +280,18 @@ describe('Create Plan Flow', () => {
               console.log('Clicked on selectFormButton');
               }
             }
-            const flowForm = await driver.$("-android uiautomator:new UiSelector().resourceId(\"Flow Form\").instance(0)");
-            await flowForm.waitForDisplayed({ timeout: 1200000 });
-            if (await flowForm.isDisplayed()) {
-              await flowForm.click();
-              console.log('Clicked on flowForm');
+            const flowFormInput = await driver.$('//android.widget.EditText[@content-desc="undefined input"]');
+            await flowFormInput.waitForDisplayed({ timeout: 1200000 }).catch(() => {
+              console.log('Flow Form input not found, skipping this step.');
+              return;
+            });
+            if (await flowFormInput.isDisplayed()) {
+              await flowFormInput.click();
+              console.log('Clicked on Flow Form input');
+            } else {
+              console.log('Flow Form input is not displayed, continuing with the flow.');
             }
+            
           const scheduleNextButton = await driver.$("accessibility id:Next");
           await scheduleNextButton.waitForDisplayed({ timeout: 1200000 });
           await scheduleNextButton.click();

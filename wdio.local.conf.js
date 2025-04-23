@@ -1,5 +1,4 @@
 const localConfig = {
-  specs: ['./test/specs/**/*.js'], // Ensure this path matches your test files
   capabilities: [
     {
       platformName: 'Android',
@@ -17,6 +16,8 @@ const localConfig = {
       'appium:skipServerInstallation': true,
       'appium:debug': true, // Enable Appium debug logs
       'appium:networkLogs': true, // Enable network logs
+      'appium:appiumLogs': true, // Enable Appium server logs
+      'appium:deviceLogs': true, // Enable device logs
     }
   ]
 };
