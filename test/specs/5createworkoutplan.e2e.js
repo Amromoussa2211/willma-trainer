@@ -1,6 +1,9 @@
 import { expect } from 'chai';
 import { faker } from '@faker-js/faker';
 
+
+
+
 async function clickWithRetry(element, retries = 3) {
     while (retries > 0) {
         try {
@@ -17,33 +20,31 @@ async function clickWithRetry(element, retries = 3) {
 
 describe('Create Plan Flow', () => {
     before(async () => {
-        try {
-            // Launch the app
-            await driver.startActivity(
-                'com.willma.staging',
-                'com.willma.staging.MainActivity'
-            );
-            console.log('App launched successfully.');
+        // Launch the app
+        await driver.startActivity(
+            'com.willma.staging',
+            'com.willma.staging.MainActivity'
+        );
+        console.log('App launched successfully.');
 
-            // Login steps
-            const emailInput = await $('//android.widget.EditText[@resource-id="email-input"]');
-            await emailInput.waitForDisplayed({ timeout: 60000 });
-            await emailInput.setValue('femojo8968@deenur.com');
-            console.log('Entered email.');
-
-            const passwordInput = await $('//android.widget.EditText[@resource-id="password-input"]');
-            await passwordInput.waitForDisplayed({ timeout: 60000 });
-            await passwordInput.setValue('Willma123!');
-            console.log('Entered password.');
-
-            const signInButton = await $('//android.view.ViewGroup[@content-desc="Sign In"]');
-            await signInButton.waitForDisplayed({ timeout: 60000 });
-            await signInButton.click();
-            console.log('Clicked on Sign In button.');
-        } catch (error) {
-            console.error('Error during login:', error);
-            throw error;
-        }
+        // Login steps
+        const emailInput = await $('//android.widget.EditText[@resource-id="email-input"]');
+                   await emailInput.waitForDisplayed({ timeout: 60000 });
+                  await emailInput.setValue('femojo8968@deenur.com');
+                   console.log('Entered email.');
+              
+                   // Step 2: Enter password
+                   const passwordInput = await $('//android.widget.EditText[@resource-id="password-input"]');
+                   await passwordInput.waitForDisplayed({ timeout: 60000 });
+                   await passwordInput.setValue('Willma123!');
+                   console.log('Entered password.');
+              
+                   // Step 3: Click on Sign In button
+                   const signInButton = await $('//android.view.ViewGroup[@content-desc="Sign In"]');
+                   await signInButton.waitForDisplayed({ timeout: 60000 });
+                   await signInButton.click();
+                   console.log('Clicked on Sign In button.');
+        await runTest();
     });
 
     async function restartUiAutomator2Server() {
@@ -53,7 +54,7 @@ describe('Create Plan Flow', () => {
         console.log('UiAutomator2 server restarted.');
     }
 
-    it('should create a complete workout plan with exercises and scheduling', async () => {
+    async function runTest() {
         try {
             // Navigation to plan creation
             let retries = 3;
@@ -61,13 +62,17 @@ describe('Create Plan Flow', () => {
                 try {
                     const Clientmenuebutton = await $('android=new UiSelector().resourceId("client-management-tab")');
                     await Clientmenuebutton.waitForDisplayed({ timeout: 1200000 });
-                    await Clientmenuebutton.click();
-                    console.log('Clicked main menu icon');
-                    break; // Exit loop if successful
+                    if (await Clientmenuebutton.isDisplayed()) {
+                        await driver.pause(2000); // Wait for 2 seconds
+                        await Clientmenuebutton.click();
+                        console.log('Clicked main menu icon');
+                        break; // Exit loop if successful
+                    }
                 } catch (error) {
                     console.error('Error clicking main menu icon:', error);
                     retries--;
                     if (retries === 0) throw error; // Rethrow error if out of retries
+                    // Restart the UiAutomator2 server if it crashes
                     await restartUiAutomator2Server();
                 }
             }
@@ -77,7 +82,7 @@ describe('Create Plan Flow', () => {
             await searchInput.waitForDisplayed({ timeout: 60000 });
             await searchInput.click(); // Ensure the element is focused
             await driver.pause(1000); // Wait for 1 second before typing
-          
+        
             await searchInput.click(); // Ensure the element is focused
             await driver.pressKeyCode(29); // KeyEvent for 'a'
             await driver.pressKeyCode(47); // KeyEvent for 'u'
@@ -86,7 +91,9 @@ describe('Create Plan Flow', () => {
             await driver.pressKeyCode(66); // KeyEvent for Enter
             await driver.pause(2000); // Wait for 2 seconds
 
-            const profileSection = await $('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(27)');
+            const profileSection = await $('-android uiautomator:new UiSelector().text("amrmoussaauto")');
+      // or using XPath
+      // const profileSection = await $('//android.widget.TextView[@text="amrmoussaauto"]');
             await profileSection.waitForDisplayed({ timeout: 60000 }); // Wait until the profile appears
             if (await profileSection.isDisplayed()) {
               await driver.pause(2000); // Wait for 2 seconds
@@ -97,12 +104,22 @@ describe('Create Plan Flow', () => {
               await driver.pause(2000); // Wait for 2 seconds before retrying or handling failure
             }
 
-            const Desinnewplan = await $('android=new UiSelector().description("Design Plan")');
+         
+
+            const pakagess = await driver.$("accessibility id:Packages");
+            await pakagess.waitForDisplayed({ timeout: 1200000 });
+            await pakagess.click();
+
+            const selectpackages = await driver.$("-android uiautomator:new UiSelector().className(\"android.widget.ImageView\").instance(1)");
+            await selectpackages.waitForDisplayed({ timeout: 1200000 });
+            await selectpackages.click();
+
+            const Desinnewplan = await $('//android.view.ViewGroup[@content-desc="Design New Plan"]');
             await Desinnewplan.waitForDisplayed({ timeout: 1200000 });
             if (await Desinnewplan.isDisplayed()) {
-                await driver.pause(2000); // Wait for 2 seconds
-                await Desinnewplan.click();
-                console.log('Navigated to Plans section');
+              await driver.pause(2000); // Wait for 2 seconds
+              await Desinnewplan.click();
+              console.log('Navigated to Plans section');
             }
 
             const planNameField = await $('//android.widget.EditText[@text="Enter plan name"]');
@@ -280,7 +297,7 @@ describe('Create Plan Flow', () => {
               console.log('Clicked on selectFormButton');
               }
             }
-            const flowFormInput = await driver.$('//android.widget.EditText[@content-desc="undefined input"]');
+            const flowFormInput = await driver.$('//android.widget.ScrollView[@content-desc="undefined flatlist"]/android.view.ViewGroup/android.view.ViewGroup[1]');
             await flowFormInput.waitForDisplayed({ timeout: 1200000 }).catch(() => {
               console.log('Flow Form input not found, skipping this step.');
               return;
@@ -312,9 +329,11 @@ describe('Create Plan Flow', () => {
           await confirmLogoutButton.click();
           console.log('Workout plan creation completed successfully');
         } catch (error) {
-            console.error('Test failed:', error);
-            await driver.saveScreenshot('./error-workout-plan.png');
-            throw error;
+          console.error('Test failed:', error);
+          throw error;
         }
+      }
+      it('should create a complete workout plan with exercises and scheduling', async () => {
+        //await runTest();
+      });
     });
-});

@@ -91,7 +91,9 @@ describe('Create Plan Flow', () => {
             await driver.pressKeyCode(66); // KeyEvent for Enter
             await driver.pause(2000); // Wait for 2 seconds
 
-            const profileSection = await $('//android.view.ViewGroup[@content-desc="amrmoussaauto, Package 1: automated Package"]/android.view.ViewGroup/com.horcrux.svg.SvgView/com.horcrux.svg.GroupView/com.horcrux.svg.PathView');
+            const profileSection = await $('-android uiautomator:new UiSelector().text("amrmoussaauto")');
+      // or using XPath
+      // const profileSection = await $('//android.widget.TextView[@text="amrmoussaauto"]');
             await profileSection.waitForDisplayed({ timeout: 60000 }); // Wait until the profile appears
             if (await profileSection.isDisplayed()) {
               await driver.pause(2000); // Wait for 2 seconds
@@ -102,12 +104,22 @@ describe('Create Plan Flow', () => {
               await driver.pause(2000); // Wait for 2 seconds before retrying or handling failure
             }
 
-            const Desinnewplan = await $('android=new UiSelector().description("Design Plan")');
+         
+
+            const pakagess = await driver.$("accessibility id:Packages");
+            await pakagess.waitForDisplayed({ timeout: 1200000 });
+            await pakagess.click();
+
+            const selectpackages = await driver.$("-android uiautomator:new UiSelector().className(\"android.widget.ImageView\").instance(1)");
+            await selectpackages.waitForDisplayed({ timeout: 1200000 });
+            await selectpackages.click();
+
+            const Desinnewplan = await $('//android.view.ViewGroup[@content-desc="Design New Plan"]');
             await Desinnewplan.waitForDisplayed({ timeout: 1200000 });
             if (await Desinnewplan.isDisplayed()) {
-                await driver.pause(2000); // Wait for 2 seconds
-                await Desinnewplan.click();
-                console.log('Navigated to Plans section');
+              await driver.pause(2000); // Wait for 2 seconds
+              await Desinnewplan.click();
+              console.log('Navigated to Plans section');
             }
 
             // Plan creation flow
@@ -235,10 +247,22 @@ describe('Create Plan Flow', () => {
                              await searchField.waitForDisplayed({ timeout: 1200000 });
                              await searchField.click();
                              await searchField.addValue("orange");
+                            // Close the keyboard
+                            await driver.hideKeyboard();
+
+                            // Wait until the specified element is displayed
+                            const targetElement = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(40)');
+                            await targetElement.waitForDisplayed({ timeout: 1200000 });
+
+                            // Click on the element
+                            await targetElement.click();
+
+                            // Pause for 3 seconds
+                            await driver.pause(3000);
                              const searchResult = await driver.$("-android uiautomator:new UiSelector().className(\"android.view.ViewGroup\").instance(39)");
                              await searchResult.waitForDisplayed({ timeout: 1200000 });
                              await searchResult.click();
-                             const selectedMeal = await driver.$("accessibility id:1, 192 cal • 0g Fat • 0g Protein • 46g Carbs");
+                             const selectedMeal = await driver.$("accessibility id:Next");
                              await selectedMeal.waitForDisplayed({ timeout: 1200000 });
                              await selectedMeal.click();
                              const nextButton = await driver.$("accessibility id:Next");
@@ -259,7 +283,7 @@ describe('Create Plan Flow', () => {
                                  console.log('Clicked on selectFormButton');
                                  }
                                }
-                               const flowForm = await driver.$("-android uiautomator:new UiSelector().resourceId(\"Flow Form\").instance(0)");
+                                 const flowForm = await driver.$('//android.widget.ScrollView[@content-desc="undefined flatlist"]/android.view.ViewGroup/android.view.ViewGroup[1]');
                                await flowForm.waitForDisplayed({ timeout: 1200000 });
                                if (await flowForm.isDisplayed()) {
                                  await flowForm.click();
