@@ -194,7 +194,8 @@ jobs:
         with:
           server_address: smtp.office365.com
           server_port: 587
-          secure: true
+          secure: false
+          require_tls: true
           username: ${{ secrets.SMTP_USER }}
           password: ${{ secrets.SMTP_PASSWORD }}
           subject: "Android Tests Update - ${{ github.event.head_commit.message }}"
