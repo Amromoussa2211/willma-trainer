@@ -95,7 +95,7 @@ jobs:
           adb shell svc wifi enable
           adb shell svc data disable
           adb shell svc data enable
-          sleep 30  # Wait for network services to restart
+          sleep 30
 
       - name: Verify Internet Connection
         run: |
@@ -136,7 +136,7 @@ jobs:
       - name: Start Appium
         run: |
           npm run start:appium > appium.log 2>&1 &
-          sleep 30  # Wait for Appium to start
+          sleep 30
 
       - name: Verify Appium is Running
         run: |
@@ -144,15 +144,15 @@ jobs:
             echo "Appium is running and ready."
           else
             echo "Appium is not running or not ready."
-            cat appium.log  # Print Appium logs for debugging
+            cat appium.log
             exit 1
           fi
 
       - name: Capture Device Logs
         run: |
-          adb logcat -c  # Clear existing logs
-          adb logcat > device.log 2>&1 &  # Start capturing device logs in the background
-          echo $! > logcat_pid.txt  # Save the PID of the logcat process
+          adb logcat -c
+          adb logcat > device.log 2>&1 &
+          echo $! > logcat_pid.txt
           echo "Device logs are being captured in device.log"
 
       - name: Run Tests
@@ -183,3 +183,41 @@ jobs:
           path: |
             appium.log
             device.log
+
+  notify-manager:
+    needs: e2e-tests
+    if: always() && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Email Notification
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.office365.com
+          server_port: 587
+          secure: true
+          username: ${{ secrets.SMTP_USER }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "Android Tests Update - ${{ github.event.head_commit.message | truncate(50) }}"
+          to: fady@wilma.life
+          from: "Willma CI/CD <${{ secrets.SMTP_USER }}>"
+          html_body: |
+            <div style="font-family: Arial, sans-serif; padding: 20px;">
+              <h2 style="color: #1a73e8;">New Android Test Deployment</h2>
+              <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px;">
+                <p><strong>📦 Repository:</strong> ${{ github.repository }}</p>
+                <p><strong>🔑 Commit ID:</strong> <code>${{ github.sha }}</code></p>
+                <p><strong>👤 Author:</strong> ${{ github.actor }}</p>
+                <p><strong>📝 Message:</strong> ${{ github.event.head_commit.message }}</p>
+                <p><strong>📅 Date:</strong> ${{ github.event.head_commit.timestamp }}</p>
+              </div>
+              <p style="margin-top: 20px;">
+                <a href="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}" 
+                   style="background-color: #1a73e8; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;">
+                  View Full Commit Details
+                </a>
+              </p>
+              <p style="margin-top: 20px; color: #666;">
+                Workflow Status: ${{ job.status }}<br>
+                This is an automated notification from Willma CI/CD System
+              </p>
+            </div>

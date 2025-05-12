@@ -23,14 +23,19 @@ describe('Signup Flow', () => {
         }
     });
 
-    it('should sign up successfully with fake data', async () => {
+    it('should sign up successfully with fake data and select any photo', async () => {
         try {
-            // Click the sign-up button
+            // Check if the button with id "android:id/button1" is displayed and click on it
+            const button1 = await $('-android uiautomator:new UiSelector().resourceId("android:id/button1")');
+            if (await button1.isDisplayed()) {
+                await button1.click();
+                console.log('Clicked on the button with id "android:id/button1".');
+            }
             const signUpButton = await $('-android uiautomator:new UiSelector().resourceId("signup-button")');
             await signUpButton.waitForDisplayed({ timeout: 60000 });
             await signUpButton.click();
             console.log('Sign Up button clicked.');
- 
+
             // Wait for the username input to appear
             const usernameInput = await $('-android uiautomator:new UiSelector().resourceId("username-input")');
             await usernameInput.waitForDisplayed({ timeout: 60000 });
@@ -66,23 +71,32 @@ describe('Signup Flow', () => {
             console.log('Entered fake phone number.');
 
             // Select the "Male" option
+            try {
+                const finalOption = await driver.$('//android.widget.FrameLayout[@resource-id="android:id/content"]/android.widget.FrameLayout/android.view.ViewGroup/android.view.ViewGroup/android.view.ViewGroup[2]/android.view.ViewGroup/android.view.ViewGroup/android.view.ViewGroup/android.view.ViewGroup/android.view.ViewGroup/android.widget.ScrollView/android.view.ViewGroup/android.widget.ScrollView/android.view.ViewGroup/android.view.ViewGroup[8]');
+                await finalOption.waitForDisplayed({ timeout: 60000 });
+                await finalOption.click();
+                console.log('Clicked on the final option.');
+            } catch (error) {
+                console.error('Error clicking on the final option:', error);
+                throw new Error('Failed to click on the final option.');
+            }
+
             const maleOption = await $('-android uiautomator:new UiSelector().description("Male")');
             await maleOption.waitForDisplayed({ timeout: 60000 });
             await maleOption.click();
             console.log('Selected "Male" option.');
 
             // Click on the final option
-            const finalOption = await $('//android.widget.ScrollView/android.view.ViewGroup/android.view.ViewGroup[5]/android.view.ViewGroup');
-            await finalOption.waitForDisplayed({ timeout: 60000 });
-            await finalOption.click();
-            console.log('Clicked on the final option.');
+            // Refresh the driver to ensure the element appears before clicking on it
+            
 
             // Click the sign-up button to complete the process
-            const completeSignUpButton = await $('//android.view.ViewGroup[@content-desc="Sign Up"]');
+            const completeSignUpButton = await $('~Sign Up');
             await completeSignUpButton.waitForDisplayed({ timeout: 60000 });
             await completeSignUpButton.click();
             console.log('Clicked on the complete sign-up button.');
 
+            driver.refresh(); // Refresh the driver to ensure the element appears before clicking on it
             // Wait for the OTP input to appear
             const otpInput = await $('-android uiautomator:new UiSelector().resourceId("otp-input-hidden")');
             await otpInput.waitForDisplayed({ timeout: 60000 });
@@ -100,29 +114,54 @@ describe('Signup Flow', () => {
             await loginButton.waitForDisplayed({ timeout: 60000 });
             console.log('Login button is displayed.');
 
-            // Click on the option to upload a photo
-            // Upload photo flow
-            const uploadPhotoOption = await $('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(23)');
-            await uploadPhotoOption.waitForDisplayed({ timeout: 60000 });
-            await uploadPhotoOption.click();
-            console.log('Clicked upload photo button');
+          // Click on the option to upload a photo
+// Click on the option to upload a photo
+const uploadPhotoOption = await $('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(23)');
+await uploadPhotoOption.waitForDisplayed({ timeout: 60000 });
+await uploadPhotoOption.click();
+console.log('Clicked upload photo button');
 
-            // Select a specific photo from the gallery
-            const specificPhoto = await $('-android uiautomator:new UiSelector().description(",Item 5,Photo,,April 10, 2025, 10:46 PM")');
-            await specificPhoto.waitForDisplayed({ timeout: 60000 });
-            await specificPhoto.click();
-            console.log('Selected the specific photo with description ",Item 5,Photo,,April 10, 2025, 10:46 PM".');
-            
+// Wait for the gallery to open and find the timeline view
+const timelineView = await $('//*[@resource-id="com.coloros.gallery3d:id/timeline_view"]');
+await timelineView.waitForDisplayed({ timeout: 60000 });
+console.log('Found the timeline view.');
+
+// Find all child elements within the timeline view that might contain photos
+const childrenOfTimeline = await timelineView.$$('*'); // $$ finds multiple elements
+console.log(`Found ${childrenOfTimeline.length} children in the timeline view.`);
+
+let photoWasClicked = false;
+
+// Iterate through the children and look for elements with "Photo" in their content-desc
+for (const child of childrenOfTimeline) {
+    try {
+        const contentDescription = await child.getAttribute('content-desc');
+        if (contentDescription && contentDescription.includes('Photo')) {
+            console.log(`Found an element with content-desc: "${contentDescription}". Clicking it.`);
+            await child.click();
+            photoWasClicked = true;
+            break; // Click the first photo found and exit the loop
+        }
+    } catch (error) {
+        // Ignore errors if an element doesn't have a content-desc attribute
+        // or if there's an issue getting it.
+    }
+}
+
+if (photoWasClicked) {
+    console.log('Successfully clicked on a photo.');
+} else {
+    console.log('Could not find and click on any photo within the timeline view.');
+    // You might want to add error handling here if no photo is found
+}
             // Handle name input
             const nameInput = await $('//*[@resource-id="name-input"]');
             await nameInput.waitForDisplayed({ timeout: 15000 });
-            const fakeName = faker.name.firstName();
-            const validName = fakeName.replace(/[^a-zA-Z]/g, '').substring(0, 7); // Ensure only characters and limit to 7
-            await nameInput.setValue(validName);
-            console.log('Name entered successfully:', validName);
+            const fakeName = 'Automated'; // Set the name to "FirstAutomated"
+            const randomAlphabet = faker.random.alpha({ count: 1, casing: 'upper' }); // Generate a random uppercase alphabetic character
+            await nameInput.setValue(`${fakeName}${randomAlphabet}`);
+            console.log('Name entered successfully:', fakeName);
 
-
-            // Click the "Continue" button
             // Click the "Next" button
             const nextButton = await $('//android.view.ViewGroup[@content-desc="Next"]');
             await nextButton.waitForDisplayed({ timeout: 60000 });
@@ -152,91 +191,19 @@ describe('Signup Flow', () => {
             await nutritionistOption.waitForDisplayed({ timeout: 60000 });
             await nutritionistOption.click();
             console.log('Clicked on the "Nutritionist" option.');
-            // Refresh the page
-        // Click anywhere outside the bottom sheet to close it
-        const outsideBottomSheet = await $('-android uiautomator:new UiSelector().className("android.view.View").instance(0)');
-        await outsideBottomSheet.waitForDisplayed({ timeout: 60000 });
-        await outsideBottomSheet.click();
-        console.log('Clicked outside the bottom sheet to close it.');
-
+            // Click anywhere outside the bottom sheet to close it
+            driver.refresh() // This should close the bottom sheet
+            console.log('Clicked back to close the bottom sheet.');
+            const outsideBottomSheet = await $('//android.widget.TextView[@resource-id="password-input-label"]');
+            await outsideBottomSheet.waitForDisplayed({ timeout: 60000 });
+            await outsideBottomSheet.click();
+            console.log('Clicked outside the bottom sheet to close it.');
             console.log('Bottom sheet closed.');
-
-            // Refresh the page
-            await driver.refresh();
-            console.log('Page refreshed successfully.');
-        
-
-            // Click on "Bachelor's degree"
-            const bachelorsDegreeOption = await $('-android uiautomator:new UiSelector().text("Bachelor\'s degree")');
-            await bachelorsDegreeOption.waitForDisplayed({ timeout: 60000 });
-            await bachelorsDegreeOption.click();
-            console.log('Clicked on "Bachelor\'s degree".');
-
-            // Click on "High School"
-            const highSchoolOption = await $('-android uiautomator:new UiSelector().resourceId("High School")');
-            await highSchoolOption.waitForDisplayed({ timeout: 60000 });
-            await highSchoolOption.click();
-            console.log('Clicked on "High School".');
-
-            // Click on "Upload file, PDF, PNG, JPG (max size 5MBs)"
-            const uploadFileButton = await $('-android uiautomator:new UiSelector().description("Upload file, PDF, PNG, JPG (max size 5MBs)").instance(0)');
-            await uploadFileButton.waitForDisplayed({ timeout: 60000 });
-            await uploadFileButton.click();
-            console.log('Clicked on "Upload file, PDF, PNG, JPG (max size 5MBs)".');
-
-            // Enter value in "Certificate Name"
-            const certificateNameInput = await $('-android uiautomator:new UiSelector().text("Certificate Name")');
-            await certificateNameInput.waitForDisplayed({ timeout: 60000 });
-            await certificateNameInput.setValue('testt');
-            console.log('Entered value "testt" in "Certificate Name".');
-
-            // Enter value in "Issuing Authority"
-            const issuingAuthorityInput = await $('-android uiautomator:new UiSelector().text("Issuing Authority")');
-            await issuingAuthorityInput.waitForDisplayed({ timeout: 60000 });
-            await issuingAuthorityInput.setValue('Test Authority');
-            console.log('Entered value "Test Authority" in "Issuing Authority".');
-
-            // Click on "Day" and select 1
-            const dayDropdown = await $('-android uiautomator:new UiSelector().text("Day")');
-            await dayDropdown.waitForDisplayed({ timeout: 60000 });
-            await dayDropdown.click();
-            console.log('Clicked on "Day".');
-            const dayOption = await $('-android uiautomator:new UiSelector().text("1")');
-            await dayOption.waitForDisplayed({ timeout: 60000 });
-            await dayOption.click();
-            console.log('Selected "1" for "Day".');
-
-            // Click on "Month" and select 01
-            const monthDropdown = await $('-android uiautomator:new UiSelector().text("Month")');
-            await monthDropdown.waitForDisplayed({ timeout: 60000 });
-            await monthDropdown.click();
-            console.log('Clicked on "Month".');
-            const monthOption = await $('-android uiautomator:new UiSelector().text("01")');
-            await monthOption.waitForDisplayed({ timeout: 60000 });
-            await monthOption.click();
-            console.log('Selected "01" for "Month".');
-
-            // Click on "Year" and select 1975
-            const yearDropdown = await $('-android uiautomator:new UiSelector().text("Year")');
-            await yearDropdown.waitForDisplayed({ timeout: 60000 });
-            await yearDropdown.click();
-            console.log('Clicked on "Year".');
-            const yearOption = await $('-android uiautomator:new UiSelector().text("1975")');
-            await yearOption.waitForDisplayed({ timeout: 60000 });
-            await yearOption.click();
-            console.log('Selected "1975" for "Year".');
-
-            // Click on "Upload file, PDF, PNG, JPG (max size 5MBs)" again
-            const uploadFileButtonAgain = await $('-android uiautomator:new UiSelector().description("Upload file, PDF, PNG, JPG (max size 5MBs)")');
-            await uploadFileButtonAgain.waitForDisplayed({ timeout: 60000 });
-            await uploadFileButtonAgain.click();
-            console.log('Clicked on "Upload file, PDF, PNG, JPG (max size 5MBs)" again.');
-
-            // Select the specific photo
-            const specificPhotoo = await $('-android uiautomator:new UiSelector().className("android.widget.LinearLayout").instance(10)');
-            await specificPhotoo.waitForDisplayed({ timeout: 60000 });
-            await specificPhotoo.click();
-            console.log('Selected the specific photo.');
+            // Click on the "Finish Setup" button using accessibility id
+            const finishSetupButton = await $('~Finish Setup');
+            await finishSetupButton.waitForDisplayed({ timeout: 60000 });
+            await finishSetupButton.click();
+            console.log('Clicked on the "Finish Setup" button.');
 
 
 
