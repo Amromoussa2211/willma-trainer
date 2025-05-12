@@ -197,7 +197,7 @@ jobs:
           secure: true
           username: ${{ secrets.SMTP_USER }}
           password: ${{ secrets.SMTP_PASSWORD }}
-          subject: "Android Tests Update - ${{ github.event.head_commit.message | truncate(50) }}"
+          subject: "Android Tests Update - ${{ github.event.head_commit.message }}"
           to: fady@wilma.life
           from: "Willma CI/CD <${{ secrets.SMTP_USER }}>"
           html_body: |
