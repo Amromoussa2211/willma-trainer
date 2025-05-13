@@ -1,9 +1,186 @@
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
 jobs:
   e2e-tests:
     runs-on: ubuntu-latest
     steps:
-      # ... all your existing steps ...
-      # (no change here)
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Clear SDK Cache
+        run: |
+          rm -rf $ANDROID_HOME/licenses $ANDROID_HOME/tools $ANDROID_HOME/cmdline-tools
+
+      - name: Download Android Command Line Tools
+        run: |
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+          unzip cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools
+          mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+          rm cmdline-tools.zip
+
+      - name: Accept Android SDK Licenses
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+
+      - name: Install Android SDK Packages
+        run: |
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-30" \
+            "build-tools;33.0.0" \
+            "emulator" \
+            "system-images;android-30;google_apis;x86"
+
+      - name: Add adb to PATH
+        run: |
+          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+
+      - name: Create AVD
+        run: |
+          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
+            --name testAVD \
+            --package 'system-images;android-30;google_apis;x86' \
+            --device 'pixel' \
+            --force
+
+      - name: Fix KVM permissions
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
+          sudo gpasswd -a $USER kvm
+          sudo chmod 666 /dev/kvm
+
+      - name: Start Emulator
+        run: |
+          nohup $ANDROID_HOME/emulator/emulator -avd testAVD \
+            -no-audio \
+            -no-window \
+            -gpu swiftshader_indirect \
+            -memory 4096 \
+            -cores 4 \
+            -no-snapshot &
+
+      - name: Wait for Emulator Boot
+        run: |
+          adb wait-for-device
+          while [[ "$(adb shell getprop sys.boot_completed | tr -d '\r')" != "1" ]]; do
+            sleep 5
+            echo "Waiting for emulator to boot..."
+          done
+          echo "Emulator is fully booted."
+
+      - name: Restart Network Service
+        run: |
+          adb shell svc wifi disable
+          adb shell svc wifi enable
+          adb shell svc data disable
+          adb shell svc data enable
+          sleep 30
+
+      - name: Verify Internet Connection
+        run: |
+          adb shell "curl -I https://www.google.com"
+          if [ $? -eq 0 ]; then
+            echo "Internet connection is working."
+          else
+            echo "Internet connection is not working."
+            exit 1
+          fi
+
+      - name: List ADB Devices
+        run: adb devices
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Download and Install APK
+        run: |
+          mkdir -p apps
+          curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
+          adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
+
+      - name: Set APK_PATH Environment Variable
+        run: |
+          echo "APK_PATH=$(pwd)/apps/app-release-v15-0.3.2-2024-12-25-18-13.apk" >> $GITHUB_ENV
+
+      - name: Verify APK Installation
+        run: |
+          adb shell pm list packages | grep com.willma.client.staging
+          if [ $? -eq 0 ]; then
+            echo "APK installed successfully."
+          else
+            echo "APK installation failed."
+            exit 1
+          fi
+
+      - name: Start Appium
+        run: |
+          npm run start:appium > appium.log 2>&1 &
+          sleep 30
+
+      - name: Verify Appium is Running
+        run: |
+          if grep -q "Appium REST http interface listener started on" appium.log; then
+            echo "Appium is running and ready."
+          else
+            echo "Appium is not running or not ready."
+            cat appium.log
+            exit 1
+          fi
+
+      - name: Capture Device Logs
+        run: |
+          adb logcat -c
+          adb logcat > device.log 2>&1 &
+          echo $! > logcat_pid.txt
+          echo "Device logs are being captured in device.log"
+
+      - name: Run Tests
+        run: npm run test:ci
+
+      - name: Stop Device Logs Capture
+        run: |
+          if [ -f logcat_pid.txt ]; then
+            LOGCAT_PID=$(cat logcat_pid.txt)
+            kill -TERM $LOGCAT_PID
+            echo "Stopped logcat process with PID $LOGCAT_PID"
+          else
+            echo "No logcat process found to stop."
+          fi
+
+      - name: Upload Screenshots as Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-screenshots
+          path: screenshots/
+
+      - name: Upload Logs as Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: |
+            appium.log
+            device.log
 
   notify-manager:
     needs: e2e-tests
