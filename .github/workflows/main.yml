@@ -32,35 +32,45 @@ jobs:
           FILEID="1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz"
           FILENAME="apps/app.apk"
           
-          # Create apps directory if it doesn't exist
           mkdir -p apps
           
-          # Download using wget with custom headers
-          wget --quiet --save-cookies /tmp/cookies.txt \
-            --keep-session-cookies \
-            --no-check-certificate \
-            "https://docs.google.com/uc?export=download&id=$FILEID" \
-            -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p' > /tmp/confirm.txt
+          # Function to get download URL
+          get_download_url() {
+            curl -c ./cookie -s -L "https://drive.google.com/uc?export=download&id=${1}" | \
+            sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1/p'
+          }
           
-          # Download the actual file with confirmation
-          wget --quiet --load-cookies /tmp/cookies.txt \
-            --no-check-certificate \
-            --content-disposition \
-            "https://docs.google.com/uc?export=download&confirm=$(cat /tmp/confirm.txt)&id=$FILEID" \
-            -O "$FILENAME"
+          # Get confirmation token
+          TOKEN=$(get_download_url "$FILEID")
           
-          # Verify download size (should be > 1MB for APK)
-          if [ -f "$FILENAME" ] && [ $(stat -f%z "$FILENAME" 2>/dev/null || stat -c%s "$FILENAME") -gt 1000000 ]; then
-            echo "APK downloaded successfully"
-            echo "APK_PATH=$(pwd)/$FILENAME" >> $GITHUB_ENV
+          if [ -n "$TOKEN" ]; then
+            # Large file download with confirmation
+            echo "Downloading large file with confirmation token"
+            curl -Lb ./cookie "https://drive.google.com/uc?export=download&confirm=${TOKEN}&id=${FILEID}" -o ${FILENAME}
           else
-            echo "APK download failed or file is too small"
-            ls -l "$FILENAME" || true
+            # Direct download for small files
+            echo "Downloading file directly"
+            curl -Lb ./cookie "https://drive.google.com/uc?export=download&id=${FILEID}" -o ${FILENAME}
+          fi
+          
+          # Check file was downloaded
+          if [ -f "${FILENAME}" ]; then
+            FILE_SIZE=$(stat -c%s "${FILENAME}")
+            echo "Downloaded file size: ${FILE_SIZE} bytes"
+            
+            if [ "${FILE_SIZE}" -gt 1000000 ]; then
+              echo "APK downloaded successfully"
+              echo "APK_PATH=$(pwd)/${FILENAME}" >> $GITHUB_ENV
+            else
+              echo "Downloaded file is too small to be an APK"
+              exit 1
+            fi
+          else
+            echo "Download failed - file not found"
             exit 1
           fi
           
-          # Clean up
-          rm -f /tmp/cookies.txt /tmp/confirm.txt
+          rm -f ./cookie
 
       - name: Run Emulator and Tests
         uses: ReactiveCircus/android-emulator-runner@v2
