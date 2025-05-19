@@ -37,26 +37,25 @@ jobs:
           python -m pip install gdown
 
       - name: Download APK
+        env:
+          APK_URL: ${{ secrets.APK_DOWNLOAD_URL }} # Add this URL to your repository secrets
         run: |
-          FILEID="1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz"
           FILENAME="apps/app.apk"
           
-          echo "Downloading APK from Google Drive..."
-          curl -L -c /tmp/cookies "https://drive.google.com/uc?export=download&id=${FILEID}" -o /tmp/interpage
+          echo "Downloading APK..."
+          wget --quiet --show-progress "$APK_URL" -O "$FILENAME"
           
-          CONFIRM=$(cat /tmp/interpage | grep -Po '(?<="download_warning" value=")[^"]*(?=")')
-          if [ -n "$CONFIRM" ]; then
-            curl -L -b /tmp/cookies "https://drive.google.com/uc?export=download&confirm=$CONFIRM&id=$FILEID" -o "$FILENAME"
+          if [ -f "$FILENAME" ]; then
+            FILE_SIZE=$(stat -c%s "$FILENAME")
+            if [ "$FILE_SIZE" -gt 1000000 ]; then
+              echo "✅ APK downloaded successfully (${FILE_SIZE} bytes)"
+              echo "APK_PATH=$(pwd)/$FILENAME" >> $GITHUB_ENV
+            else
+              echo "❌ Downloaded file is too small to be an APK (${FILE_SIZE} bytes)"
+              exit 1
+            fi
           else
-            curl -L -b /tmp/cookies "https://drive.google.com/uc?export=download&id=$FILEID" -o "$FILENAME"
-          fi
-          
-          if [ -f "$FILENAME" ] && [ "$(stat -c%s "$FILENAME")" -gt "1000000" ]; then
-            echo "✅ APK downloaded successfully ($(stat -c%s "$FILENAME") bytes)"
-            echo "APK_PATH=$(pwd)/$FILENAME" >> $GITHUB_ENV
-          else
-            echo "❌ APK download failed or file is too small"
-            ls -l "$FILENAME" || true
+            echo "❌ APK download failed"
             exit 1
           fi
 
