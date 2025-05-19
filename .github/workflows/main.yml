@@ -76,23 +76,66 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
-            echo "✅ Emulator started successfully"
+            # Wait for device to be fully ready
+            echo "Waiting for device to be ready..."
+            adb wait-for-device
+            
+            # Wait for boot complete
+            while [ "$(adb shell getprop sys.boot_completed 2>/dev/null)" != "1" ]; do
+              echo "Waiting for boot completion..."
+              sleep 5
+            done
+            
+            # Additional wait for device stability
+            sleep 10
+            
+            # Verify device state
+            if adb shell echo "Device check" > /dev/null 2>&1; then
+              echo "✅ Emulator started and responsive"
+            else
+              echo "❌ Emulator not responding"
+              exit 1
+            fi
 
       - name: Setup Test Image in Emulator
         run: |
+          # Function to retry ADB commands
+          retry_adb() {
+            local max_attempts=5
+            local attempt=1
+            local command="$@"
+            
+            while [ $attempt -le $max_attempts ]; do
+              echo "Attempt $attempt of $max_attempts: $command"
+              if eval $command; then
+                return 0
+              fi
+              echo "Command failed, waiting before retry..."
+              sleep 5
+              attempt=$((attempt + 1))
+            done
+            return 1
+          }
+          
+          # Wait for device
+          echo "Ensuring device is ready..."
+          retry_adb "adb wait-for-device"
+          
           echo "Creating Pictures directory in emulator..."
-          adb shell "mkdir -p /sdcard/Pictures"
+          retry_adb "adb shell 'mkdir -p /sdcard/Pictures'"
           
           echo "Pushing image to emulator..."
-          adb push test_image.jpg /sdcard/Pictures/
+          retry_adb "adb push test_image.jpg /sdcard/Pictures/"
           
           echo "Verifying image in emulator..."
-          if adb shell ls /sdcard/Pictures/test_image.jpg > /dev/null 2>&1; then
+          if retry_adb "adb shell ls /sdcard/Pictures/test_image.jpg"; then
             echo "✅ Image pushed to emulator successfully"
             echo "Updating media store..."
-            adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/test_image.jpg
+            retry_adb "adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/test_image.jpg"
           else
             echo "❌ Failed to push image to emulator"
+            adb devices
+            adb get-state || true
             exit 1
           fi
 
