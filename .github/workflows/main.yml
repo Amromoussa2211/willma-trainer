@@ -100,11 +100,11 @@ jobs:
 
       - name: Verify Internet Connection
         run: |
-          adb shell "curl -I https://www.google.com"
-          if [ $? -eq 0 ]; then
-            echo "Internet connection is working."
+          adb shell ping -c 3 8.8.8.8
+          if [[ $? -eq 0 ]]; then
+            echo "Internet connection is working (using ping)."
           else
-            echo "Internet connection is not working."
+            echo "Internet connection is not working (ping failed)."
             exit 1
           fi
 
