@@ -1,145 +1,128 @@
-name: Android E2E Tests
+name: Android E2E Test Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
-  workflow_dispatch:  # Allow manual triggers
+    branches: [main]
+  workflow_dispatch:
 
 env:
   NODE_VERSION: '18'
   JAVA_VERSION: '17'
   ANDROID_SDK_VERSION: '34'
   ANDROID_BUILD_TOOLS_VERSION: '34.0.0'
-  ANDROID_EMU_VERSION: '31'
-  EMULATOR_TIMEOUT: 120  # Reduced timeout
-  AVD_CACHE_VERSION: '1'
+  ANDROID_EMU_VERSION: '34'  # Updated to latest
+  EMULATOR_TIMEOUT: 300
+  AVD_CACHE_VERSION: '2'
+  EMULATOR_ARGS: -no-window -gpu swiftshader_indirect -no-snapshot -no-audio -memory 2048 -cores 2 -accel on -no-boot-anim
 
 jobs:
   e2e-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 60  # Increased job timeout
+    timeout-minutes: 30
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
+      - name: Setup KVM Acceleration
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-kvm libvirt-daemon-system
+          sudo chmod 777 /dev/kvm
+          groups
+          ls -l /dev/kvm
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Set up Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: ${{ env.JAVA_VERSION }}
 
       - name: Cache Android SDK
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
-          path: $ANDROID_HOME
-          key: android-sdk-${{ runner.os }}-${{ hashFiles('**/build.gradle') }}
-          restore-keys: |
-            android-sdk-${{ runner.os }}-
+          path: |
+            ~/.android/avd/
+            $ANDROID_HOME/
+          key: android-${{ runner.os }}-${{ env.AVD_CACHE_VERSION }}-${{ hashFiles('**/build.gradle') }}
 
-      - name: Cache Node Modules
-        uses: actions/cache@v3
-        with:
-          path: node_modules
-          key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            node-modules-${{ runner.os }}-
-
-      - name: Clear SDK Cache
+      - name: Install Android Tools
         run: |
-          rm -rf $ANDROID_HOME/licenses $ANDROID_HOME/tools $ANDROID_HOME/cmdline-tools
-
-      - name: Download Android Command Line Tools
-        run: |
-          mkdir -p $ANDROID_HOME/cmdline-tools
+          mkdir -p $ANDROID_HOME/cmdline-tools/latest
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-          unzip cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools
-          mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+          unzip cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools/latest
           rm cmdline-tools.zip
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
 
-      - name: Accept Android SDK Licenses
-        run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+      - name: Accept Licenses
+        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
 
-      - name: Install Android SDK Packages
+      - name: Install Android Packages
         run: |
-          CMDLINE_TOOLS="$ANDROID_HOME/cmdline-tools/latest/bin"
-          echo "Using SDK Manager from: $CMDLINE_TOOLS"
-          "$CMDLINE_TOOLS/sdkmanager" --install \
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
             "platform-tools" \
             "platforms;android-${{ env.ANDROID_SDK_VERSION }}" \
             "build-tools;${{ env.ANDROID_BUILD_TOOLS_VERSION }}" \
             "emulator" \
             "system-images;android-${{ env.ANDROID_EMU_VERSION }};google_apis;x86_64"
 
-      - name: Add adb to PATH
+      - name: Create AVD
         run: |
-          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
-
-      - name: Create and Configure AVD
-        run: |
-          # Install system image
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "system-images;android-34;google_apis;x86_64"
-
-          # Create AVD
           echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
             --name testAVD \
-            --package 'system-images;android-34;google_apis;x86_64' \
-            --device 'pixel' \
+            --package "system-images;android-${{ env.ANDROID_EMU_VERSION }};google_apis;x86_64" \
+            --device "pixel_5" \
             --force
-
-          # Configure emulator settings
-          echo "hw.cpu.ncore=2" >> ~/.android/avd/testAVD.avd/config.ini
+          
+          # Optimize AVD config
           echo "hw.ramSize=2048" >> ~/.android/avd/testAVD.avd/config.ini
-          echo "hw.gpu.enabled=yes" >> ~/.android/avd/testAVD.avd/config.ini
-          echo "hw.gpu.mode=swiftshader_indirect" >> ~/.android/avd/testAVD.avd/config.ini
-
-      - name: Verify KVM
-        run: |
-          if [ ! -e /dev/kvm ]; then
-            echo "KVM is not available."
-            exit 1
-          else
-            echo "KVM is available."
-          fi
+          echo "hw.cpu.ncore=2" >> ~/.android/avd/testAVD.avd/config.ini
+          echo "disk.dataPartition.size=2G" >> ~/.android/avd/testAVD.avd/config.ini
 
       - name: Start Emulator
         run: |
-          nohup $ANDROID_HOME/emulator/emulator -avd testAVD \
-            -no-audio \
-            -no-window \
-            -gpu swiftshader_indirect \
-            -memory 2048 \
-            -cores 2 \
-            -no-boot-anim \
-            -no-snapshot-save \
-            -feature -VideoPlusCodecs \
-            -feature -NativeBridge \
-            -writable-system \
-            -qemu -enable-kvm &
-
-      - name: Wait for Device
-        run: |
+          $ANDROID_HOME/emulator/emulator -avd testAVD ${{ env.EMULATOR_ARGS }} &
           adb wait-for-device
-          sleep 30
 
-      - name: Setup Network
+      - name: Wait for Boot Completion
+        timeout-minutes: 5
         run: |
-          adb shell svc wifi enable
-          sleep 10
+          for i in {1..30}; do
+            if adb shell getprop sys.boot_completed | grep -q "1"; then
+              echo "Emulator ready after $((i*5)) seconds"
+              adb shell settings put global window_animation_scale 0
+              adb shell settings put global transition_animation_scale 0
+              adb shell settings put global animator_duration_scale 0
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Emulator failed to boot"
+          adb logcat -d > emulator.log
+          exit 1
 
       - name: Install APK
         run: |
-          wget --no-check-certificate 'https://drive.google.com/uc?export=download&id=1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz' -O app.apk
-          adb install app.apk
+          wget -q --show-progress -O app.apk "https://drive.google.com/uc?export=download&id=1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz"
+          adb install -t -g app.apk
           echo "APK_PATH=$(pwd)/app.apk" >> $GITHUB_ENV
+
+      - name: Download Test Image
+        run: |
+          wget ${{ env.TEST_IMAGE_URL }} -O test_image.png
+          echo "TEST_IMAGE_PATH=$(pwd)/test_image.png" >> $GITHUB_ENV
+
+      - name: Push Image to Device
+        run: |
+          adb push test_image.png /sdcard/Download/
+          adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download/test_image.png
 
       - name: Run Tests
         run: npm run test:ci
@@ -230,6 +213,7 @@ jobs:
             screenshots/
             logs/
             appium.log
+            test_image.png
           retention-days: 14
 
       - name: Generate Allure Report
@@ -258,27 +242,27 @@ jobs:
           secure: false
           username: ${{ secrets.SMTP_USER }}
           password: ${{ secrets.SMTP_PASSWORD }}
-          subject: "Android Tests Update - ${{ github.event.head_commit.message }}"
+          subject: "Android E2E Test Results - ${{ github.event.head_commit.message }}"
           to: fady@wilma.life, amr.ibrahim@willma.life
           from: "Willma CI/CD <${{ secrets.SMTP_USER }}>"
           html_body: |
             <div style="font-family: Arial, sans-serif; padding: 20px;">
-              <h2 style="color: #1a73e8;">New Android Test Deployment</h2>
+              <h2 style="color: #1a73e8;">Android End-to-End Test Results</h2>
               <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px;">
                 <p><strong>📦 Repository:</strong> ${{ github.repository }}</p>
                 <p><strong>🔑 Commit ID:</strong> <code>${{ github.sha }}</code></p>
                 <p><strong>👤 Author:</strong> ${{ github.actor }}</p>
                 <p><strong>📝 Message:</strong> ${{ github.event.head_commit.message }}</p>
                 <p><strong>📅 Date:</strong> ${{ github.event.head_commit.timestamp }}</p>
+                <p><strong>🔄 Workflow Status:</strong> ${{ needs.e2e-tests.result }}</p>
               </div>
               <p style="margin-top: 20px;">
-                <a href="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
+                <a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
                    style="background-color: #1a73e8; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;">
-                  View Full Commit Details
+                  View Workflow Details
                 </a>
               </p>
               <p style="margin-top: 20px; color: #666;">
-                Workflow Status: ${{ job.status }}<br>
                 This is an automated notification from Willma CI/CD System
               </p>
             </div>
