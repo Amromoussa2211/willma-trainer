@@ -27,32 +27,26 @@ jobs:
           mkdir -p logs
           mkdir -p apps
 
+      - name: Install gdrive
+        run: |
+          wget https://github.com/glotlabs/gdrive/releases/download/3.9.0/gdrive_linux-x64.tar.gz
+          tar -xvf gdrive_linux-x64.tar.gz
+          chmod +x gdrive
+          sudo mv gdrive /usr/local/bin/gdrive
+
       - name: Download APK from Google Drive
         run: |
           FILEID="1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz"
           FILENAME="apps/app.apk"
-          COOKIES="/tmp/cookies.txt"
           
           echo "Downloading large APK from Google Drive..."
-          # First get the warning page and confirmation code
-          curl -sc $COOKIES \
-            "https://drive.google.com/uc?export=download&id=${FILEID}" > /tmp/warn.html
+          gdrive download $FILEID --path $FILENAME
           
-          # Extract code from warning page
-          CODE=$(cat /tmp/warn.html | grep -oP 'confirm=\K[^&]+' || true)
-          
-          # Download with confirmation code (needed for files > 100MB)
-          echo "Starting large file download..."
-          curl -Lb $COOKIES \
-            "https://drive.google.com/uc?export=download&confirm=${CODE}&id=${FILEID}" \
-            -o "$FILENAME"
-          
-          # Verify file size (expecting ~123MB)
           if [ -f "$FILENAME" ]; then
             SIZE=$(stat -c%s "$FILENAME")
             echo "Downloaded file size: $SIZE bytes"
-            if [ "$SIZE" -gt 100000000 ]; then # More than 100MB
-              echo "✅ APK downloaded successfully"
+            if [ "$SIZE" -gt 100000000 ]; then
+              echo "✅ APK downloaded successfully ($SIZE bytes)"
               echo "APK_PATH=$(pwd)/$FILENAME" >> $GITHUB_ENV
             else
               echo "❌ Downloaded file is too small for expected APK"
