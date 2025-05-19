@@ -20,32 +20,29 @@ jobs:
 
       - name: Install Dependencies
         run: npm install
+
+      - name: Create Directories
+        run: |
+          mkdir -p screenshots
+          mkdir -p logs
+          mkdir -p apps
       
       - name: Download APK
         run: |
-          FILEID="1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz"
-          FILENAME="app.apk"
+          # Direct download from Azure/AWS/GitHub (replace with your actual APK URL)
+          wget -O apps/app.apk "https://github.com/YOUR_ORG/YOUR_REPO/releases/download/latest/app.apk" || {
+            echo "Failed to download APK"
+            exit 1
+          }
           
-          # Get the download cookie and confirm code
-          COOKIES=$(curl -sc /tmp/cookie "https://drive.google.com/uc?export=download&id=${FILEID}" | grep -o 'download_warning.*' | cut -d'=' -f2)
-          
-          # Download the file with confirmation
-          curl -Lb /tmp/cookie "https://drive.google.com/uc?export=download&confirm=${COOKIES}&id=${FILEID}" -o ${FILENAME}
-          
-          # Verify file was downloaded and is an APK
-          if [ ! -f ${FILENAME} ]; then
-            echo "Failed to download APK file"
+          # Verify APK file
+          if [ -f "apps/app.apk" ]; then
+            echo "APK downloaded successfully"
+            echo "APK_PATH=$(pwd)/apps/app.apk" >> $GITHUB_ENV
+          else
+            echo "APK file not found after download"
             exit 1
           fi
-          
-          # Check file type
-          if ! file ${FILENAME} | grep -q "Zip archive data" && ! file ${FILENAME} | grep -q "Android package"; then
-            echo "Downloaded file is not a valid APK"
-            exit 1
-          fi
-          
-          echo "APK downloaded successfully and verified"
-          echo "APK_PATH=$(pwd)/${FILENAME}" >> $GITHUB_ENV
 
       - name: Run Emulator and Tests
         uses: ReactiveCircus/android-emulator-runner@v2
@@ -62,6 +59,10 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
+            # Start Appium in background
+            npx appium > logs/appium.log 2>&1 &
+            sleep 10
+            
             # Download test image
             wget "https://th.bing.com/th/id/R.4ff14a349cf0a4cc3db350284d6e9b34?rik=LRfd%2fxvzoMMotg&pid=ImgRaw&r=0" -O test_image.jpg
             
@@ -88,17 +89,20 @@ jobs:
             fi
             
             # Install APK with verbose output
-            adb install -r -t -g app.apk || {
+            adb install -r -t -g ${{ env.APK_PATH }} || {
               echo "APK installation failed"
-              adb logcat -d > installation_failure.log
-              cat installation_failure.log
+              adb logcat -d > logs/device.log
               exit 1
             }
             
             # Verify installation
             if adb shell pm list packages | grep -q "com.willma.staging"; then
               echo "APK installed successfully"
-              npm run test:ci
+              npm run test:ci || {
+                echo "Tests failed"
+                adb logcat -d > logs/device.log
+                exit 1
+              }
             else
               echo "Package not found after installation"
               exit 1
@@ -109,7 +113,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-screenshots
-          path: screenshots/
+          path: |
+            screenshots/
+            logs/*.log
+          if-no-files-found: warn
 
       - name: Upload Logs
         if: always()
@@ -117,8 +124,9 @@ jobs:
         with:
           name: test-logs
           path: |
-            appium.log
-            device.log
+            logs/appium.log
+            logs/device.log
+          if-no-files-found: warn
 
   notify-manager:
     needs: e2e-tests
