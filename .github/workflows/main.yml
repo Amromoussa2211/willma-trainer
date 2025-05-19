@@ -32,43 +32,35 @@ jobs:
           FILEID="1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz"
           FILENAME="apps/app.apk"
           
-          # Create temporary cookie file
-          touch /tmp/cookies.txt
+          # Create apps directory if it doesn't exist
+          mkdir -p apps
           
-          # Get download cookie and confirmation code
-          curl -c /tmp/cookies.txt -s -L "https://drive.google.com/uc?export=download&id=$FILEID" > /tmp/interpage
+          # Download using wget with custom headers
+          wget --quiet --save-cookies /tmp/cookies.txt \
+            --keep-session-cookies \
+            --no-check-certificate \
+            "https://docs.google.com/uc?export=download&id=$FILEID" \
+            -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p' > /tmp/confirm.txt
           
-          # Extract confirmation code
-          CONFIRM=$(cat /tmp/interpage | grep -Po '(?<="download_warning" value=")[^"]*(?=")')
+          # Download the actual file with confirmation
+          wget --quiet --load-cookies /tmp/cookies.txt \
+            --no-check-certificate \
+            --content-disposition \
+            "https://docs.google.com/uc?export=download&confirm=$(cat /tmp/confirm.txt)&id=$FILEID" \
+            -O "$FILENAME"
           
-          if [ -n "$CONFIRM" ]; then
-            # If confirmation needed, download with confirmation code
-            curl -Lb /tmp/cookies.txt "https://drive.google.com/uc?export=download&confirm=$CONFIRM&id=$FILEID" -o "$FILENAME"
-          else
-            # Direct download if no confirmation needed
-            curl -Lb /tmp/cookies.txt "https://drive.google.com/uc?export=download&id=$FILEID" -o "$FILENAME"
-          fi
-          
-          # Verify download
-          if [ -f "$FILENAME" ]; then
+          # Verify download size (should be > 1MB for APK)
+          if [ -f "$FILENAME" ] && [ $(stat -f%z "$FILENAME" 2>/dev/null || stat -c%s "$FILENAME") -gt 1000000 ]; then
             echo "APK downloaded successfully"
             echo "APK_PATH=$(pwd)/$FILENAME" >> $GITHUB_ENV
           else
-            echo "APK download failed"
+            echo "APK download failed or file is too small"
+            ls -l "$FILENAME" || true
             exit 1
           fi
           
           # Clean up
-          rm -f /tmp/cookies.txt /tmp/interpage
-          
-          # Verify APK file
-          if [ -f "apps/app.apk" ]; then
-            echo "APK downloaded successfully"
-            echo "APK_PATH=$(pwd)/apps/app.apk" >> $GITHUB_ENV
-          else
-            echo "APK file not found after download"
-            exit 1
-          fi
+          rm -f /tmp/cookies.txt /tmp/confirm.txt
 
       - name: Run Emulator and Tests
         uses: ReactiveCircus/android-emulator-runner@v2
