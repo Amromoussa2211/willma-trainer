@@ -12,10 +12,11 @@ env:
   JAVA_VERSION: '17'
   ANDROID_SDK_VERSION: '34'
   ANDROID_BUILD_TOOLS_VERSION: '34.0.0'
-  ANDROID_EMU_VERSION: '34'  # Updated to latest
+  ANDROID_EMU_VERSION: '34'
   EMULATOR_TIMEOUT: 300
   AVD_CACHE_VERSION: '2'
   EMULATOR_ARGS: -no-window -gpu swiftshader_indirect -no-snapshot -no-audio -memory 2048 -cores 2 -accel on -no-boot-anim
+  APK_PACKAGE: 'com.willma.client.staging'
 
 jobs:
   e2e-tests:
@@ -25,14 +26,6 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
-      - name: Setup KVM Acceleration
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y qemu-kvm libvirt-daemon-system
-          sudo chmod 777 /dev/kvm
-          groups
-          ls -l /dev/kvm
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -45,6 +38,9 @@ jobs:
           distribution: 'zulu'
           java-version: ${{ env.JAVA_VERSION }}
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Cache Android SDK
         uses: actions/cache@v4
         with:
@@ -53,66 +49,36 @@ jobs:
             $ANDROID_HOME/
           key: android-${{ runner.os }}-${{ env.AVD_CACHE_VERSION }}-${{ hashFiles('**/build.gradle') }}
 
-      - name: Install Android Tools
-        run: |
-          mkdir -p $ANDROID_HOME/cmdline-tools/latest
-          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-          unzip cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools/latest
-          rm cmdline-tools.zip
-          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
+      - name: Start Android Emulator
+        uses: ReactiveCircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.ANDROID_EMU_VERSION }}
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          emulator-options: ${{ env.EMULATOR_ARGS }}
+          disable-animations: true
+          script: echo "Emulator is ready"
 
-      - name: Accept Licenses
-        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+      - name: Install Dependencies
+        run: npm install
 
-      - name: Install Android Packages
-        run: |
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
-            "platform-tools" \
-            "platforms;android-${{ env.ANDROID_SDK_VERSION }}" \
-            "build-tools;${{ env.ANDROID_BUILD_TOOLS_VERSION }}" \
-            "emulator" \
-            "system-images;android-${{ env.ANDROID_EMU_VERSION }};google_apis;x86_64"
-
-      - name: Create AVD
-        run: |
-          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
-            --name testAVD \
-            --package "system-images;android-${{ env.ANDROID_EMU_VERSION }};google_apis;x86_64" \
-            --device "pixel_5" \
-            --force
-          
-          # Optimize AVD config
-          echo "hw.ramSize=2048" >> ~/.android/avd/testAVD.avd/config.ini
-          echo "hw.cpu.ncore=2" >> ~/.android/avd/testAVD.avd/config.ini
-          echo "disk.dataPartition.size=2G" >> ~/.android/avd/testAVD.avd/config.ini
-
-      - name: Start Emulator
-        run: |
-          $ANDROID_HOME/emulator/emulator -avd testAVD ${{ env.EMULATOR_ARGS }} &
-          adb wait-for-device
-
-      - name: Wait for Boot Completion
-        timeout-minutes: 5
-        run: |
-          for i in {1..30}; do
-            if adb shell getprop sys.boot_completed | grep -q "1"; then
-              echo "Emulator ready after $((i*5)) seconds"
-              adb shell settings put global window_animation_scale 0
-              adb shell settings put global transition_animation_scale 0
-              adb shell settings put global animator_duration_scale 0
-              exit 0
-            fi
-            sleep 5
-          done
-          echo "Emulator failed to boot"
-          adb logcat -d > emulator.log
-          exit 1
-
-      - name: Install APK
+      - name: Download APK
         run: |
           wget -q --show-progress -O app.apk "https://drive.google.com/uc?export=download&id=1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz"
-          adb install -t -g app.apk
           echo "APK_PATH=$(pwd)/app.apk" >> $GITHUB_ENV
+
+      - name: Install APK
+        run: adb install -t -g $APK_PATH
+
+      - name: Verify APK Installation
+        run: |
+          if adb shell pm list packages | grep $APK_PACKAGE; then
+            echo "APK package found."
+          else
+            echo "APK package not found. Installation failed?"
+            exit 1
+          fi
 
       - name: Download Test Image
         run: |
@@ -123,57 +89,6 @@ jobs:
         run: |
           adb push test_image.png /sdcard/Download/
           adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download/test_image.png
-
-      - name: Run Tests
-        run: npm run test:ci
-
-      - name: Fix KVM permissions
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
-          sudo gpasswd -a $USER kvm
-          sudo chmod 666 /dev/kvm
-
-      - name: Wait for Emulator Boot
-        timeout-minutes: 10
-        run: |
-          max_attempts=30
-          counter=0
-          until adb shell getprop sys.boot_completed 2>&1 | grep -q '1' || [ $counter -eq $max_attempts ]; do
-            echo "Waiting for emulator to boot... (Attempt: $counter/$max_attempts)"
-            sleep 5
-            # Check emulator process
-            if ! pgrep -f "emulator" > /dev/null; then
-              echo "Emulator process died. Restarting..."
-              $ANDROID_HOME/emulator/emulator -avd testEmulator -no-window &
-            fi
-            counter=$((counter + 1))
-            sleep 10
-          done
-
-          if [ $counter -eq $max_attempts ]; then
-            echo "Emulator boot timeout. Dumping logs..."
-            adb logcat -d
-            exit 1
-          fi
-
-          echo "Emulator booted successfully!"
-          adb shell settings put global window_animation_scale 0
-          adb shell settings put global transition_animation_scale 0
-          adb shell settings put global animator_duration_scale 0
-
-      - name: Install Dependencies
-        run: npm install  
-
-      - name: Verify APK Installation
-        run: |
-          adb shell pm list packages | grep com.willma.client.staging
-          if [ $? -eq 0 ]; then
-            echo "APK package found."
-          else
-            echo "APK package not found. Installation failed?"
-            exit 1
-          fi
 
       - name: Start Appium
         run: |
@@ -199,9 +114,12 @@ jobs:
           on_retry_command: |
             adb emu kill
             sleep 5
-            $ANDROID_HOME/emulator/emulator -avd testEmulator -no-window &
+            $ANDROID_HOME/emulator/emulator -avd testAVD ${{ env.EMULATOR_ARGS }} &
             sleep 30
             adb wait-for-device
+            pkill -f appium || true
+            npm run start:appium > appium.log 2>&1 &
+            sleep 30
 
       - name: Upload Test Results
         if: always()
@@ -218,8 +136,7 @@ jobs:
 
       - name: Generate Allure Report
         if: always()
-        run: |
-          npm run generate-report
+        run: npm run generate-report
 
       - name: Upload Allure Report
         if: always()
@@ -242,7 +159,8 @@ jobs:
           secure: false
           username: ${{ secrets.SMTP_USER }}
           password: ${{ secrets.SMTP_PASSWORD }}
-          subject: "Android E2E Test Results - ${{ github.event.head_commit.message }}"
+          subject: |
+            Android E2E Test Results - ${{ github.event.pull_request.title || github.event.head_commit.message || 'No commit message' }}
           to: fady@wilma.life, amr.ibrahim@willma.life
           from: "Willma CI/CD <${{ secrets.SMTP_USER }}>"
           html_body: |
