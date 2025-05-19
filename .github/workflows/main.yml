@@ -29,11 +29,37 @@ jobs:
       
       - name: Download APK
         run: |
-          # Direct download from Azure/AWS/GitHub (replace with your actual APK URL)
-          wget -O apps/app.apk "https://github.com/YOUR_ORG/YOUR_REPO/releases/download/latest/app.apk" || {
-            echo "Failed to download APK"
+          FILEID="1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz"
+          FILENAME="apps/app.apk"
+          
+          # Create temporary cookie file
+          touch /tmp/cookies.txt
+          
+          # Get download cookie and confirmation code
+          curl -c /tmp/cookies.txt -s -L "https://drive.google.com/uc?export=download&id=$FILEID" > /tmp/interpage
+          
+          # Extract confirmation code
+          CONFIRM=$(cat /tmp/interpage | grep -Po '(?<="download_warning" value=")[^"]*(?=")')
+          
+          if [ -n "$CONFIRM" ]; then
+            # If confirmation needed, download with confirmation code
+            curl -Lb /tmp/cookies.txt "https://drive.google.com/uc?export=download&confirm=$CONFIRM&id=$FILEID" -o "$FILENAME"
+          else
+            # Direct download if no confirmation needed
+            curl -Lb /tmp/cookies.txt "https://drive.google.com/uc?export=download&id=$FILEID" -o "$FILENAME"
+          fi
+          
+          # Verify download
+          if [ -f "$FILENAME" ]; then
+            echo "APK downloaded successfully"
+            echo "APK_PATH=$(pwd)/$FILENAME" >> $GITHUB_ENV
+          else
+            echo "APK download failed"
             exit 1
-          }
+          fi
+          
+          # Clean up
+          rm -f /tmp/cookies.txt /tmp/interpage
           
           # Verify APK file
           if [ -f "apps/app.apk" ]; then
