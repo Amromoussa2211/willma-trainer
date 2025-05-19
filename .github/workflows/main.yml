@@ -50,18 +50,7 @@ jobs:
             exit 1
           fi
 
-      - name: Download Test Image
-        run: |
-          echo "Downloading test image..."
-          wget "https://th.bing.com/th/id/R.4ff14a349cf0a4cc3db350284d6e9b34?rik=LRfd%2fxvzoMMotg&pid=ImgRaw&r=0" -O test_image.jpg
-          if [ -f "test_image.jpg" ]; then
-            echo "✅ Test image downloaded successfully"
-          else
-            echo "❌ Failed to download test image"
-            exit 1
-          fi
-
-      - name: Start Emulator and Setup Test Image
+      - name: Start Emulator
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
           api-level: 29
@@ -75,25 +64,12 @@ jobs:
           disable-animations: true
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          script: >-
-            adb wait-for-device;
-            count=0;
-            while [ $count -lt 30 ] && [ "$(adb shell getprop sys.boot_completed 2>/dev/null)" != "1" ]; do
-              echo "Waiting for boot completion... ($count/30)";
-              sleep 10;
-              count=$((count + 1));
-            done;
-            if [ "$(adb shell getprop sys.boot_completed 2>/dev/null)" = "1" ]; then
-              echo "✅ Device boot completed";
-              sleep 10;
-              echo "Setting up test image...";
-              adb shell "mkdir -p /sdcard/Pictures";
-              adb push test_image.jpg /sdcard/Pictures/;
-              adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/test_image.jpg;
-              echo "✅ Setup complete";
-            else
-              echo "❌ Device boot timeout";
-              exit 1;
+          script: |
+            adb wait-for-device
+            echo "Waiting for device to be ready..."
+            sleep 10
+            adb devices -l
+            echo "✅ Emulator started"
 
       - name: Start Appium Server
         run: |
