@@ -1,140 +1,186 @@
-# name: Android E2E Tests (Fixed Appium Path)
+# name: Android E2E Test Pipeline
 
 # on:
 #   push:
-#     branches:
-#       - main
+#     branches: [main]
 #   pull_request:
-#     branches:
-#       - main
+#     branches: [main]
+#   workflow_dispatch:
+
+# env:
+#   NODE_VERSION: '18'
+#   JAVA_VERSION: '17'
+#   ANDROID_SDK_VERSION: '34'
+#   ANDROID_BUILD_TOOLS_VERSION: '34.0.0'
+#   ANDROID_EMU_VERSION: '34'
+#   EMULATOR_TIMEOUT: 300
+#   AVD_CACHE_VERSION: '2'
+#   EMULATOR_ARGS: -no-window -gpu swiftshader_indirect -no-snapshot -no-audio -memory 2048 -cores 2 -accel on -no-boot-anim
+#   APK_PACKAGE: 'com.willma.client.staging'
 
 # jobs:
 #   e2e-tests:
-#     runs-on: ubuntu-22.04
-
-#     services:
-#       appium:
-#         image: appium/appium:latest
-#         ports:
-#           - 4723:4723
-#         options: >-
-#           --health-cmd "curl -f http://localhost:4723/status || exit 1"
-#           --health-interval 10s
-#           --health-timeout 30s
-#           --health-retries 5
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 30
 
 #     steps:
-#     - name: Checkout Code
-#       uses: actions/checkout@v3
+#       - name: Checkout Code
+#         uses: actions/checkout@v4
 
-#     - name: Set up Node.js
-#       uses: actions/setup-node@v3
-#       with:
-#         node-version: 18
+#       - name: Set up Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: ${{ env.NODE_VERSION }}
 
-#     - name: Set up Android SDK
-#       uses: android-actions/setup-android@v2
+#       - name: Set up Java
+#         uses: actions/setup-java@v4
+#         with:
+#           distribution: 'zulu'
+#           java-version: ${{ env.JAVA_VERSION }}
 
-#     - name: Install dependencies
-#       run: npm install
+#       - name: Set up Android SDK
+#         uses: android-actions/setup-android@v3
 
-#     - name: Start Android Emulator
-#       uses: reactivecircus/android-emulator-runner@v2
-#       with:
-#         api-level: 30
-#         target: google_apis
-#         arch: x86_64
-#         profile: Pixel_4_API_30
-#         emulator-options: "-no-window -no-audio -gpu swiftshader_indirect -no-boot-anim"
-#         disable-animations: true
-#         force-avd-creation: true
+#       - name: Cache Android SDK
+#         uses: actions/cache@v4
+#         with:
+#           path: |
+#             ~/.android/avd/
+#             $ANDROID_HOME/
+#           key: android-${{ runner.os }}-${{ env.AVD_CACHE_VERSION }}-${{ hashFiles('**/build.gradle') }}
 
-#     - name: Verify emulator boot
-#       run: adb shell getprop sys.boot_completed | grep 1
+#       - name: Start Android Emulator
+#         uses: ReactiveCircus/android-emulator-runner@v2
+#         with:
+#           api-level: ${{ env.ANDROID_EMU_VERSION }}
+#           target: google_apis
+#           arch: x86_64
+#           profile: pixel_5
+#           emulator-options: ${{ env.EMULATOR_ARGS }}
+#           disable-animations: true
+#           script: echo "Emulator is ready"
 
-#     - name: Download and install APK
-#       run: |
-#         mkdir -p apps
-#         curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
-#         adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
+#       - name: Install Dependencies
+#         run: npm install
 
-#     - name: Run E2E tests
-#       env:
-#         DEVICE_NAME: "emulator-5554"
-#         APK_PATH: "./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk"
-#         APPIUM_HOST: "localhost"
-#         APPIUM_PORT: "4723"
-#         APPIUM_PATH: "/" # Updated to match Appium 2.x default base path
-#       run: npm run test:ci
+#       - name: Download APK
+#         run: |
+#           wget -q --show-progress -O app.apk "https://drive.google.com/uc?export=download&id=1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz"
+#           echo "APK_PATH=$(pwd)/app.apk" >> $GITHUB_ENV
 
+#       - name: Install APK
+#         run: adb install -t -g $APK_PATH
 
-#       ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#       - name: Verify APK Installation
+#         run: |
+#           if adb shell pm list packages | grep $APK_PACKAGE; then
+#             echo "APK package found."
+#           else
+#             echo "APK package not found. Installation failed?"
+#             exit 1
+#           fi
 
-# #       name: Android Test Automation
+#       - name: Download Test Image
+#         run: |
+#           wget ${{ env.TEST_IMAGE_URL }} -O test_image.png
+#           echo "TEST_IMAGE_PATH=$(pwd)/test_image.png" >> $GITHUB_ENV
 
-# # on:
-# #   push:
-# #     branches:
-# #       - main  # Trigger on push to the main branch
-# #     paths:
-# #       - '**'  # Trigger on any changes in the repository
+#       - name: Push Image to Device
+#         run: |
+#           adb push test_image.png /sdcard/Download/
+#           adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download/test_image.png
 
-# # jobs:
-# #   test:
-# #     runs-on: ubuntu-latest
+#       - name: Start Appium
+#         run: |
+#           npm run start:appium > appium.log 2>&1 &
+#           sleep 30
 
-# #     steps:
-# #       # Step 1: Checkout the repository
-# #       - name: Checkout code
-# #         uses: actions/checkout@v4
+#       - name: Verify Appium is Running
+#         run: |
+#           if grep -q "Appium REST http interface listener started on" appium.log; then
+#             echo "Appium is running and ready."
+#           else
+#             echo "Appium is not running or not ready."
+#             cat appium.log
+#             exit 1
+#           fi
 
-# #       # Step 2: Set up JDK 17
-# #       - name: Set up JDK 17
-# #         uses: actions/setup-java@v4
-# #         with:
-# #           java-version: '17'
-# #           distribution: 'adopt'
+#       - name: Run Tests with Retry
+#         uses: nick-fields/retry@v2
+#         with:
+#           timeout_minutes: 30
+#           max_attempts: 3
+#           command: npm run test:ci
+#           on_retry_command: |
+#             adb emu kill
+#             sleep 5
+#             $ANDROID_HOME/emulator/emulator -avd testAVD ${{ env.EMULATOR_ARGS }} &
+#             sleep 30
+#             adb wait-for-device
+#             pkill -f appium || true
+#             npm run start:appium > appium.log 2>&1 &
+#             sleep 30
 
-# #       # Step 3: Install Node.js
-# #       - name: Set up Node.js
-# #         uses: actions/setup-node@v4
-# #         with:
-# #           node-version: '18'  # Use Node.js 18 (or the version you need)
-# #           cache: 'npm'
+#       - name: Upload Test Results
+#         if: always()
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: test-results
+#           path: |
+#             allure-results/
+#             screenshots/
+#             logs/
+#             appium.log
+#             test_image.png
+#           retention-days: 14
 
-# #       # Step 4: Install dependencies
-# #       - name: Install dependencies
-# #         run: npm install
+#       - name: Generate Allure Report
+#         if: always()
+#         run: npm run generate-report
 
-# #       # Step 5: Set environment variables for BrowserStack
-# #       - name: Set environment variables
-# #         run: |
-# #           echo "BROWSERSTACK_USERNAME=amromoussa_KdSLyl" >> $GITHUB_ENV
-# #           echo "BROWSERSTACK_ACCESS_KEY=EKpQhuMmc4axaaDNcJqd" >> $GITHUB_ENV
-# #           echo "APK_PATH=./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk" >> $GITHUB_ENV
+#       - name: Upload Allure Report
+#         if: always()
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: allure-report
+#           path: allure-report/
+#           retention-days: 14
 
-# #       # Step 6: Download APK (if needed)
-# #       - name: Download APK
-# #         run: |
-# #           mkdir -p apps
-# #           curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
-
-# #       # Step 7: Run tests on BrowserStack
-# #       - name: Run tests on BrowserStack
-# #         env:
-# #           BROWSERSTACK_USERNAME: ${{ env.BROWSERSTACK_USERNAME }}
-# #           BROWSERSTACK_ACCESS_KEY: ${{ env.BROWSERSTACK_ACCESS_KEY }}
-# #         run: |
-# #           npm run test:ci
-
-# #       # Step 8: Generate Allure report
-# #       - name: Generate Allure report
-# #         run: npm run generate-report
-
-# #       # Step 9: Upload Allure report as an artifact
-# #       - name: Upload Allure report
-# #         uses: actions/upload-artifact@v3
-# #         with:
-# #           name: allure-report
-# #           path: allure-report
-# #           if-no-files-found: warn
+#   notify-manager:
+#     needs: e2e-tests
+#     if: always() && github.event_name == 'push'
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Send Email Notification
+#         uses: dawidd6/action-send-mail@v5
+#         with:
+#           server_address: smtp.office365.com
+#           server_port: 587
+#           secure: false
+#           username: ${{ secrets.SMTP_USER }}
+#           password: ${{ secrets.SMTP_PASSWORD }}
+#           subject: |
+#             Android E2E Test Results - ${{ github.event.pull_request.title || github.event.head_commit.message || 'No commit message' }}
+#           to: fady@wilma.life, amr.ibrahim@willma.life
+#           from: "Willma CI/CD <${{ secrets.SMTP_USER }}>"
+#           html_body: |
+#             <div style="font-family: Arial, sans-serif; padding: 20px;">
+#               <h2 style="color: #1a73e8;">Android End-to-End Test Results</h2>
+#               <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px;">
+#                 <p><strong>📦 Repository:</strong> ${{ github.repository }}</p>
+#                 <p><strong>🔑 Commit ID:</strong> <code>${{ github.sha }}</code></p>
+#                 <p><strong>👤 Author:</strong> ${{ github.actor }}</p>
+#                 <p><strong>📝 Message:</strong> ${{ github.event.head_commit.message }}</p>
+#                 <p><strong>📅 Date:</strong> ${{ github.event.head_commit.timestamp }}</p>
+#                 <p><strong>🔄 Workflow Status:</strong> ${{ needs.e2e-tests.result }}</p>
+#               </div>
+#               <p style="margin-top: 20px;">
+#                 <a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+#                    style="background-color: #1a73e8; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;">
+#                   View Workflow Details
+#                 </a>
+#               </p>
+#               <p style="margin-top: 20px; color: #666;">
+#                 This is an automated notification from Willma CI/CD System
+#               </p>
+#             </div>
