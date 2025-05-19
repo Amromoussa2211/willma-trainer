@@ -1,4 +1,4 @@
-name: Android Emulator Tests
+name: Android CI
 
 on:
   push:
@@ -7,51 +7,71 @@ on:
     branches: [ main ]
 
 jobs:
-  android-tests:
+  test-android:
     runs-on: ubuntu-latest
 
     env:
       NODE_VERSION: 18
       JAVA_VERSION: 17
+      ANDROID_SDK_VERSION: 34
+      ANDROID_BUILD_TOOLS_VERSION: 34.0.0
+      ANDROID_EMU_VERSION: 34
+      EMULATOR_TIMEOUT: 300
+      AVD_CACHE_VERSION: 2
+      EMULATOR_ARGS: -no-window -gpu swiftshader_indirect -no-snapshot -no-audio -memory 2048 -cores 2 -accel on -no-boot-anim
       APK_PACKAGE: com.willma.client.staging
-      APK_PATH: ${{ github.workspace }}/app-release-trainer.apk  # Overriding APK_PATH in CI
+      APK_PATH: ${{ github.workspace }}/app.apk  # CI path only
 
     steps:
-    - name: 📥 Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: 🧰 Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: ${{ env.NODE_VERSION }}
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
 
-    - name: ☕ Set up Java
-      uses: actions/setup-java@v3
-      with:
-        distribution: 'zulu'
-        java-version: ${{ env.JAVA_VERSION }}
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: ${{ env.JAVA_VERSION }}
 
-    - name: 🤖 Run Android Emulator and Execute Tests
-      uses: reactivecircus/android-emulator-runner@v2
-      with:
-        api-level: 31
-        arch: x86_64
-        profile: Pixel_5
-        emulator-options: -no-window -no-audio -gpu swiftshader_indirect
-        disable-animations: true
-        script: |
-          echo "⏳ Waiting for device..."
-          adb wait-for-device
-          until adb shell getprop sys.boot_completed | grep -m 1 '1'; do
-            echo "⌛ Booting..."
-            sleep 5
-          done
+      - name: Download APK artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: trainer-apk
+          path: .
 
-          echo "✅ Installing APK at path: $APK_PATH"
-          adb install -t -g "$APK_PATH"
+      - name: Rename APK
+        run: mv ./app-release-trainer.apk app.apk
 
-          echo "📦 Installing dependencies"
-          npm ci
+      - name: Install AVD dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
 
-          echo "🚀 Running WebDriverIO tests"
-          npx wdio run ./ci.conf.js  # Your config file for CI
+      - name: Start Android Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 31
+          arch: x86_64
+          profile: pixel  # ✅ Using a stable device profile
+          emulator-options: -no-window -no-audio -gpu swiftshader_indirect
+          disable-animations: true
+          script: |
+            echo "⏳ Waiting for emulator..."
+            adb wait-for-device
+            until adb shell getprop sys.boot_completed | grep -m 1 '1'; do
+              echo "⌛ Booting..."
+              sleep 5
+            done
+
+            echo "✅ Installing APK at path: $APK_PATH"
+            adb install -t -g "$APK_PATH"
+
+            echo "📦 Installing dependencies"
+            npm ci
+
+            echo "🚀 Running WebDriverIO tests"
+            npx wdio run ./ci.conf.js
