@@ -96,15 +96,27 @@ jobs:
           adb shell svc wifi enable
           adb shell svc data disable
           adb shell svc data enable
-          sleep 30
+          sleep 60 # Increased wait time
 
-      - name: Verify Internet Connection
+      - name: Wait for Internet Connection
         run: |
-          adb shell ping -c 3 8.8.8.8
-          if [[ $? -eq 0 ]]; then
-            echo "Internet connection is working (using ping)."
-          else
-            echo "Internet connection is not working (ping failed)."
+          TIMEOUT=120 # Timeout in seconds
+          START_TIME=$(date +%s)
+          CONNECTED=false
+
+          while [ "$(date +%s)" -lt $((START_TIME + TIMEOUT)) ]; do
+            adb shell ping -c 1 8.8.8.8 > /dev/null 2>&1
+            if [ $? -eq 0 ]; then
+              echo "Internet connection is working."
+              CONNECTED=true
+              break
+            fi
+            echo "Waiting for internet connection..."
+            sleep 5
+          done
+
+          if [ "$CONNECTED" = "false" ]; then
+            echo "Internet connection check timed out."
             exit 1
           fi
 
