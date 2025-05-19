@@ -10,66 +10,78 @@ on:
 env:
   NODE_VERSION: '18'
   JAVA_VERSION: '17'
-  ANDROID_SDK_VERSION: '34'
-  ANDROID_BUILD_TOOLS_VERSION: '34.0.0'
-  ANDROID_EMU_VERSION: '34'
-  EMULATOR_TIMEOUT: 300
-  AVD_CACHE_VERSION: '2'
+  ANDROID_SDK_VERSION: '34' # Ensure this matches your project's compileSdkVersion
+  ANDROID_BUILD_TOOLS_VERSION: '34.0.0' # Ensure this matches your project's buildToolsVersion
+  ANDROID_EMU_VERSION: '34' # API level for the emulator
+  AVD_CACHE_VERSION: '3' # Increment to invalidate AVD cache if needed
   EMULATOR_ARGS: -no-window -gpu swiftshader_indirect -no-snapshot -no-audio -memory 2048 -cores 2 -accel on -no-boot-anim
   APK_PACKAGE: 'com.willma.client.staging'
+  # IMPORTANT: Replace with your actual test image URL or use a GitHub secret
+  TEST_IMAGE_URL: 'YOUR_TEST_IMAGE_URL_HERE_OR_USE_SECRET'
 
 jobs:
   e2e-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 30 # Increased timeout for potentially long E2E suites
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.1.7
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v4.0.3
         with:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Set up Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v4.2.1
         with:
           distribution: 'zulu'
           java-version: ${{ env.JAVA_VERSION }}
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v3.2.1
+        # This action will use ANDROID_SDK_VERSION, ANDROID_BUILD_TOOLS_VERSION from env
+        # You might need to specify sdk-platform and build-tools explicitly if not picked up
 
-      - name: Cache Android SDK
-        uses: actions/cache@v4
+      - name: Cache Android SDK and AVD
+        uses: actions/cache@v4.0.3
         with:
           path: |
             ~/.android/avd/
-            $ANDROID_HOME/
-          key: android-${{ runner.os }}-${{ env.AVD_CACHE_VERSION }}-${{ hashFiles('**/build.gradle') }}
+            ${{ env.ANDROID_HOME }} # Cache SDK tools, platforms, system images
+          key: android-sdk-avd-${{ runner.os }}-${{ env.AVD_CACHE_VERSION }}-${{ hashFiles('*/build.gradle', '/.gradle.kts') }}
+          restore-keys: |
+            android-sdk-avd-${{ runner.os }}-${{ env.AVD_CACHE_VERSION }}-
 
       - name: Start Android Emulator
-        uses: ReactiveCircus/android-emulator-runner@v2
+        id: start_emulator # Added ID to reference outputs
+        uses: ReactiveCircus/android-emulator-runner@v2.30.1
         with:
           api-level: ${{ env.ANDROID_EMU_VERSION }}
-          target: google_apis
+          target: google_apis # or 'default' if google_apis not needed
           arch: x86_64
           profile: pixel_5
           emulator-options: ${{ env.EMULATOR_ARGS }}
           disable-animations: true
-          script: echo "Emulator is ready"
+          emulator-boot-timeout: 600 # Increased timeout for emulator boot
+          script: |
+            adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done; input keyevent 82'
+            echo "Emulator boot completed and unlocked."
 
       - name: Install Dependencies
         run: npm install
 
       - name: Download APK
+        # WARNING: Downloading APKs from dynamic public URLs is a security risk and can be unreliable.
+        # Consider building the APK in a previous step/workflow and using artifacts,
+        # or downloading from a secure, versioned artifact repository.
         run: |
           wget -q --show-progress -O app.apk "https://drive.google.com/uc?export=download&id=1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz"
           echo "APK_PATH=$(pwd)/app.apk" >> $GITHUB_ENV
 
       - name: Install APK
-        run: adb install -t -g $APK_PATH
+        run: adb install -t -r -g $APK_PATH # Added -r to allow reinstall
 
       - name: Verify APK Installation
         run: |
@@ -82,50 +94,70 @@ jobs:
 
       - name: Download Test Image
         run: |
-          wget ${{ env.TEST_IMAGE_URL }} -O test_image.png
+          if [ -z "${{ env.TEST_IMAGE_URL }}" ] || [ "${{ env.TEST_IMAGE_URL }}" == "YOUR_TEST_IMAGE_URL_HERE_OR_USE_SECRET" ]; then
+            echo "Error: TEST_IMAGE_URL is not set. Please configure it in env variables or secrets."
+            exit 1
+          fi
+          wget --quiet "${{ env.TEST_IMAGE_URL }}" -O test_image.png
           echo "TEST_IMAGE_PATH=$(pwd)/test_image.png" >> $GITHUB_ENV
 
       - name: Push Image to Device
         run: |
-          adb push test_image.png /sdcard/Download/
+          adb push ${{ env.TEST_IMAGE_PATH }} /sdcard/Download/test_image.png
           adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download/test_image.png
 
       - name: Start Appium
         run: |
           npm run start:appium > appium.log 2>&1 &
-          sleep 30
+          sleep 30 # Initial wait, next step verifies. Consider more robust polling if needed.
 
       - name: Verify Appium is Running
         run: |
-          if grep -q "Appium REST http interface listener started on" appium.log; then
-            echo "Appium is running and ready."
-          else
-            echo "Appium is not running or not ready."
-            cat appium.log
-            exit 1
-          fi
+          for i in {1..10}; do # Retry check for Appium readiness
+            if grep -q "Appium REST http interface listener started on" appium.log; then
+              echo "Appium is running and ready."
+              exit 0
+            fi
+            echo "Waiting for Appium... (attempt $i/10)"
+            sleep 6
+          done
+          echo "Appium is not running or not ready after 60 seconds."
+          cat appium.log
+          exit 1
 
       - name: Run Tests with Retry
-        uses: nick-fields/retry@v2
+        uses: nick-fields/retry@v2.9.0 # Specific version tag
         with:
-          timeout_minutes: 30
+          timeout_minutes: 20 # Timeout for each attempt (job total timeout is 30 min)
           max_attempts: 3
           command: npm run test:ci
           on_retry_command: |
-            adb emu kill
+            echo "Test attempt failed. Retrying..."
+            adb emu kill || echo "Failed to kill emulator, it might already be stopped."
             sleep 5
-            $ANDROID_HOME/emulator/emulator -avd testAVD ${{ env.EMULATOR_ARGS }} &
-            sleep 30
+            echo "Starting emulator: ${{ steps.start_emulator.outputs.avd_name }}"
+            $ANDROID_HOME/emulator/emulator -avd ${{ steps.start_emulator.outputs.avd_name }} ${{ env.EMULATOR_ARGS }} &
+            EMULATOR_PID=$!
+            # Robust wait for emulator to be ready
             adb wait-for-device
-            pkill -f appium || true
+            echo "Emulator connected. Waiting for full boot..."
+            timeout 300 bash -c 'while [[ -z $(adb shell getprop sys.boot_completed) ]]; do echo "Waiting for sys.boot_completed..."; sleep 5; done'
+            timeout 60 adb shell input keyevent 82 || echo "Failed to unlock screen, continuing..." # Unlock screen
+            echo "Emulator restarted and boot completed."
+            # Restart Appium
+            pkill -f appium || echo "Appium not running or failed to kill."
+            sleep 5
             npm run start:appium > appium.log 2>&1 &
-            sleep 30
+            # Consider a more robust Appium ready check here instead of fixed sleep if flakiness persists
+            echo "Waiting for Appium to restart..."
+            sleep 30 # Wait for appium to restart (consider polling for readiness)
+            echo "Retrying tests now."
 
-      - name: Upload Test Results
+      - name: Upload Test Artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.3.4
         with:
-          name: test-results
+          name: test-artifacts
           path: |
             allure-results/
             screenshots/
@@ -140,7 +172,7 @@ jobs:
 
       - name: Upload Allure Report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.3.4
         with:
           name: allure-report
           path: allure-report/
@@ -148,15 +180,21 @@ jobs:
 
   notify-manager:
     needs: e2e-tests
+    # This job runs regardless of the e2e-tests outcome (success/failure)
+    # but only for 'push' events.
+    # To notify on pull_request failures as well, you could change to:
+    # if: always() && (github.event_name == 'push' || (github.event_name == 'pull_request' && needs.e2e-tests.result == 'failure'))
     if: always() && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Send Email Notification
+        # Consider pinning to a specific commit SHA for dawidd6/action-send-mail for maximum security
+        # e.g., uses: dawidd6/action-send-mail@your-chosen-commit-sha
         uses: dawidd6/action-send-mail@v5
         with:
           server_address: smtp.office365.com
           server_port: 587
-          secure: false
+          secure: false # Should be true (STARTTLS) for port 587, but check action docs
           username: ${{ secrets.SMTP_USER }}
           password: ${{ secrets.SMTP_PASSWORD }}
           subject: |
