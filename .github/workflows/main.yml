@@ -23,8 +23,29 @@ jobs:
       
       - name: Download APK
         run: |
-          wget --no-check-certificate 'https://drive.google.com/uc?export=download&id=1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz' -O app.apk
-          echo "APK_PATH=$(pwd)/app.apk" >> $GITHUB_ENV
+          FILEID="1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz"
+          FILENAME="app.apk"
+          
+          # Get the download cookie and confirm code
+          COOKIES=$(curl -sc /tmp/cookie "https://drive.google.com/uc?export=download&id=${FILEID}" | grep -o 'download_warning.*' | cut -d'=' -f2)
+          
+          # Download the file with confirmation
+          curl -Lb /tmp/cookie "https://drive.google.com/uc?export=download&confirm=${COOKIES}&id=${FILEID}" -o ${FILENAME}
+          
+          # Verify file was downloaded and is an APK
+          if [ ! -f ${FILENAME} ]; then
+            echo "Failed to download APK file"
+            exit 1
+          fi
+          
+          # Check file type
+          if ! file ${FILENAME} | grep -q "Zip archive data" && ! file ${FILENAME} | grep -q "Android package"; then
+            echo "Downloaded file is not a valid APK"
+            exit 1
+          fi
+          
+          echo "APK downloaded successfully and verified"
+          echo "APK_PATH=$(pwd)/${FILENAME}" >> $GITHUB_ENV
 
       - name: Run Emulator and Tests
         uses: ReactiveCircus/android-emulator-runner@v2
@@ -41,8 +62,28 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
-            adb install app.apk
-            npm run test:ci
+            # Verify APK exists
+            if [ ! -f app.apk ]; then
+              echo "APK file not found"
+              exit 1
+            fi
+            
+            # Install APK with verbose output
+            adb install -r -t -g app.apk || {
+              echo "APK installation failed"
+              adb logcat -d > installation_failure.log
+              cat installation_failure.log
+              exit 1
+            }
+            
+            # Verify installation
+            if adb shell pm list packages | grep -q "com.willma.staging"; then
+              echo "APK installed successfully"
+              npm run test:ci
+            else
+              echo "Package not found after installation"
+              exit 1
+            fi
 
       - name: Upload Screenshots
         if: always()
