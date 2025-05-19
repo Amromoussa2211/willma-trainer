@@ -44,6 +44,18 @@ jobs:
         # This action will use ANDROID_SDK_VERSION, ANDROID_BUILD_TOOLS_VERSION from env
         # You might need to specify sdk-platform and build-tools explicitly if not picked up
 
+      - name: Install Android SDK Packages
+        run: |
+          CMDLINE_TOOLS="$ANDROID_HOME/cmdline-tools/latest/bin"
+          echo "Using SDK Manager from: $CMDLINE_TOOLS"
+          "$CMDLINE_TOOLS/sdkmanager" --install \
+            "platform-tools" \
+            "platforms;android-31" \
+            "build-tools;31.0.0" \
+            "emulator" \
+            "system-images;android-31;google_apis;x86_64"
+          echo "y" | "$CMDLINE_TOOLS/sdkmanager" --licenses
+
       - name: Cache Android SDK and AVD
         uses: actions/cache@v4 # Changed v4.0.3 to v4
         with:
@@ -54,31 +66,52 @@ jobs:
           restore-keys: |
             android-sdk-avd-${{ runner.os }}-${{ env.AVD_CACHE_VERSION }}-
 
+      - name: Setup Android Emulator
+        run: |
+          # Verify system image is available
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --list | grep system-images
+          
+          # Accept licenses and install system image
+          echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "system-images;android-31;google_apis;x86_64"
+          
+          # Create AVD
+          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
+            --name "test" \
+            --package "system-images;android-31;google_apis;x86_64" \
+            --device "pixel" \
+            --force
+
       - name: Start Android Emulator
         id: emulator
         run: |
-          # Create and configure AVD
-          echo "no" | avdmanager create avd \
-            --name test \
-            --package "system-images;android-${{ env.ANDROID_SDK_VERSION }};google_apis;x86_64" \
-            --device 'pixel_5'
-
+          # Start ADB server
+          adb start-server
+          
           # Start emulator
-          $ANDROID_HOME/emulator/emulator \
+          nohup $ANDROID_HOME/emulator/emulator \
             -avd test \
-            -no-window \
+            -no-audio \
+            -no-boot-anim \
             -gpu swiftshader_indirect \
             -no-snapshot \
-            -noaudio \
-            -no-boot-anim \
+            -no-window \
+            -camera-back none \
+            -camera-front none \
             -memory 2048 \
+            -cores 2 \
             -accel on &
-
-          # Wait for device with timeout and health check
+          
+          # Wait for emulator
           adb wait-for-device
-          timeout 300 bash -c 'while [[ -z $(adb shell getprop sys.boot_completed) ]]; do sleep 3; done'
-          adb shell input keyevent 82
-          echo "Emulator started and ready"
+          
+          # Wait for boot completion
+          while [[ -z $(adb shell getprop sys.boot_completed 2>/dev/null) ]]; do
+            echo "Waiting for emulator to boot..."
+            sleep 5
+          done
+          
+          echo "Emulator is ready"
+          adb devices
 
       - name: Install Dependencies
         run: npm install
