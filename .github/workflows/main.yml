@@ -1,68 +1,186 @@
-name: Android Emulator Test
+name: Android E2E Test Pipeline
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18'
+  JAVA_VERSION: '17'
+  ANDROID_SDK_VERSION: '34'
+  ANDROID_BUILD_TOOLS_VERSION: '34.0.0'
+  ANDROID_EMU_VERSION: '34'
+  EMULATOR_TIMEOUT: 300
+  AVD_CACHE_VERSION: '2'
+  EMULATOR_ARGS: -no-window -gpu swiftshader_indirect -no-snapshot -no-audio -memory 2048 -cores 2 -accel on -no-boot-anim
+  APK_PACKAGE: 'com.willma.client.staging'
 
 jobs:
-  build-and-test:
+  e2e-tests:
     runs-on: ubuntu-latest
-    env:
-      NODE_VERSION: 18
-      JAVA_VERSION: 17
-      ANDROID_SDK_VERSION: 34
-      ANDROID_BUILD_TOOLS_VERSION: 34.0.0
-      ANDROID_EMU_VERSION: 34
-      EMULATOR_TIMEOUT: 300
-      AVD_CACHE_VERSION: 2
-      EMULATOR_ARGS: -no-window -gpu swiftshader_indirect -no-snapshot -no-audio -memory 2048 -cores 2 -accel on -no-boot-anim
-      APK_PACKAGE: com.willma.client.staging
-      APK_PATH: ./app-release-trainer.apk
+    timeout-minutes: 30
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Set up Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: ${{ env.JAVA_VERSION }}
 
-      - name: Download APK artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: trainer-apk
-          path: .
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: Setup Android Emulator
-        uses: reactivecircus/android-emulator-runner@v2
+      - name: Cache Android SDK
+        uses: actions/cache@v4
         with:
-          api-level: 31
-          target: default
+          path: |
+            ~/.android/avd/
+            $ANDROID_HOME/
+          key: android-${{ runner.os }}-${{ env.AVD_CACHE_VERSION }}-${{ hashFiles('**/build.gradle') }}
+
+      - name: Start Android Emulator
+        uses: ReactiveCircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.ANDROID_EMU_VERSION }}
+          target: google_apis
           arch: x86_64
-          profile: Pixel_5
-          script: echo "Emulator ready"
+          profile: pixel_5
+          emulator-options: ${{ env.EMULATOR_ARGS }}
+          disable-animations: true
+          script: echo "Emulator is ready"
 
-      - name: Install App on Emulator
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Download APK
+        run: |
+          wget -q --show-progress -O app.apk "https://drive.google.com/uc?export=download&id=1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz"
+          echo "APK_PATH=$(pwd)/app.apk" >> $GITHUB_ENV
+
+      - name: Install APK
         run: adb install -t -g $APK_PATH
 
-      - name: Install Node Dependencies
-        run: npm ci
+      - name: Verify APK Installation
+        run: |
+          if adb shell pm list packages | grep $APK_PACKAGE; then
+            echo "APK package found."
+          else
+            echo "APK package not found. Installation failed?"
+            exit 1
+          fi
 
-      - name: Run WebdriverIO Tests
-        run: npx wdio wdio.ci.conf.js
+      - name: Download Test Image
+        run: |
+          wget ${{ env.TEST_IMAGE_URL }} -O test_image.png
+          echo "TEST_IMAGE_PATH=$(pwd)/test_image.png" >> $GITHUB_ENV
 
-      - name: Upload Allure Results
+      - name: Push Image to Device
+        run: |
+          adb push test_image.png /sdcard/Download/
+          adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download/test_image.png
+
+      - name: Start Appium
+        run: |
+          npm run start:appium > appium.log 2>&1 &
+          sleep 30
+
+      - name: Verify Appium is Running
+        run: |
+          if grep -q "Appium REST http interface listener started on" appium.log; then
+            echo "Appium is running and ready."
+          else
+            echo "Appium is not running or not ready."
+            cat appium.log
+            exit 1
+          fi
+
+      - name: Run Tests with Retry
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 30
+          max_attempts: 3
+          command: npm run test:ci
+          on_retry_command: |
+            adb emu kill
+            sleep 5
+            $ANDROID_HOME/emulator/emulator -avd testAVD ${{ env.EMULATOR_ARGS }} &
+            sleep 30
+            adb wait-for-device
+            pkill -f appium || true
+            npm run start:appium > appium.log 2>&1 &
+            sleep 30
+
+      - name: Upload Test Results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: allure-results
-          path: allure-results
+          name: test-results
+          path: |
+            allure-results/
+            screenshots/
+            logs/
+            appium.log
+            test_image.png
+          retention-days: 14
+
+      - name: Generate Allure Report
+        if: always()
+        run: npm run generate-report
+
+      - name: Upload Allure Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report/
+          retention-days: 14
+
+  notify-manager:
+    needs: e2e-tests
+    if: always() && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Email Notification
+        uses: dawidd6/action-send-mail@v5
+        with:
+          server_address: smtp.office365.com
+          server_port: 587
+          secure: false
+          username: ${{ secrets.SMTP_USER }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: |
+            Android E2E Test Results - ${{ github.event.pull_request.title || github.event.head_commit.message || 'No commit message' }}
+          to: fady@wilma.life, amr.ibrahim@willma.life
+          from: "Willma CI/CD <${{ secrets.SMTP_USER }}>"
+          html_body: |
+            <div style="font-family: Arial, sans-serif; padding: 20px;">
+              <h2 style="color: #1a73e8;">Android End-to-End Test Results</h2>
+              <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px;">
+                <p><strong>📦 Repository:</strong> ${{ github.repository }}</p>
+                <p><strong>🔑 Commit ID:</strong> <code>${{ github.sha }}</code></p>
+                <p><strong>👤 Author:</strong> ${{ github.actor }}</p>
+                <p><strong>📝 Message:</strong> ${{ github.event.head_commit.message }}</p>
+                <p><strong>📅 Date:</strong> ${{ github.event.head_commit.timestamp }}</p>
+                <p><strong>🔄 Workflow Status:</strong> ${{ needs.e2e-tests.result }}</p>
+              </div>
+              <p style="margin-top: 20px;">
+                <a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                   style="background-color: #1a73e8; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;">
+                  View Workflow Details
+                </a>
+              </p>
+              <p style="margin-top: 20px; color: #666;">
+                This is an automated notification from Willma CI/CD System
+              </p>
+            </div>
