@@ -1,72 +1,30 @@
-// const localConfig = {
-//   user: process.env.BROWSERSTACK_USERNAME,
-//   key: process.env.BROWSERSTACK_ACCESS_KEY,
-
-//   services: [
-//     [
-//       'browserstack',
-//       {
-//         browserstackLocal: true,
-//       },
-//     ],
-//   ],
-
-//   hostname: 'hub.browserstack.com',
-//   protocol: 'https',
-//   port: 443,
-
-//   capabilities: [
-//     {
-//       platformName: 'Android',
-//       'appium:deviceName': 'Google Pixel 5',
-//       'appium:platformVersion': '12.0',
-//       'appium:app': 'https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk',
-//       'appium:appPackage': 'com.willma.client.staging',
-//       'appium:appActivity': 'com.willma.client.staging.MainActivity',
-//       'appium:automationName': 'UiAutomator2',
-//       'appium:newCommandTimeout': 120,
-//       'appium:autoGrantPermissions': true,
-//       'appium:noReset': true,
-//       'appium:fullReset': false,
-
-//       'bstack:options': {
-//         debug: true,
-//         networkLogs: true,
-//         appiumLogs: true,
-//         deviceLogs: true,
-//         geoLocation: 'US',
-//         local: true,
-//         localIdentifier: 'your_local_identifier', // Optional
-//       },
-//     },
-//   ],
-// };
-
-// exports.config = { ...require('./wdio.conf.js').config, ...localConfig };
+const baseConfig = require('./wdio.conf.js');
 
 const ciConfig = {
-  capabilities: [
-    {
-      platformName: 'Android',
-      'appium:deviceName': 'emulator-5554', // Use an emulator or cloud device
-      'appium:platformVersion': '11', // Update to match the emulator's Android version
-      'appium:app': process.env.APK_PATH, // Ensure APK_PATH is set in your CI environment
-      'appium:appPackage': 'com.willma.client.staging',
-      'appium:appActivity': 'com.willma.client.staging.MainActivity',
-      'appium:automationName': 'UiAutomator2',
-      'appium:newCommandTimeout': 600,  // Increased to 600 seconds (10 minutes)
-      'appium:autoGrantPermissions': true,
-      'appium:noReset': true,
-      'appium:fullReset': false,
-      'appium:debug': true, // Enable Appium debug logs
-      'appium:networkLogs': true, // Enable network logs
-      'appium:appiumLogs': true, // Enable Appium server logs
-      'appium:deviceLogs': true, // Enable device logs
-    },
-  ],
-  specs: [
-    './test/specs/appLaunchTest.e2e.js',  // Only run the app launch test
-  ],
+    capabilities: [{
+        platformName: 'Android',
+        'appium:automationName': 'UiAutomator2',
+        'appium:deviceName': 'Pixel_5_API_31',
+        'appium:platformVersion': '31.0',
+        "appium:appPackage": "com.willma.staging",
+        "appium:appActivity": "com.willma.staging.MainActivity",
+        'appium:app': process.env.APK_PATH,
+        'appium:noReset': false,
+        'appium:fullReset': true,
+        'appium:autoGrantPermissions': true,
+    }],
+    reporters: [
+        'spec',
+        ['allure', {
+            outputDir: 'allure-results',
+            disableWebdriverScreenshotsReporting: false,
+        }]
+    ],
+    logLevel: 'info',
+    bail: 0,
+    waitforTimeout: 45000,
+    connectionRetryTimeout: 120000,
+    connectionRetryCount: 3,
 };
 
-exports.config = { ...require('./wdio.conf.js').config, ...ciConfig };
+exports.config = { ...baseConfig.config, ...ciConfig };
