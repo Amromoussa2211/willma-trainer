@@ -140,3 +140,196 @@
 #                 This is an automated notification from Willma CI/CD System
 #               </p>
 #             </div>
+
+
+# name: Android E2E Tests
+
+# on:
+#   push:
+#     branches: [ main ]
+#   pull_request:
+#     branches: [ main ]
+
+# jobs:
+#   e2e-tests:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v3
+      
+#       - name: Set up Node.js
+#         uses: actions/setup-node@v3
+#         with:
+#           node-version: '18'
+#           cache: 'npm'
+
+#       - name: Install Dependencies
+#         run: npm install
+
+#       - name: Create Directories
+#         run: |
+#           mkdir -p screenshots
+#           mkdir -p logs
+#           mkdir -p apps
+
+#       - name: Set up Python
+#         uses: actions/setup-python@v4
+#         with:
+#           python-version: '3.x'
+
+#       - name: Install gdown
+#         run: |
+#           python -m pip install gdown
+
+#       - name: Download APK
+#         run: |
+#           FILEID="1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz"
+#           FILENAME="apps/app.apk"
+#           gdown --id "$FILEID" -O "$FILENAME"
+          
+#           if [ -f "$FILENAME" ]; then
+#             echo "APK downloaded successfully"
+#             echo "APK_PATH=$(pwd)/$FILENAME" >> $GITHUB_ENV
+#           else
+#             echo "APK download failed"
+#             exit 1
+#           fi
+
+#       - name: Download Test Image
+#         run: |
+#           echo "Downloading test image..."
+#           wget "https://th.bing.com/th/id/R.4ff14a349cf0a4cc3db350284d6e9b34?rik=LRfd%2fxvzoMMotg&pid=ImgRaw&r=0" -O test_image.jpg
+#           if [ -f "test_image.jpg" ]; then
+#             echo "✅ Test image downloaded successfully"
+#           else
+#             echo "❌ Failed to download test image"
+#             exit 1
+#           fi
+
+#       - name: Start Emulator and Setup Test Image
+#         uses: ReactiveCircus/android-emulator-runner@v2
+#         with:
+#           api-level: 29
+#           target: google_apis
+#           arch: x86_64
+#           ram-size: 4096M
+#           disk-size: 8192M
+#           cores: 4
+#           profile: pixel_4
+#           emulator-boot-timeout: 600
+#           disable-animations: true
+#           force-avd-creation: false
+#           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+#           script: >-
+#             adb wait-for-device;
+#             count=0;
+#             while [ $count -lt 30 ] && [ "$(adb shell getprop sys.boot_completed 2>/dev/null)" != "1" ]; do
+#               echo "Waiting for boot completion... ($count/30)";
+#               sleep 10;
+#               count=$((count + 1));
+#             done;
+#             if [ "$(adb shell getprop sys.boot_completed 2>/dev/null)" = "1" ]; then
+#               echo "✅ Device boot completed";
+#               sleep 10;
+#               echo "Setting up test image...";
+#               adb shell "mkdir -p /sdcard/Pictures";
+#               adb push test_image.jpg /sdcard/Pictures/;
+#               adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/test_image.jpg;
+#               echo "✅ Setup complete";
+#             else
+#               echo "❌ Device boot timeout";
+#               exit 1;
+
+#       - name: Start Appium Server
+#         run: |
+#           echo "Starting Appium server..."
+#           npx appium > logs/appium.log 2>&1 &
+#           sleep 5
+          
+#           # Verify Appium is running
+#           if pgrep -f "appium" > /dev/null; then
+#             echo "✅ Appium server started successfully"
+#             echo "Appium logs available at: $(pwd)/logs/appium.log"
+#           else
+#             echo "❌ Failed to start Appium server"
+#             cat logs/appium.log
+#             exit 1
+#           fi
+
+#       - name: Install APK
+#         run: |
+#           echo "Installing APK: $APK_PATH"
+#           if adb install -r -t -g "$APK_PATH"; then
+#             echo "✅ APK installed successfully"
+#           else
+#             echo "❌ APK installation failed"
+#             adb logcat -d > logs/install_failure.log
+#             exit 1
+#           fi
+          
+#           echo "Verifying package installation..."
+#           if adb shell pm list packages | grep -q "com.willma.staging"; then
+#             echo "✅ Package verification successful"
+#           else
+#             echo "❌ Package verification failed"
+#             exit 1
+#           fi
+
+#       - name: Run Tests
+#         run: |
+#           echo "Starting E2E tests..."
+#           if npm run test:ci; then
+#             echo "✅ Tests completed successfully"
+#           else
+#             echo "❌ Tests failed"
+#             adb logcat -d > logs/test_failure.log
+#             exit 1
+#           fi
+
+#       - name: Upload Test Artifacts
+#         if: always()
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: test-artifacts
+#           path: |
+#             screenshots/
+#             logs/*.log
+#             test-results/
+#           if-no-files-found: warn
+
+#   notify-manager:
+#     needs: e2e-tests
+#     if: always() && github.event_name == 'push'
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Send Email Notification
+#         uses: dawidd6/action-send-mail@v5
+#         with:
+#           server_address: smtp.office365.com
+#           server_port: 587
+#           secure: false
+#           username: ${{ secrets.SMTP_USER }}
+#           password: ${{ secrets.SMTP_PASSWORD }}
+#           subject: "Android Tests Update - ${{ github.event.head_commit.message }}"
+#           to: fady@wilma.life, amr.ibrahim@willma.life
+#           from: "Willma CI/CD <${{ secrets.SMTP_USER }}>"
+#           html_body: |
+#             <div style="font-family: Arial, sans-serif; padding: 20px;">
+#               <h2 style="color: #1a73e8;">New Android Test Deployment</h2>
+#               <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px;">
+#                 <p><strong>📦 Repository:</strong> ${{ github.repository }}</p>
+#                 <p><strong>🔑 Commit ID:</strong> <code>${{ github.sha }}</code></p>
+#                 <p><strong>👤 Author:</strong> ${{ github.actor }}</p>
+#                 <p><strong>📝 Message:</strong> ${{ github.event.head_commit.message }}</p>
+#                 <p><strong>📅 Date:</strong> ${{ github.event.head_commit.timestamp }}</p>
+#               </div>
+#               <p style="margin-top: 20px;">
+#                 <a href="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
+#                    style="background-color: #1a73e8; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;">
+#                   View Full Commit Details
+#                 </a>
+#               </p>
+#               <p style="margin-top: 20px; color: #666;">
+#                 Workflow Status: ${{ job.status }}<br>
+#                 This is an automated notification from Willma CI/CD System
+#               </p>
+#             </div>    

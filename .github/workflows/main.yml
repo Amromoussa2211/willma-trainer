@@ -40,13 +40,23 @@ jobs:
         run: |
           FILEID="1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz"
           FILENAME="apps/app.apk"
-          gdown --id "$FILEID" -O "$FILENAME"
           
-          if [ -f "$FILENAME" ]; then
-            echo "APK downloaded successfully"
+          echo "Downloading APK from Google Drive..."
+          curl -L -c /tmp/cookies "https://drive.google.com/uc?export=download&id=${FILEID}" -o /tmp/interpage
+          
+          CONFIRM=$(cat /tmp/interpage | grep -Po '(?<="download_warning" value=")[^"]*(?=")')
+          if [ -n "$CONFIRM" ]; then
+            curl -L -b /tmp/cookies "https://drive.google.com/uc?export=download&confirm=$CONFIRM&id=$FILEID" -o "$FILENAME"
+          else
+            curl -L -b /tmp/cookies "https://drive.google.com/uc?export=download&id=$FILEID" -o "$FILENAME"
+          fi
+          
+          if [ -f "$FILENAME" ] && [ "$(stat -c%s "$FILENAME")" -gt "1000000" ]; then
+            echo "✅ APK downloaded successfully ($(stat -c%s "$FILENAME") bytes)"
             echo "APK_PATH=$(pwd)/$FILENAME" >> $GITHUB_ENV
           else
-            echo "APK download failed"
+            echo "❌ APK download failed or file is too small"
+            ls -l "$FILENAME" || true
             exit 1
           fi
 
