@@ -46,10 +46,10 @@ jobs:
         run: |
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install \
             "platform-tools" \
-            "platforms;android-30" \
+            "platforms;android-29" # Changed to Android 29
             "build-tools;33.0.0" \
             "emulator" \
-            "system-images;android-30;google_apis;x86"
+            "system-images;android-29;google_apis;x86" # Changed to Android 29
 
       - name: Add adb to PATH
         run: |
@@ -58,8 +58,8 @@ jobs:
       - name: Create AVD
         run: |
           echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
-            --name testAVD \
-            --package 'system-images;android-30;google_apis;x86' \
+            --name testAVD29 \ # Changed AVD name
+            --package 'system-images;android-29;google_apis;x86' \ # Changed to Android 29
             --device 'pixel' \
             --force
 
@@ -72,13 +72,13 @@ jobs:
 
       - name: Start Emulator
         run: |
-          nohup $ANDROID_HOME/emulator/emulator -avd testAVD \
+          nohup $ANDROID_HOME/emulator/emulator -avd testAVD29 \ # Changed AVD name
             -no-audio \
             -no-window \
             -gpu swiftshader_indirect \
             -memory 4096 \
             -cores 4 \
-            -no-snapshot -wipe-data & # Added -wipe-data
+            -no-snapshot -wipe-data &
           echo "Emulator started in background."
 
       - name: Wait for Emulator Boot
@@ -96,14 +96,34 @@ jobs:
           adb shell svc wifi enable
           adb shell svc data disable
           adb shell svc data enable
-          sleep 60 # Increased wait time
+          sleep 60
+
+      - name: Set DNS Servers (Optional)
+        run: |
+          adb shell setprop net.dns1 8.8.8.8
+          adb shell setprop net.dns2 8.8.4.4
+          echo "DNS servers set to Google Public DNS."
+
+      - name: Check Network Interfaces
+        run: |
+          adb shell netcfg
+          echo "Network interface configuration (netcfg output):"
+
+      - name: Check Routing Table
+        run: |
+          adb shell ip route
+          echo "Routing table (ip route output):"
+
+      - name: Check DNS Configuration
+        run: |
+          adb shell cat /etc/resolv.conf
+          echo "/etc/resolv.conf content:"
 
       - name: Wait for Internet Connection
         run: |
-          TIMEOUT=120 # Timeout in seconds
+          TIMEOUT=120
           START_TIME=$(date +%s)
           CONNECTED=false
-
           while [ "$(date +%s)" -lt $((START_TIME + TIMEOUT)) ]; do
             adb shell ping -c 1 8.8.8.8 > /dev/null 2>&1
             if [ $? -eq 0 ]; then
@@ -114,7 +134,6 @@ jobs:
             echo "Waiting for internet connection..."
             sleep 5
           done
-
           if [ "$CONNECTED" = "false" ]; then
             echo "Internet connection check timed out."
             exit 1
@@ -235,7 +254,7 @@ jobs:
                 <p><strong>📅 Date:</strong> ${{ github.event.head_commit.timestamp }}</p>
               </div>
               <p style="margin-top: 20px;">
-                <a href="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
+                <a href="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
                    style="background-color: #1a73e8; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;">
                   View Full Commit Details
                 </a>
