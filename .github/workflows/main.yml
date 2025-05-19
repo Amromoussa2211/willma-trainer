@@ -1,15 +1,14 @@
-name: Android CI
+name: Android Emulator Test
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  test-android:
+  build-and-test:
     runs-on: ubuntu-latest
-
     env:
       NODE_VERSION: 18
       JAVA_VERSION: 17
@@ -20,58 +19,55 @@ jobs:
       AVD_CACHE_VERSION: 2
       EMULATOR_ARGS: -no-window -gpu swiftshader_indirect -no-snapshot -no-audio -memory 2048 -cores 2 -accel on -no-boot-anim
       APK_PACKAGE: com.willma.client.staging
-      APK_PATH: ${{ github.workspace }}/app.apk  # CI path only
+      APK_PATH: ./app-release-trainer.apk  # fallback, gets overwritten by artifact step if needed
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Node.js ${{ env.NODE_VERSION }}
+      - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - name: Set up Java ${{ env.JAVA_VERSION }}
+      - name: Set up Java
         uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
           java-version: ${{ env.JAVA_VERSION }}
 
       - name: Download APK artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: trainer-apk
           path: .
 
-      - name: Rename APK
-        run: mv ./app-release-trainer.apk app.apk
-
-      - name: Install AVD dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
-
-      - name: Start Android Emulator
+      - name: Setup Android SDK
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 31
+          target: default
           arch: x86_64
-          profile: pixel  # ✅ Using a stable device profile
-          emulator-options: -no-window -no-audio -gpu swiftshader_indirect
-          disable-animations: true
-          script: |
-            echo "⏳ Waiting for emulator..."
-            adb wait-for-device
-            until adb shell getprop sys.boot_completed | grep -m 1 '1'; do
-              echo "⌛ Booting..."
-              sleep 5
-            done
+          profile: Pixel_5
+          script: echo "Emulator ready"
 
-            echo "✅ Installing APK at path: $APK_PATH"
-            adb install -t -g "$APK_PATH"
+      - name: Grant execute permission to Gradle wrapper
+        run: chmod +x ./gradlew
 
-            echo "📦 Installing dependencies"
-            npm ci
+      - name: Install App on Emulator
+        run: adb install -t -g $APK_PATH
 
-            echo "🚀 Running WebDriverIO tests"
-            npx wdio run ./ci.conf.js
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Tests
+        run: |
+          echo "Running WebdriverIO tests"
+          npx wdio wdio.ci.conf.js
+
+      - name: Upload Allure Results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: allure-results
+          path: allure-results
