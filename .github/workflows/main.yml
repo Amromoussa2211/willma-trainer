@@ -44,12 +44,14 @@ jobs:
 
       - name: Install Android SDK Packages
         run: |
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install \
+          CMDLINE_TOOLS="$ANDROID_HOME/cmdline-tools/latest/bin"
+          echo "Using SDK Manager from: $CMDLINE_TOOLS"
+          "$CMDLINE_TOOLS/sdkmanager" --install \
             "platform-tools" \
-            "platforms;android-29" # Changed to Android 29
+            "platforms;android-29" \
             "build-tools;33.0.0" \
             "emulator" \
-            "system-images;android-29;google_apis;x86" # Changed to Android 29
+            "system-images;android-29;google_apis;x86"
 
       - name: Add adb to PATH
         run: |
@@ -57,9 +59,9 @@ jobs:
 
       - name: Create AVD
         run: |
-          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
-            --name testAVD29 \ # Changed AVD name
-            --package 'system-images;android-29;google_apis;x86' \ # Changed to Android 29
+          echo "no" | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
+            --name testAVD29 \
+            --package 'system-images;android-29;google_apis;x86' \
             --device 'pixel' \
             --force
 
@@ -72,7 +74,7 @@ jobs:
 
       - name: Start Emulator
         run: |
-          nohup $ANDROID_HOME/emulator/emulator -avd testAVD29 \ # Changed AVD name
+          nohup $ANDROID_HOME/emulator/emulator -avd testAVD29 \
             -no-audio \
             -no-window \
             -gpu swiftshader_indirect \
@@ -254,7 +256,7 @@ jobs:
                 <p><strong>📅 Date:</strong> ${{ github.event.head_commit.timestamp }}</p>
               </div>
               <p style="margin-top: 20px;">
-                <a href="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+                <a href="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
                    style="background-color: #1a73e8; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;">
                   View Full Commit Details
                 </a>
