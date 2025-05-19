@@ -76,68 +76,62 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
-            # Wait for device to be fully ready
+            #!/bin/bash
+            set -e
+            
             echo "Waiting for device to be ready..."
             adb wait-for-device
             
-            # Wait for boot complete
-            while [ "$(adb shell getprop sys.boot_completed 2>/dev/null)" != "1" ]; do
-              echo "Waiting for boot completion..."
+            echo "Waiting for boot completion..."
+            while true; do
+              BOOT_COMPLETED=$(adb shell getprop sys.boot_completed 2>/dev/null || echo "0")
+              if [ "$BOOT_COMPLETED" = "1" ]; then
+                break
+              fi
+              echo "Device not ready yet, waiting..."
               sleep 5
             done
             
-            # Additional wait for device stability
-            sleep 10
+            echo "Device booted, waiting for stability..."
+            sleep 20
             
-            # Verify device state
-            if adb shell echo "Device check" > /dev/null 2>&1; then
-              echo "✅ Emulator started and responsive"
-            else
-              echo "❌ Emulator not responding"
+            echo "Checking device connectivity..."
+            if ! adb shell echo "Device check" > /dev/null 2>&1; then
+              echo "❌ Device not responding after boot"
+              adb devices
               exit 1
             fi
+            
+            echo "✅ Emulator started and responsive"
+            adb devices
 
       - name: Setup Test Image in Emulator
         run: |
-          # Function to retry ADB commands
-          retry_adb() {
-            local max_attempts=5
-            local attempt=1
-            local command="$@"
+          #!/bin/bash
+          set -e
+          
+          MAX_RETRIES=5
+          RETRY_COUNT=0
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            echo "Attempt $(($RETRY_COUNT + 1)) of $MAX_RETRIES"
             
-            while [ $attempt -le $max_attempts ]; do
-              echo "Attempt $attempt of $max_attempts: $command"
-              if eval $command; then
-                return 0
-              fi
-              echo "Command failed, waiting before retry..."
-              sleep 5
-              attempt=$((attempt + 1))
-            done
-            return 1
-          }
+            if adb shell "mkdir -p /sdcard/Pictures" && \
+               adb push test_image.jpg /sdcard/Pictures/ && \
+               adb shell ls /sdcard/Pictures/test_image.jpg > /dev/null 2>&1; then
+              echo "✅ Image setup successful"
+              adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/test_image.jpg
+              exit 0
+            fi
+            
+            echo "Retry attempt failed, waiting before next try..."
+            RETRY_COUNT=$(($RETRY_COUNT + 1))
+            sleep 5
+          done
           
-          # Wait for device
-          echo "Ensuring device is ready..."
-          retry_adb "adb wait-for-device"
-          
-          echo "Creating Pictures directory in emulator..."
-          retry_adb "adb shell 'mkdir -p /sdcard/Pictures'"
-          
-          echo "Pushing image to emulator..."
-          retry_adb "adb push test_image.jpg /sdcard/Pictures/"
-          
-          echo "Verifying image in emulator..."
-          if retry_adb "adb shell ls /sdcard/Pictures/test_image.jpg"; then
-            echo "✅ Image pushed to emulator successfully"
-            echo "Updating media store..."
-            retry_adb "adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/test_image.jpg"
-          else
-            echo "❌ Failed to push image to emulator"
-            adb devices
-            adb get-state || true
-            exit 1
-          fi
+          echo "❌ Failed to setup test image after $MAX_RETRIES attempts"
+          adb devices
+          exit 1
 
       - name: Start Appium Server
         run: |
