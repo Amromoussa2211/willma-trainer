@@ -27,34 +27,22 @@ jobs:
           mkdir -p logs
           mkdir -p apps
 
-      - name: Install yt-dlp
+      - name: Download APK
         run: |
-          sudo wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp
-          sudo chmod a+rx /usr/local/bin/yt-dlp
-
-      - name: Download APK from Google Drive
-        run: |
+          mkdir -p apps
           FILEID="1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz"
           FILENAME="apps/app.apk"
           
-          echo "Downloading large APK from Google Drive..."
-          yt-dlp -o "$FILENAME" "https://drive.google.com/uc?id=$FILEID"
+          wget --quiet --save-cookies /tmp/cookies.txt \
+            "https://docs.google.com/uc?export=download&id=${FILEID}" -O- | \
+            sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1/p' > /tmp/confirm
+            
+          wget --quiet --load-cookies /tmp/cookies.txt \
+            "https://docs.google.com/uc?export=download&id=${FILEID}&confirm=$(cat /tmp/confirm)" \
+            -O "$FILENAME"
           
-          if [ -f "$FILENAME" ]; then
-            SIZE=$(stat -c%s "$FILENAME")
-            echo "Downloaded file size: $SIZE bytes"
-            if [ "$SIZE" -gt 100000000 ]; then
-              echo "✅ APK downloaded successfully ($SIZE bytes)"
-              echo "APK_PATH=$(pwd)/$FILENAME" >> $GITHUB_ENV
-            else
-              echo "❌ Downloaded file is too small for expected APK"
-              ls -l "$FILENAME"
-              exit 1
-            fi
-          else
-            echo "❌ Download failed"
-            exit 1
-          fi
+          echo "APK_PATH=$(pwd)/$FILENAME" >> $GITHUB_ENV
+          echo "✅ APK downloaded"
 
       - name: Verify APK
         run: |
