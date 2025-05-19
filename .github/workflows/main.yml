@@ -19,7 +19,7 @@ jobs:
       AVD_CACHE_VERSION: 2
       EMULATOR_ARGS: -no-window -gpu swiftshader_indirect -no-snapshot -no-audio -memory 2048 -cores 2 -accel on -no-boot-anim
       APK_PACKAGE: com.willma.client.staging
-      APK_PATH: ./app-release-trainer.apk  # fallback, gets overwritten by artifact step if needed
+      APK_PATH: ./app-release-trainer.apk
 
     steps:
       - name: Checkout code
@@ -42,7 +42,7 @@ jobs:
           name: trainer-apk
           path: .
 
-      - name: Setup Android SDK
+      - name: Setup Android Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 31
@@ -51,23 +51,18 @@ jobs:
           profile: Pixel_5
           script: echo "Emulator ready"
 
-      - name: Grant execute permission to Gradle wrapper
-        run: chmod +x ./gradlew
-
       - name: Install App on Emulator
         run: adb install -t -g $APK_PATH
 
-      - name: Install dependencies
+      - name: Install Node Dependencies
         run: npm ci
 
-      - name: Run Tests
-        run: |
-          echo "Running WebdriverIO tests"
-          npx wdio wdio.ci.conf.js
+      - name: Run WebdriverIO Tests
+        run: npx wdio wdio.ci.conf.js
 
       - name: Upload Allure Results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: allure-results
           path: allure-results
