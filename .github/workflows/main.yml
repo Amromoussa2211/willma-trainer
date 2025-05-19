@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
@@ -75,6 +75,9 @@ jobs:
             -no-boot-anim
             -dns-server 8.8.8.8,8.8.4.4
           script: |
+            #!/usr/bin/env bash
+            set -e
+
             sleep 5
             adb wait-for-device
 
