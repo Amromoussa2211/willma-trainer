@@ -21,57 +21,67 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      - name: Create Directories
-        run: |
-          mkdir -p screenshots
-          mkdir -p logs
-          mkdir -p apps
-      
-      - name: Download APK
-        run: |
-          FILEID="1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz"
-          FILENAME="apps/app.apk"
-          
-          mkdir -p apps
-          
-          # Function to get download URL
-          get_download_url() {
-            curl -c ./cookie -s -L "https://drive.google.com/uc?export=download&id=${1}" | \
-            sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1/p'
-          }
-          
-          # Get confirmation token
-          TOKEN=$(get_download_url "$FILEID")
-          
-          if [ -n "$TOKEN" ]; then
-            # Large file download with confirmation
-            echo "Downloading large file with confirmation token"
-            curl -Lb ./cookie "https://drive.google.com/uc?export=download&confirm=${TOKEN}&id=${FILEID}" -o ${FILENAME}
-          else
-            # Direct download for small files
-            echo "Downloading file directly"
-            curl -Lb ./cookie "https://drive.google.com/uc?export=download&id=${FILEID}" -o ${FILENAME}
-          fi
-          
+- name: Create Directories
+  run: |
+    mkdir -p screenshots
+    mkdir -p logs
+    mkdir -p apps
+
+- name: Set up Python
+  uses: actions/setup-python@v4
+  with:
+    python-version: '3.x'
+
+- name: Download APK
+  run: |
+    mkdir -p apps
+    FILEID="1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz"
+    FILENAME="apps/app.apk"
+    
+    curl -Lb ./cookie "https://drive.google.com/uc?export=download&id=${FILEID}" -o ${FILENAME}
+    
+    if [ -f "${FILENAME}" ]; then
+      FILE_SIZE=$(stat -c%s "${FILENAME}")
+      echo "Downloaded file size: ${FILE_SIZE} bytes"
+      if [ "${FILE_SIZE}" -gt 1000000 ]; then
+        echo "APK downloaded successfully"
+        echo "APK_PATH=$(pwd)/${FILENAME}" >> $GITHUB_ENV
+      else
+        echo "Downloaded file is too small to be an APK"
+        exit 1
+      fi
+    else
+      echo "Download failed - file not found"
+      exit 1
+    fi
+          res: 4
           # Check file was downloaded
           if [ -f "${FILENAME}" ]; then
             FILE_SIZE=$(stat -c%s "${FILENAME}")
-            echo "Downloaded file size: ${FILE_SIZE} bytes"
-            
+            echo "Downloaded file size: ${FILE_SIZE} bytes"avd-creation: false
+            swiftshader_indirect -noaudio -no-boot-anim
             if [ "${FILE_SIZE}" -gt 1000000 ]; then
-              echo "APK downloaded successfully"
-              echo "APK_PATH=$(pwd)/${FILENAME}" >> $GITHUB_ENV
+              echo "APK downloaded successfully"Start Appium in background
+              echo "APK_PATH=$(pwd)/${FILENAME}" >> $GITHUB_ENVx appium > logs/appium.log 2>&1 &
             else
               echo "Downloaded file is too small to be an APK"
-              exit 1
-            fi
+              exit 1# Download test image
+            fi  wget "https://th.bing.com/th/id/R.4ff14a349cf0a4cc3db350284d6e9b34?rik=LRfd%2fxvzoMMotg&pid=ImgRaw&r=0" -O test_image.jpg
           else
-            echo "Download failed - file not found"
-            exit 1
+            echo "Download failed - file not found"            # Create Pictures directory in emulator
+            exit 1ard/Pictures"
           fi
-          
-          rm -f ./cookie
+           Push image to emulator
+          rm -f ./cookiest_image.jpg /sdcard/Pictures/
 
+      - name: Run Emulator and Testsmage exists in emulator
+        uses: ReactiveCircus/android-emulator-runner@v2ls /sdcard/Pictures/test_image.jpg > /dev/null 2>&1; then
+        with:successfully downloaded to emulator gallery"
+          api-level: 29igger media scanner to make image visible in gallery
+          target: google_apis broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/test_image.jpg
+          arch: x86_64
+          ram-size: 4096M image to emulator"
+          disk-size: 8192M
       - name: Run Emulator and Tests
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
@@ -86,21 +96,14 @@ jobs:
           disable-animations: true
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          script: |
-            # Start Appium in background
-            npx appium > logs/appium.log 2>&1 &
-            sleep 10
-            
-            # Download test image
-            wget "https://th.bing.com/th/id/R.4ff14a349cf0a4cc3db350284d6e9b34?rik=LRfd%2fxvzoMMotg&pid=ImgRaw&r=0" -O test_image.jpg
-            
             # Create Pictures directory in emulator
             adb shell "mkdir -p /sdcard/Pictures"
             
             # Push image to emulator
             adb push test_image.jpg /sdcard/Pictures/
             
-            # Verify image exists in emulator
+            # Verify image exists in emulatoradb logcat -d > logs/device.log
+            if adb shell ls /sdcard/Pictures/test_image.jpg > /dev/null 2>&1; then
             if adb shell ls /sdcard/Pictures/test_image.jpg > /dev/null 2>&1; then
               echo "Image successfully downloaded to emulator gallery"
               # Trigger media scanner to make image visible in gallery
@@ -109,14 +112,12 @@ jobs:
               echo "Failed to save image to emulator"
               exit 1
             fi
-            
-            # Verify APK exists
             if [ ! -f app.apk ]; then
               echo "APK file not found"
               exit 1
             fi
-            
-            # Install APK with verbose output
+            og
+            # Install APK with verbose outputno-files-found: warn
             adb install -r -t -g ${{ env.APK_PATH }} || {
               echo "APK installation failed"
               adb logcat -d > logs/device.log
@@ -124,70 +125,47 @@ jobs:
             }
             
             # Verify installation
-            if adb shell pm list packages | grep -q "com.willma.staging"; then
-              echo "APK installed successfully"
-              npm run test:ci || {
+            if adb shell pm list packages | grep -q "com.willma.staging"; thenm.log
+              echo "APK installed successfully"s/device.log
+              npm run test:ci || {files-found: warn
                 echo "Tests failed"
                 adb logcat -d > logs/device.log
-                exit 1
-              }
+                exit 1-tests
+              }    if: always() && github.event_name == 'push'
             else
               echo "Package not found after installation"
               exit 1
-            fi
+            fi dawidd6/action-send-mail@v5
 
-      - name: Upload Screenshots
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-screenshots
-          path: |
-            screenshots/
-            logs/*.log
-          if-no-files-found: warn
-
-      - name: Upload Logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-logs
-          path: |
-            logs/appium.log
+      - name: Upload Screenshotsaddress: smtp.office365.com
+        if: always()87
+        uses: actions/upload-artifact@v4e
+        with:MTP_USER }}
+          name: test-screenshots          password: ${{ secrets.SMTP_PASSWORD }}
+          path: |id Tests Update - ${{ github.event.head_commit.message }}"
+            screenshots/ilma.life, amr.ibrahim@willma.life
+            logs/*.logts.SMTP_USER }}>"
+          if-no-files-found: warnl_body: |
+ont-family: Arial, sans-serif; padding: 20px;">
+      - name: Upload Logs style="color: #1a73e8;">New Android Test Deployment</h2>
+        if: always()ackground-color: #f8f9fa; padding: 15px; border-radius: 5px;">
+        uses: actions/upload-artifact@v4📦 Repository:</strong> ${{ github.repository }}</p>
+        with:mit ID:</strong> <code>${{ github.sha }}</code></p>
+          name: test-logs                <p><strong>👤 Author:</strong> ${{ github.actor }}</p>
+          path: |p><strong>📝 Message:</strong> ${{ github.event.head_commit.message }}</p>
+            logs/appium.logstrong>📅 Date:</strong> ${{ github.event.head_commit.timestamp }}</p>
             logs/device.log
-          if-no-files-found: warn
-
-  notify-manager:
-    needs: e2e-tests
-    if: always() && github.event_name == 'push'
+          if-no-files-found: warnrgin-top: 20px;">
+      <a href="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
+  notify-manager:color: #1a73e8; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;">
+    needs: e2e-testss
+    if: always() && github.event_name == 'push'   </a>
     runs-on: ubuntu-latest
-    steps:
-      - name: Send Email Notification
-        uses: dawidd6/action-send-mail@v5
+    steps:rgin-top: 20px; color: #666;">
+      - name: Send Email Notificationw Status: ${{ job.status }}<br>
+        uses: dawidd6/action-send-mail@v5ation from Willma CI/CD System
         with:
-          server_address: smtp.office365.com
-          server_port: 587
-          secure: false
-          username: ${{ secrets.SMTP_USER }}
-          password: ${{ secrets.SMTP_PASSWORD }}
-          subject: "Android Tests Update - ${{ github.event.head_commit.message }}"
-          to: fady@wilma.life, amr.ibrahim@willma.life
-          from: "Willma CI/CD <${{ secrets.SMTP_USER }}>"
-          html_body: |
-            <div style="font-family: Arial, sans-serif; padding: 20px;">
-              <h2 style="color: #1a73e8;">New Android Test Deployment</h2>
-              <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px;">
-                <p><strong>📦 Repository:</strong> ${{ github.repository }}</p>
-                <p><strong>🔑 Commit ID:</strong> <code>${{ github.sha }}</code></p>
-                <p><strong>👤 Author:</strong> ${{ github.actor }}</p>
-                <p><strong>📝 Message:</strong> ${{ github.event.head_commit.message }}</p>
-                <p><strong>📅 Date:</strong> ${{ github.event.head_commit.timestamp }}</p>
-              </div>
-              <p style="margin-top: 20px;">
-                <a href="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
-                   style="background-color: #1a73e8; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;">
-                  View Full Commit Details
-                </a>
-              </p>
+          server_address: smtp.office365.com          server_port: 587          secure: false          username: ${{ secrets.SMTP_USER }}          password: ${{ secrets.SMTP_PASSWORD }}          subject: "Android Tests Update - ${{ github.event.head_commit.message }}"          to: fady@wilma.life, amr.ibrahim@willma.life          from: "Willma CI/CD <${{ secrets.SMTP_USER }}>"          html_body: |            <div style="font-family: Arial, sans-serif; padding: 20px;">              <h2 style="color: #1a73e8;">New Android Test Deployment</h2>              <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px;">                <p><strong>📦 Repository:</strong> ${{ github.repository }}</p>                <p><strong>🔑 Commit ID:</strong> <code>${{ github.sha }}</code></p>                <p><strong>👤 Author:</strong> ${{ github.actor }}</p>                <p><strong>📝 Message:</strong> ${{ github.event.head_commit.message }}</p>                <p><strong>📅 Date:</strong> ${{ github.event.head_commit.timestamp }}</p>              </div>              <p style="margin-top: 20px;">                <a href="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"                   style="background-color: #1a73e8; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;">                  View Full Commit Details                </a>              </p>
               <p style="margin-top: 20px; color: #666;">
                 Workflow Status: ${{ job.status }}<br>
                 This is an automated notification from Willma CI/CD System
