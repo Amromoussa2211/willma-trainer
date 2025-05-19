@@ -27,12 +27,10 @@ jobs:
           mkdir -p logs
           mkdir -p apps
 
-      - name: Install gdrive
+      - name: Install yt-dlp
         run: |
-          wget https://github.com/glotlabs/gdrive/releases/download/3.9.0/gdrive_linux-x64.tar.gz
-          tar -xvf gdrive_linux-x64.tar.gz
-          chmod +x gdrive
-          sudo mv gdrive /usr/local/bin/gdrive
+          sudo wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp
+          sudo chmod a+rx /usr/local/bin/yt-dlp
 
       - name: Download APK from Google Drive
         run: |
@@ -40,7 +38,7 @@ jobs:
           FILENAME="apps/app.apk"
           
           echo "Downloading large APK from Google Drive..."
-          gdrive download $FILEID --path $FILENAME
+          yt-dlp -o "$FILENAME" "https://drive.google.com/uc?id=$FILEID"
           
           if [ -f "$FILENAME" ]; then
             SIZE=$(stat -c%s "$FILENAME")
@@ -50,6 +48,7 @@ jobs:
               echo "APK_PATH=$(pwd)/$FILENAME" >> $GITHUB_ENV
             else
               echo "❌ Downloaded file is too small for expected APK"
+              ls -l "$FILENAME"
               exit 1
             fi
           else
