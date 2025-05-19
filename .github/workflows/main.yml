@@ -62,6 +62,25 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
+            # Download test image
+            wget "https://th.bing.com/th/id/R.4ff14a349cf0a4cc3db350284d6e9b34?rik=LRfd%2fxvzoMMotg&pid=ImgRaw&r=0" -O test_image.jpg
+            
+            # Create Pictures directory in emulator
+            adb shell "mkdir -p /sdcard/Pictures"
+            
+            # Push image to emulator
+            adb push test_image.jpg /sdcard/Pictures/
+            
+            # Verify image exists in emulator
+            if adb shell ls /sdcard/Pictures/test_image.jpg > /dev/null 2>&1; then
+              echo "Image successfully downloaded to emulator gallery"
+              # Trigger media scanner to make image visible in gallery
+              adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/test_image.jpg
+            else
+              echo "Failed to save image to emulator"
+              exit 1
+            fi
+            
             # Verify APK exists
             if [ ! -f app.apk ]; then
               echo "APK file not found"
