@@ -50,7 +50,18 @@ jobs:
             exit 1
           fi
 
-      - name: Run Emulator and Tests
+      - name: Download Test Image
+        run: |
+          echo "Downloading test image..."
+          wget "https://th.bing.com/th/id/R.4ff14a349cf0a4cc3db350284d6e9b34?rik=LRfd%2fxvzoMMotg&pid=ImgRaw&r=0" -O test_image.jpg
+          if [ -f "test_image.jpg" ]; then
+            echo "✅ Test image downloaded successfully"
+          else
+            echo "❌ Failed to download test image"
+            exit 1
+          fi
+
+      - name: Start Emulator
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
           api-level: 29
@@ -65,42 +76,81 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
-            # Start Appium
-            npx appium > logs/appium.log 2>&1 &
-            sleep 10
-            
-            # Download and setup test image
-            wget "https://th.bing.com/th/id/R.4ff14a349cf0a4cc3db350284d6e9b34?rik=LRfd%2fxvzoMMotg&pid=ImgRaw&r=0" -O test_image.jpg
-            adb shell "mkdir -p /sdcard/Pictures"
-            adb push test_image.jpg /sdcard/Pictures/
+            echo "✅ Emulator started successfully"
+
+      - name: Setup Test Image in Emulator
+        run: |
+          echo "Creating Pictures directory in emulator..."
+          adb shell "mkdir -p /sdcard/Pictures"
+          
+          echo "Pushing image to emulator..."
+          adb push test_image.jpg /sdcard/Pictures/
+          
+          echo "Verifying image in emulator..."
+          if adb shell ls /sdcard/Pictures/test_image.jpg > /dev/null 2>&1; then
+            echo "✅ Image pushed to emulator successfully"
+            echo "Updating media store..."
             adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/test_image.jpg
-            
-            # Install and verify APK
-            adb install -r -t -g "$APK_PATH"
-            if adb shell pm list packages | grep -q "com.willma.staging"; then
-              echo "APK installed successfully"
-              npm run test:ci
-            else
-              echo "Package not found after installation"
-              exit 1
-            fi
+          else
+            echo "❌ Failed to push image to emulator"
+            exit 1
+          fi
 
-      - name: Upload Screenshots
+      - name: Start Appium Server
+        run: |
+          echo "Starting Appium server..."
+          npx appium > logs/appium.log 2>&1 &
+          sleep 5
+          
+          # Verify Appium is running
+          if pgrep -f "appium" > /dev/null; then
+            echo "✅ Appium server started successfully"
+            echo "Appium logs available at: $(pwd)/logs/appium.log"
+          else
+            echo "❌ Failed to start Appium server"
+            cat logs/appium.log
+            exit 1
+          fi
+
+      - name: Install APK
+        run: |
+          echo "Installing APK: $APK_PATH"
+          if adb install -r -t -g "$APK_PATH"; then
+            echo "✅ APK installed successfully"
+          else
+            echo "❌ APK installation failed"
+            adb logcat -d > logs/install_failure.log
+            exit 1
+          fi
+          
+          echo "Verifying package installation..."
+          if adb shell pm list packages | grep -q "com.willma.staging"; then
+            echo "✅ Package verification successful"
+          else
+            echo "❌ Package verification failed"
+            exit 1
+          fi
+
+      - name: Run Tests
+        run: |
+          echo "Starting E2E tests..."
+          if npm run test:ci; then
+            echo "✅ Tests completed successfully"
+          else
+            echo "❌ Tests failed"
+            adb logcat -d > logs/test_failure.log
+            exit 1
+          fi
+
+      - name: Upload Test Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-screenshots
-          path: screenshots/
-          if-no-files-found: warn
-
-      - name: Upload Logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-logs
+          name: test-artifacts
           path: |
-            logs/appium.log
-            logs/device.log
+            screenshots/
+            logs/*.log
+            test-results/
           if-no-files-found: warn
 
   notify-manager:
