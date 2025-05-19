@@ -28,10 +28,30 @@ jobs:
           mkdir -p apps
 
       - name: Download APK from Google Drive
-        uses: wound93/download-file-action@v1.0.1
-        with:
-          file-url: https://drive.google.com/uc?id=1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz
-          file-name: apps/app.apk
+        run: |
+          FILEID="1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz"
+          FILENAME="apps/app.apk"
+          GDRIVE_COOKIES="/tmp/gdrive.cookies"
+          
+          echo "Downloading APK from Google Drive..."
+          # Get the confirmation token
+          curl -c "$GDRIVE_COOKIES" -s -L "https://drive.google.com/uc?export=download&id=${FILEID}" > /dev/null
+          curl -Lb "$GDRIVE_COOKIES" "https://drive.google.com/uc?export=download&confirm=`awk '/download/ {print $NF}' "$GDRIVE_COOKIES"`&id=${FILEID}" -o "$FILENAME"
+          
+          if [ -f "$FILENAME" ]; then
+            FILE_SIZE=$(stat -c%s "$FILENAME")
+            echo "APK file size: $FILE_SIZE bytes"
+            if [ "$FILE_SIZE" -gt 1000000 ]; then
+              echo "✅ APK downloaded successfully"
+              echo "APK_PATH=$(pwd)/$FILENAME" >> $GITHUB_ENV
+            else
+              echo "❌ Downloaded file is too small to be an APK"
+              exit 1
+            fi
+          else
+            echo "❌ APK download failed"
+            exit 1
+          fi
 
       - name: Verify APK
         run: |
