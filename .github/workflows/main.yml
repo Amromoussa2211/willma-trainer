@@ -55,19 +55,30 @@ jobs:
             android-sdk-avd-${{ runner.os }}-${{ env.AVD_CACHE_VERSION }}-
 
       - name: Start Android Emulator
-        id: start_emulator # Added ID to reference outputs
-        uses: ReactiveCircus/android-emulator-runner@v2.30.1
-        with:
-          api-level: ${{ env.ANDROID_EMU_VERSION }}
-          target: google_apis # or 'default' if google_apis not needed
-          arch: x86_64
-          profile: pixel_5
-          emulator-options: ${{ env.EMULATOR_ARGS }}
-          disable-animations: true
-          emulator-boot-timeout: 600 # Increased timeout for emulator boot
-          script: |
-            adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done; input keyevent 82'
-            echo "Emulator boot completed and unlocked."
+        id: emulator
+        run: |
+          # Create and configure AVD
+          echo "no" | avdmanager create avd \
+            --name test \
+            --package "system-images;android-${{ env.ANDROID_SDK_VERSION }};google_apis;x86_64" \
+            --device 'pixel_5'
+
+          # Start emulator
+          $ANDROID_HOME/emulator/emulator \
+            -avd test \
+            -no-window \
+            -gpu swiftshader_indirect \
+            -no-snapshot \
+            -noaudio \
+            -no-boot-anim \
+            -memory 2048 \
+            -accel on &
+
+          # Wait for device with timeout and health check
+          adb wait-for-device
+          timeout 300 bash -c 'while [[ -z $(adb shell getprop sys.boot_completed) ]]; do sleep 3; done'
+          adb shell input keyevent 82
+          echo "Emulator started and ready"
 
       - name: Install Dependencies
         run: npm install
@@ -152,6 +163,16 @@ jobs:
             echo "Waiting for Appium to restart..."
             sleep 30 # Wait for appium to restart (consider polling for readiness)
             echo "Retrying tests now."
+
+      - name: Handle Emulator Cleanup
+        if: always()
+        run: |
+          adb devices
+          EMU_PID=$(pgrep -f "emulator")
+          if [ ! -z "$EMU_PID" ]; then
+            kill -9 $EMU_PID || true
+          fi
+          adb kill-server || true
 
       - name: Upload Test Artifacts
         if: always()
