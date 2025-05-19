@@ -75,18 +75,39 @@ jobs:
             adb devices -l
 
       - name: Install APK on Emulator
-        run: >-
-          echo "Installing APK..." &&
+        run: |
+          # Wait for device to be fully online
+          for i in {1..30}; do
+            if adb get-state | grep -q "device"; then
+              echo "✅ Device is online"
+              break
+            fi
+            echo "Waiting for device to be ready... ($i/30)"
+            sleep 2
+          done
+
+          # Verify device status
+          if ! adb get-state | grep -q "device"; then
+            echo "❌ Device failed to come online"
+            adb devices -l
+            exit 1
+          fi
+
+          echo "Installing APK..."
           if adb install -r -t -g "${{ env.APK_PATH }}"; then
-            echo "✅ APK installed successfully" &&
-            echo "Verifying installation..." &&
+            echo "✅ APK installed successfully"
+            
+            echo "Verifying installation..."
             if adb shell pm list packages | grep -q "com.willma.staging"; then
-              echo "✅ Package verification successful";
+              echo "✅ Package verification successful"
             else
-              echo "❌ Package verification failed" && exit 1;
-            fi;
+              echo "❌ Package verification failed"
+              exit 1
+            fi
           else
-            echo "❌ APK installation failed" && exit 1;
+            echo "❌ APK installation failed"
+            adb devices -l
+            exit 1
           fi
 
       - name: Start Appium Server
