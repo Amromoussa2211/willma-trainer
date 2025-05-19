@@ -76,25 +76,31 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
+            echo "Waiting for device..."
             adb wait-for-device
             
-            # Wait for boot completion with timeout
-            TIMEOUT=300
-            start_time=$(date +%s)
-            
-            until [ "$(adb shell getprop sys.boot_completed)" = "1" ] || [ $(($(date +%s) - start_time)) -ge $TIMEOUT ]; do
-              echo "Waiting for boot completion..."
+            echo "Checking boot completion..."
+            i=0
+            while [ $i -lt 60 ]; do
+              if adb shell getprop sys.boot_completed | grep -q "1"; then
+                echo "✅ Device boot completed"
+                break
+              fi
+              echo "Still waiting for boot completion..."
+              i=$((i + 1))
               sleep 5
             done
             
-            if [ "$(adb shell getprop sys.boot_completed)" != "1" ]; then
-              echo "❌ Emulator boot timeout after ${TIMEOUT} seconds"
+            if ! adb shell getprop sys.boot_completed | grep -q "1"; then
+              echo "❌ Device boot timeout"
               exit 1
             fi
             
-            sleep 10
-            echo "✅ Emulator started successfully"
-            adb devices
+            echo "Verifying device..."
+            adb shell echo "test" || exit 1
+            
+            echo "✅ Emulator ready"
+            adb devices -l
 
       - name: Setup Test Image in Emulator
         run: |
