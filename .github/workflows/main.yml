@@ -31,25 +31,35 @@ jobs:
         run: |
           FILEID="1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz"
           FILENAME="apps/app.apk"
-          GDRIVE_COOKIES="/tmp/gdrive.cookies"
+          COOKIES="/tmp/cookies.txt"
           
-          echo "Downloading APK from Google Drive..."
-          # Get the confirmation token
-          curl -c "$GDRIVE_COOKIES" -s -L "https://drive.google.com/uc?export=download&id=${FILEID}" > /dev/null
-          curl -Lb "$GDRIVE_COOKIES" "https://drive.google.com/uc?export=download&confirm=`awk '/download/ {print $NF}' "$GDRIVE_COOKIES"`&id=${FILEID}" -o "$FILENAME"
+          echo "Downloading large APK from Google Drive..."
+          # First get the warning page and confirmation code
+          curl -sc $COOKIES \
+            "https://drive.google.com/uc?export=download&id=${FILEID}" > /tmp/warn.html
           
+          # Extract code from warning page
+          CODE=$(cat /tmp/warn.html | grep -oP 'confirm=\K[^&]+' || true)
+          
+          # Download with confirmation code (needed for files > 100MB)
+          echo "Starting large file download..."
+          curl -Lb $COOKIES \
+            "https://drive.google.com/uc?export=download&confirm=${CODE}&id=${FILEID}" \
+            -o "$FILENAME"
+          
+          # Verify file size (expecting ~123MB)
           if [ -f "$FILENAME" ]; then
-            FILE_SIZE=$(stat -c%s "$FILENAME")
-            echo "APK file size: $FILE_SIZE bytes"
-            if [ "$FILE_SIZE" -gt 1000000 ]; then
+            SIZE=$(stat -c%s "$FILENAME")
+            echo "Downloaded file size: $SIZE bytes"
+            if [ "$SIZE" -gt 100000000 ]; then # More than 100MB
               echo "✅ APK downloaded successfully"
               echo "APK_PATH=$(pwd)/$FILENAME" >> $GITHUB_ENV
             else
-              echo "❌ Downloaded file is too small to be an APK"
+              echo "❌ Downloaded file is too small for expected APK"
               exit 1
             fi
           else
-            echo "❌ APK download failed"
+            echo "❌ Download failed"
             exit 1
           fi
 
