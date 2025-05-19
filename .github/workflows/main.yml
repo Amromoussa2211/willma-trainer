@@ -61,7 +61,7 @@ jobs:
             exit 1
           fi
 
-      - name: Start Emulator
+      - name: Start Emulator and Setup Test Image
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
           api-level: 29
@@ -75,35 +75,40 @@ jobs:
           disable-animations: true
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          script: adb wait-for-device && for i in $(seq 1 60); do if [ "$(adb shell getprop sys.boot_completed)" = "1" ]; then echo "✅ Device boot completed"; break; elif [ $i = 60 ]; then echo "❌ Device boot timeout"; exit 1; else echo "Waiting for boot completion... ($i/60)"; sleep 5; fi; done && adb devices -l
-
-      - name: Setup Test Image in Emulator
-        run: |
-          #!/bin/bash
-          set -e
-          
-          MAX_RETRIES=5
-          RETRY_COUNT=0
-          
-          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            echo "Attempt $(($RETRY_COUNT + 1)) of $MAX_RETRIES"
+          script: |
+            # Wait for device to be ready
+            adb wait-for-device
             
-            if adb shell "mkdir -p /sdcard/Pictures" && \
-               adb push test_image.jpg /sdcard/Pictures/ && \
-               adb shell ls /sdcard/Pictures/test_image.jpg > /dev/null 2>&1; then
-              echo "✅ Image setup successful"
-              adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/test_image.jpg
-              exit 0
-            fi
+            # Wait for boot completion
+            until adb shell getprop sys.boot_completed | grep -q "1"; do
+              echo "Waiting for boot completion..."
+              sleep 2
+            done
             
-            echo "Retry attempt failed, waiting before next try..."
-            RETRY_COUNT=$(($RETRY_COUNT + 1))
-            sleep 5
-          done
-          
-          echo "❌ Failed to setup test image after $MAX_RETRIES attempts"
-          adb devices
-          exit 1
+            # Additional wait for device stability
+            sleep 10
+            echo "Device is ready"
+            adb devices -l
+            
+            # Setup test image with retries
+            for attempt in {1..5}; do
+              echo "Setting up test image (attempt $attempt/5)"
+              
+              if adb shell "mkdir -p /sdcard/Pictures" && \
+                 adb push test_image.jpg /sdcard/Pictures/ && \
+                 adb shell ls /sdcard/Pictures/test_image.jpg > /dev/null 2>&1; then
+                echo "✅ Image setup successful"
+                adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/test_image.jpg
+                exit 0
+              fi
+              
+              echo "Attempt $attempt failed, retrying in 5 seconds..."
+              sleep 5
+            done
+            
+            echo "❌ Failed to setup test image after all attempts"
+            adb devices -l
+            exit 1
 
       - name: Start Appium Server
         run: |
