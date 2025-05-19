@@ -75,40 +75,25 @@ jobs:
           disable-animations: true
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          script: |
-            # Wait for device to be ready
-            adb wait-for-device
-            
-            # Wait for boot completion
-            until adb shell getprop sys.boot_completed | grep -q "1"; do
-              echo "Waiting for boot completion..."
-              sleep 2
-            done
-            
-            # Additional wait for device stability
-            sleep 10
-            echo "Device is ready"
-            adb devices -l
-            
-            # Setup test image with retries
-            for attempt in {1..5}; do
-              echo "Setting up test image (attempt $attempt/5)"
-              
-              if adb shell "mkdir -p /sdcard/Pictures" && \
-                 adb push test_image.jpg /sdcard/Pictures/ && \
-                 adb shell ls /sdcard/Pictures/test_image.jpg > /dev/null 2>&1; then
-                echo "✅ Image setup successful"
-                adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/test_image.jpg
-                exit 0
-              fi
-              
-              echo "Attempt $attempt failed, retrying in 5 seconds..."
-              sleep 5
-            done
-            
-            echo "❌ Failed to setup test image after all attempts"
-            adb devices -l
-            exit 1
+          script: >-
+            adb wait-for-device;
+            count=0;
+            while [ $count -lt 30 ] && [ "$(adb shell getprop sys.boot_completed 2>/dev/null)" != "1" ]; do
+              echo "Waiting for boot completion... ($count/30)";
+              sleep 10;
+              count=$((count + 1));
+            done;
+            if [ "$(adb shell getprop sys.boot_completed 2>/dev/null)" = "1" ]; then
+              echo "✅ Device boot completed";
+              sleep 10;
+              echo "Setting up test image...";
+              adb shell "mkdir -p /sdcard/Pictures";
+              adb push test_image.jpg /sdcard/Pictures/;
+              adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/test_image.jpg;
+              echo "✅ Setup complete";
+            else
+              echo "❌ Device boot timeout";
+              exit 1;
 
       - name: Start Appium Server
         run: |
