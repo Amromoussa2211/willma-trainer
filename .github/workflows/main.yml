@@ -72,178 +72,167 @@ jobs:
           echo "no" | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
             --name testEmulator \
             --package "system-images;android-${{ env.ANDROID_EMU_VERSION }};google_apis;x86_64" \
-            --device 'pixel_5' \
+            --device 'Nexus 5X' \
             --force
 
-          # Optimize emulator settings for faster boot
-          echo "hw.cpu.ncore=4" >> ~/.android/avd/testEmulator.avd/config.ini
-          echo "hw.ramSize=4096" >> ~/.android/avd/testEmulator.avd/config.ini
-          echo "disk.dataPartition.size=4096M" >> ~/.android/avd/testEmulator.avd/config.ini
+          # Basic emulator configuration
+          echo "hw.cpu.ncore=2" >> ~/.android/avd/testEmulator.avd/config.ini
+          echo "hw.ramSize=2048" >> ~/.android/avd/testEmulator.avd/config.ini
           echo "hw.gpu.enabled=yes" >> ~/.android/avd/testEmulator.avd/config.ini
-          echo "hw.gpu.mode=swiftshader_indirect" >> ~/.android/avd/testEmulator.avd/config.ini
-\
+
           $ANDROID_HOME/emulator/emulator -avd testEmulator \
+            -no-window \
             -no-audio \
             -no-boot-anim \
             -gpu swiftshader_indirect \
-            -no-snapshot \
-            -noaudio \
-            -no-window \
-            -camera-back none \
-            -camera-front none \            -no-window \
-            -memory 4096 \
-            -cores 4 \
-            -accel on \
-            -wipe-data \
-            -qemu -enable-kvm &
+            -memory 2048 \
+            -cores 2 \
+            -accel on &
 
-      - name: Fix KVM permissionsork Setup
+      - name: Wait for Device
+        run: |
+          adb wait-for-device
+          sleep 30
+
+      - name: Setup Network
+        run: |
+          adb shell svc wifi enable
+          sleep 10
+
+      - name: Install APK
+        run: |
+          wget --no-check-certificate 'https://drive.google.com/uc?export=download&id=1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz' -O app.apk
+          adb install app.apk
+          echo "APK_PATH=$(pwd)/app.apk" >> $GITHUB_ENV
+
+      - name: Run Tests
+        run: npm run test:ci
+
+      - name: Fix KVM permissions
         run: |
           sudo apt-get update -y
           sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
-          sudo gpasswd -a $USER kvmc wifi enable
-          sudo chmod 666 /dev/kvmbroadcast -a android.intent.action.BOOT_COMPLETED
+          sudo gpasswd -a $USER kvm
+          sudo chmod 666 /dev/kvm
 
       - name: Wait for Emulator Boot
-        timeout-minutes: 10      - name: Verify Internet Connection
+        timeout-minutes: 10
         run: |
-          max_attempts=30i in {1..5}; do
-          counter=0 1 8.8.8.8; then
-          
+          max_attempts=30
+          counter=0
           until adb shell getprop sys.boot_completed 2>&1 | grep -q '1' || [ $counter -eq $max_attempts ]; do
             echo "Waiting for emulator to boot... (Attempt: $counter/$max_attempts)"
-                        sleep 5
+            sleep 5
             # Check emulator process
             if ! pgrep -f "emulator" > /dev/null; then
-              echo "Emulator process died. Restarting..."Install APK
+              echo "Emulator process died. Restarting..."
               $ANDROID_HOME/emulator/emulator -avd testEmulator -no-window &
-            fi-check-certificate 'https://drive.google.com/uc?export=download&id=1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz' -O app.apk
-            adb install app.apk
+            fi
             counter=$((counter + 1))
             sleep 10
-          done |
-          
-          if [ $counter -eq $max_attempts ]; thenmon-system libvirt-clients bridge-utils
+          done
+
+          if [ $counter -eq $max_attempts ]; then
             echo "Emulator boot timeout. Dumping logs..."
             adb logcat -d
             exit 1
-          fi: Wait for Emulator Boot
-          
+          fi
+
           echo "Emulator booted successfully!"
           adb shell settings put global window_animation_scale 0
-          adb shell settings put global transition_animation_scale 0unter=0
+          adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
-shell getprop sys.boot_completed 2>&1 | grep -q '1' || [ $counter -eq $max_attempts ]; do
-      - name: Install Dependenciesho "Waiting for emulator to boot... (Attempt: $counter/$max_attempts)"
+
+      - name: Install Dependencies
         run: npm install  
 
-      - name: Download and Install APK from Google Drive
-        run: |tor process died. Restarting..."
-          wget --no-check-certificate 'https://drive.google.com/uc?export=download&id=1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz' -O app.apkROID_HOME/emulator/emulator -avd testEmulator -no-window &
-          echo "APK downloaded from Google Drive."fi
-          adb install app.apk  
-          echo "APK installed successfully."
-          echo "APK_PATH=$(pwd)/app.apk" >> $GITHUB_ENV
-
       - name: Verify APK Installation
-        run: |            counter=$((counter + 1))
+        run: |
           adb shell pm list packages | grep com.willma.client.staging
           if [ $? -eq 0 ]; then
             echo "APK package found."
-          elsetempts ]; then
-            echo "APK package not found. Installation failed?"out. Dumping logs..."
+          else
+            echo "APK package not found. Installation failed?"
             exit 1
+          fi
 
-      - name: Start Appium          fi
+      - name: Start Appium
         run: |
-          npm run start:appium > appium.log 2>&1 & "Emulator booted successfully!"
-          sleep 30ow_animation_scale 0
-sition_animation_scale 0
-      - name: Verify Appium is Runningion_scale 0
+          npm run start:appium > appium.log 2>&1 &
+          sleep 30
+
+      - name: Verify Appium is Running
         run: |
           if grep -q "Appium REST http interface listener started on" appium.log; then
             echo "Appium is running and ready."
-          elsefi disable
+          else
             echo "Appium is not running or not ready."
-            cat appium.log          adb shell svc data disable
-            exit 1le
-          fip 60
+            cat appium.log
+            exit 1
+          fi
 
       - name: Run Tests with Retry
-        uses: nick-fields/retry@v2        run: |
-        with:8.8.8.8
-          timeout_minutes: 30shell setprop net.dns2 8.8.4.4
-          max_attempts: 3e Public DNS."
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 30
+          max_attempts: 3
           command: npm run test:ci
-          on_retry_command: |      - name: Check Network Interfaces
+          on_retry_command: |
             adb emu kill
-            sleep 5shell netcfg
-            $ANDROID_HOME/emulator/emulator -avd testEmulator -no-window &rk interface configuration (netcfg output):"
+            sleep 5
+            $ANDROID_HOME/emulator/emulator -avd testEmulator -no-window &
             sleep 30
-            adb wait-for-deviceng Table
+            adb wait-for-device
 
       - name: Upload Test Results
-        if: always() route output):"
+        if: always()
         uses: actions/upload-artifact@v4
-        with:iguration
+        with:
           name: test-results
-          path: |shell cat /etc/resolv.conf
+          path: |
             allure-results/
             screenshots/
-            logs/Wait for Internet Connection
+            logs/
             appium.log
           retention-days: 14
-ME=$(date +%s)
-      - name: Generate Allure ReportNNECTED=false
-        if: always()          while [ "$(date +%s)" -lt $((START_TIME + TIMEOUT)) ]; do
-        run: |1 8.8.8.8 > /dev/null 2>&1
-          npm run generate-report0 ]; then
-                        echo "Internet connection is working."
+
+      - name: Generate Allure Report
+        if: always()
+        run: |
+          npm run generate-report
+
       - name: Upload Allure Report
-        if: always()break
+        if: always()
         uses: actions/upload-artifact@v4
-        with:."
+        with:
           name: allure-report
           path: allure-report/
           retention-days: 14
 
-  notify-manager:            exit 1
+  notify-manager:
     needs: e2e-tests
     if: always() && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Send Email Notification
-        uses: dawidd6/action-send-mail@v5GitHub to Emulator
+        uses: dawidd6/action-send-mail@v5
         with:
-          server_address: smtp.office365.com          IMAGE_URL="https://raw.githubusercontent.com/webdriverio/awesome-webdriverio/main/.github/workflows/assets/awesome_webdriverio_branding.png"
+          server_address: smtp.office365.com
           server_port: 587
-          secure: false "WebdriverIO logo downloaded: webdriverio_logo.png"
+          secure: false
           username: ${{ secrets.SMTP_USER }}
-          password: ${{ secrets.SMTP_PASSWORD }}ctures/webdriverio_logo.png
-          subject: "Android Tests Update - ${{ github.event.head_commit.message }}"ogo pushed to emulator gallery."
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "Android Tests Update - ${{ github.event.head_commit.message }}"
           to: fady@wilma.life, amr.ibrahim@willma.life
           from: "Willma CI/CD <${{ secrets.SMTP_USER }}>"
-          html_body: |        run: |
-            <div style="font-family: Arial, sans-serif; padding: 20px;"> emulator_boot.png
-              <h2 style="color: #1a73e8;">New Android Test Deployment</h2> "Screenshot taken: emulator_boot.png"
+          html_body: |
+            <div style="font-family: Arial, sans-serif; padding: 20px;">
+              <h2 style="color: #1a73e8;">New Android Test Deployment</h2>
               <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px;">
-                <p><strong>📦 Repository:</strong> ${{ github.repository }}</p>ies
+                <p><strong>📦 Repository:</strong> ${{ github.repository }}</p>
                 <p><strong>🔑 Commit ID:</strong> <code>${{ github.sha }}</code></p>
                 <p><strong>👤 Author:</strong> ${{ github.actor }}</p>
                 <p><strong>📝 Message:</strong> ${{ github.event.head_commit.message }}</p>
-                <p><strong>📅 Date:</strong> ${{ github.event.head_commit.timestamp }}</p>
-              </div>          wget --no-check-certificate 'https://drive.google.com/uc?export=download&id=1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz' -O app.apk
-              <p style="margin-top: 20px;">aded from Google Drive."
-                <a href="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"install app.apk
-                   style="background-color: #1a73e8; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;">
-                  View Full Commit DetailsK_PATH=$(pwd)/app.apk" >> $GITHUB_ENV
-                </a>
-              </p>
-              <p style="margin-top: 20px; color: #666;">
-                Workflow Status: ${{ job.status }}<br>
-                This is an automated notification from Willma CI/CD System
-              </p>ho "APK package found."
-            </div>                <p><strong>📝 Message:</strong> ${{ github.event.head_commit.message }}</p>
                 <p><strong>📅 Date:</strong> ${{ github.event.head_commit.timestamp }}</p>
               </div>
               <p style="margin-top: 20px;">
