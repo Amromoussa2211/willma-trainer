@@ -1,3 +1,5 @@
+name: Android E2E Tests
+
 on:
   push:
     branches:
@@ -76,7 +78,8 @@ jobs:
             -gpu swiftshader_indirect \
             -memory 4096 \
             -cores 4 \
-            -no-snapshot &
+            -no-snapshot -wipe-data & # Added -wipe-data
+          echo "Emulator started in background."
 
       - name: Wait for Emulator Boot
         run: |
@@ -108,28 +111,39 @@ jobs:
       - name: List ADB Devices
         run: adb devices
 
+      - name: Download Image from GitHub to Emulator
+        run: |
+          IMAGE_URL="https://raw.githubusercontent.com/webdriverio/awesome-webdriverio/main/.github/workflows/assets/awesome_webdriverio_branding.png"
+          wget "$IMAGE_URL" -O webdriverio_logo.png
+          echo "WebdriverIO logo downloaded: webdriverio_logo.png"
+          adb shell mkdir -p /sdcard/Pictures
+          adb push webdriverio_logo.png /sdcard/Pictures/webdriverio_logo.png
+          echo "WebdriverIO logo pushed to emulator gallery."
+
+      - name: Take Screenshot After Emulator Start
+        run: |
+          adb exec-out screencap -p > emulator_boot.png
+          echo "Screenshot taken: emulator_boot.png"
+
       - name: Install Dependencies
         run: npm install
 
-      - name: Download and Install APK
+      - name: Download and Install APK from Google Drive
         run: |
-          mkdir -p apps
-          curl -L -o ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk https://github.com/Amromoussa2211/client/releases/download/v1.0.0/app-release-v15-0.3.2-2024-12-25-18-13.apk
-          adb install ./apps/app-release-v15-0.3.2-2024-12-25-18-13.apk
-
-      - name: Set APK_PATH Environment Variable
-        run: |
-          echo "APK_PATH=$(pwd)/apps/app-release-v15-0.3.2-2024-12-25-18-13.apk" >> $GITHUB_ENV
+          wget --no-check-certificate 'https://drive.google.com/uc?export=download&id=1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz' -O app.apk
+          echo "APK downloaded from Google Drive."
+          adb install app.apk
+          echo "APK installed successfully."
+          echo "APK_PATH=$(pwd)/app.apk" >> $GITHUB_ENV
 
       - name: Verify APK Installation
         run: |
           adb shell pm list packages | grep com.willma.client.staging
           if [ $? -eq 0 ]; then
-            echo "APK installed successfully."
+            echo "APK package found."
           else
-            echo "APK installation failed."
+            echo "APK package not found. Installation failed?"
             exit 1
-          fi
 
       - name: Start Appium
         run: |
@@ -209,7 +223,7 @@ jobs:
                 <p><strong>📅 Date:</strong> ${{ github.event.head_commit.timestamp }}</p>
               </div>
               <p style="margin-top: 20px;">
-                <a href="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}" 
+                <a href="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
                    style="background-color: #1a73e8; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;">
                   View Full Commit Details
                 </a>
