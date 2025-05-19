@@ -68,20 +68,24 @@ jobs:
           disable-animations: true
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          script: |
-            # Wait for initial device connection
-            adb wait-for-device
-            
-            # Wait for boot complete
-            while [ "$(adb shell getprop sys.boot_completed 2>/dev/null)" != "1" ]; do
-              echo "Waiting for boot completion..."
-              sleep 5
-            done
-            
-            # Additional wait for system stability
-            sleep 20
-            echo "Device boot completed"
-            adb devices -l
+          script: >-
+            adb wait-for-device &&
+            count=0 &&
+            while [ "$count" -lt 60 ] && [ "$(adb shell getprop sys.boot_completed 2>/dev/null)" != "1" ]; do
+              echo "Waiting for boot completion... ($count/60)" &&
+              sleep 5 &&
+              count=$((count + 1));
+            done &&
+            if [ "$(adb shell getprop sys.boot_completed 2>/dev/null)" = "1" ]; then
+              echo "✅ Device boot completed" &&
+              adb shell settings put global window_animation_scale 0.0 &&
+              adb shell settings put global transition_animation_scale 0.0 &&
+              adb shell settings put global animator_duration_scale 0.0 &&
+              adb devices -l;
+            else
+              echo "❌ Device boot timeout" &&
+              exit 1;
+            fi
 
       - name: Install APK on Emulator
         run: |
