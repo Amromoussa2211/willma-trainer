@@ -1,4 +1,34 @@
-name: Android E2E Test Pipeline
+[6:56 PM, 5/19/2025] Fady Gharbawy: name: Android E2E Test Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18'
+  JAVA_VERSION: '17'
+  ANDROID_SDK_VERSION: '34' # Ensure this matches your project's compileSdkVersion
+  ANDROID_BUILD_TOOLS_VERSION: '34.0.0' # Ensure this matches your project's buildToolsVersion
+  ANDROID_EMU_VERSION: '34' # API level for the emulator
+  AVD_CACHE_VERSION: '3' # Increment to invalidate AVD cache if needed
+  EMULATOR_ARGS: -no-window -gpu swiftshader_indirect -no-snapshot -no-audio -memory 2048 -cores 2 -accel on -no-boot-anim
+  APK_PACKAGE: 'com.willma.client.staging'
+  # IMPORTANT: Replace with your actual test image URL or use a GitHub secret
+  TEST_IMAGE_URL: 'YOUR_TEST_IMAGE_URL_HERE_OR…
+[7:03 PM, 5/19/2025] Amr Moussa 🇧🇼: Download immutable action package 'actions/setup-node@v4.0.3'
+  Version: 4.0.3
+  Digest: sha256:bbca4555029b5726f9f8430cd93b9b575d288ba753fa185595b950ca2b1de5b4
+  Source commit SHA: 1e60f620b9541d16bece96c5465dc8ee9832be0b
+Download immutable action package 'actions/setup-java@v4.2.1'
+  Version: 4.2.1
+  Digest: sha256:d3b71d69017b0df999e921d43eae229cac5812babf365bdb386b907adb88a1cd
+  Source commit SHA: 99b8673ff64fbf99d8d325f52d9a5bdedb8483e9
+Download action repository 'android-actions/setup-android@v3.2.1' (SHA:00854ea68c109d98c75d956347303bf7c45b0277)
+Error: Missing download info for actions/cache@v4.0.3
+[7:08 PM, 5/19/2025] Fady Gharbawy: name: Android E2E Test Pipeline
 
 on:
   push:
@@ -45,7 +75,7 @@ jobs:
         # You might need to specify sdk-platform and build-tools explicitly if not picked up
 
       - name: Cache Android SDK and AVD
-        uses: actions/cache@v4.0.3
+        uses: actions/cache@v4 # Changed v4.0.3 to v4
         with:
           path: |
             ~/.android/avd/
