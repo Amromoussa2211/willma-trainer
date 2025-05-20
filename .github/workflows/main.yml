@@ -2,137 +2,157 @@ name: Android E2E Tests
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
   e2e-tests:
     runs-on: ubuntu-latest
-    env:
-      apk_CI_PATH: ${{ github.workspace }}/apps/app-release-trainer.apk
-      ANDROID_HOME: /usr/local/lib/android/sdk
-      ADB_INSTALL_TIMEOUT: 600
-
     steps:
-      # 1. Initial setup and dependencies
       - name: Checkout Code
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 2
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
-          cache: 'npm'
 
-      - name: Set up Java 17
+      - name: Set up Java
         uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
           java-version: '17'
 
-      # 2. Cache optimization
-      - name: Cache Android components
+      - name: Cache Android SDK
         uses: actions/cache@v3
         with:
-          path: |
-            ~/.android/build-cache
-            ${{ env.ANDROID_HOME }}/.temp
-            ${{ env.ANDROID_HOME }}/platform-tools
-          key: android-${{ runner.os }}-${{ hashFiles('**/*.gradle') }}
-          restore-keys: android-${{ runner.os }}-
+          path: $ANDROID_HOME
+          key: android-sdk-${{ runner.os }}-${{ hashFiles('**/build.gradle') }}
+          restore-keys: |
+            android-sdk-${{ runner.os }}-
 
-      - name: Cache Node modules
+      - name: Cache Node Modules
         uses: actions/cache@v3
         with:
-          path: |
-            node_modules
-            **/node_modules
+          path: node_modules
           key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            node-modules-${{ runner.os }}-
 
-      # 3. Dependency installation
-      - name: Install NPM packages
-        run: npm ci --no-audit
+      - name: Clear SDK Cache
+        run: |
+          rm -rf $ANDROID_HOME/licenses $ANDROID_HOME/tools $ANDROID_HOME/cmdline-tools
 
-      # 4. Emulator setup with enhanced stability
-      - name: Start Android emulator
-        uses: reactivecircus/android-emulator-runner@v2.34.0
-        with:
-          api-level: 29
-          target: google_apis_playstore
-          arch: x86_64
-          profile: pixel_4
-          force-avd-creation: true
-          emulator-options: |
-            -no-window
-            -no-audio
-            -gpu auto
-            -no-snapshot
-            -partition-size 2048
-            -memory 2048
-            -no-boot-anim
-          script: |
-            #!/usr/bin/env bash
-            set -exo pipefail
+      - name: Download Android Command Line Tools
+        run: |
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+          unzip cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools
+          mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+          rm cmdline-tools.zip
 
-            # ADB connection handler
-            function adb_connect() {
-              local max_retries=10
-              local retry_delay=5
-              
-              echo "Initializing ADB connection..."
-              adb start-server
-              
-              for ((i=1; i<=max_retries; i++)); do
-                devices=$(adb devices -l)
-                if echo "$devices" | grep -q "emulator-.*device"; then
-                  echo "ADB connected successfully"
-                  return 0
-                fi
-                echo "ADB connection attempt $i/$max_retries failed"
-                sleep $retry_delay
-              done
-              
-              echo "::error::Failed to establish ADB connection after $max_retries attempts"
-              exit 1
-            }
+      - name: Accept Android SDK Licenses
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
 
-            # Boot verification
-            adb_connect
-            
-            echo "Monitoring boot progress..."
-            for attempt in {1..40}; do
-              {
-                boot_progress=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
-                boot_anim=$(adb shell getprop init.svc.bootanim 2>/dev/null | tr -d '\r')
-              } || true
-              
-              echo "[Attempt $attempt/$40] Boot: ${boot_progress:-null}, Animation: ${boot_anim:-null}"
-              
-              if [[ "${boot_progress}" == "1" && "${boot_anim}" == "stopped" ]]; then
-                echo "Emulator ready - validating system services..."
-                
-                # Service validation
-                adb shell service check package | grep -q "found" || exit 1
-                adb shell dumpsys window | grep -q "mCurrentFocus" || exit 1
-                
-                # Reset ADB connection
-                adb kill-server
-                adb_connect
-                
-                echo "Final system status:"
-                adb shell getprop | grep -E 'ro.build.version|ro.product.model'
-                exit 0
-              fi
-              
-              sleep 5
-            done
+      - name: Install Android SDK Packages
+        run: |
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-34" \
+            "build-tools;34.0.0" \
+            "emulator" \
+            "system-images;android-34;google_apis;x86_64"
 
-            echo "::error::Emulator boot timeout"
-            adb emu kill
+      - name: Add adb to PATH
+        run: |
+          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+
+      - name: Create AVD
+        run: |
+          # Install the required system image
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "system-images;android-34;google_apis;x86_64"
+
+          # Create the AVD
+          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
+            --name testAVD \
+            --package 'system-images;android-34;google_apis;x86_64' \
+            --device 'pixel' \
+            --force
+
+      - name: Configure Emulator Settings
+        run: |
+          echo "hw.cpu.ncore=2" >> ~/.android/avd/testAVD.avd/config.ini
+          echo "hw.ramSize=2048" >> ~/.android/avd/testAVD.avd/config.ini
+          echo "hw.gpu.enabled=yes" >> ~/.android/avd/testAVD.avd/config.ini
+          echo "hw.gpu.mode=swiftshader_indirect" >> ~/.android/avd/testAVD.avd/config.ini
+
+      - name: Fix KVM permissions
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
+          sudo gpasswd -a $USER kvm
+          sudo chmod 666 /dev/kvm
+
+      - name: Verify KVM
+        run: |
+          if [ ! -e /dev/kvm ]; then
+            echo "KVM is not available."
             exit 1
+          else
+            echo "KVM is available."
+          fi
+
+      - name: Start Emulator
+        run: |
+          # Verify the AVD exists
+          $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager list avd
+
+          # Start the emulator
+          nohup $ANDROID_HOME/emulator/emulator -avd testAVD \
+            -no-audio \
+            -no-window \
+            -gpu swiftshader_indirect \
+            -memory 2048 \
+            -cores 2 \
+            -no-boot-anim \
+            -no-snapshot-save \
+            -feature -VideoPlusCodecs \
+            -feature -NativeBridge \
+            -writable-system \
+            -qemu -enable-kvm &
+          sleep 120  # Wait for 2 minutes
+
+      - name: Wait for Emulator Boot
+        run: |
+          adb wait-for-device
+          while [[ "$(adb shell getprop sys.boot_completed | tr -d '\r')" != "1" ]]; do
+            sleep 5
+            echo "Waiting for emulator to boot..."
+          done
+          echo "Emulator is fully booted."
+
+      - name: Configure System Properties
+        run: |
+          adb root
+          adb wait-for-device
+          adb shell "setprop debug.android.hardware.camera.external 1"
+          adb shell "setprop ro.test.disable_native_bridge 1"
+
+      - name: Disable Bluetooth in Emulator
+        run: |
+          adb shell settings put global bluetooth_on 0
+          echo "Bluetooth disabled in the emulator."
+
+      - name: List ADB Devices
+        run: adb devices
+
+      - name: Install Dependencies
+        run: npm install
+
 
       # 5. APK handling with retries
       - name: Validate and install APK
