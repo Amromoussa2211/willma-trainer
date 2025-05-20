@@ -2,20 +2,23 @@ name: Android E2E Tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   e2e-tests:
     runs-on: ubuntu-latest
     env:
       apk_CI_PATH: ${{ github.workspace }}/apps/app-release-trainer.apk
+      ANDROID_HOME: /usr/local/lib/android/sdk
 
     steps:
       # 1. Checkout & runtimes
       - name: Checkout Code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
@@ -29,110 +32,142 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      # 2. Cache Android SDK & Node modules
+      # 2. Cache optimization
       - name: Cache Android SDK
         uses: actions/cache@v3
         with:
-          path: ${{ env.ANDROID_HOME }}
-          key: android-sdk-${{ runner.os }}-${{ hashFiles('**/build.gradle') }}
-          restore-keys: android-sdk-${{ runner.os }}-
+          path: |
+            ~/.android/build-cache
+            ${{ env.ANDROID_HOME }}/cmdline-tools
+          key: android-cache-${{ runner.os }}-${{ hashFiles('**/*.gradle*') }}
+          restore-keys: android-cache-${{ runner.os }}-
 
       - name: Cache Node Modules
         uses: actions/cache@v3
         with:
-          path: node_modules
+          path: |
+            node_modules
+            **/node_modules
           key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
           restore-keys: node-modules-${{ runner.os }}-
 
-      # 3. Install npm deps
+      # 3. Dependency installation
       - name: Install NPM dependencies
-        run: npm ci
+        run: npm ci --prefer-offline
 
-      # 4. Fixed emulator boot script with proper bash formatting
+      # 4. Android emulator setup with robust boot verification
       - name: Run Android emulator
         uses: reactivecircus/android-emulator-runner@v2.34.0
         with:
           api-level: 28
           target: google_apis
           arch: x86
-          profile: pixel
+          profile: pixel_4
           force-avd-creation: true
-          emulator-options: -no-window -no-audio -gpu swiftshader_indirect -no-boot-anim
+          emulator-options: |
+            -no-window 
+            -no-audio 
+            -gpu swiftshader_indirect 
+            -no-snapshot-save
+            -no-boot-anim
+            -no-accel
           script: |
             #!/usr/bin/env bash
-            echo "Waiting for emulator to boot..."
+            set -exo pipefail
+
+            echo "🔍 Waiting for device..."
             adb wait-for-device
-            for i in $(seq 1 30); do
-              BOOTED=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
-              BOOTANIM=$(adb shell getprop init.svc.bootanim 2>/dev/null | tr -d '\r')
-              echo "[$(date)] sys.boot_completed=$BOOTED, bootanim=$BOOTANIM"
-              if [[ "$BOOTED" == "1" && "$BOOTANIM" == "stopped" ]]; then
-                echo "✅ Emulator boot completed and boot animation stopped"
-                break
+
+            echo "⏳ Checking boot completion..."
+            for attempt in {1..30}; do
+              boot_progress=$(adb shell getprop sys.boot_completed | tr -d '\r')
+              boot_anim=$(adb shell getprop init.svc.bootanim | tr -d '\r')
+              
+              echo "[Attempt $attempt] Boot progress: $boot_progress, Animation: $boot_anim"
+              
+              if [[ "$boot_progress" == "1" && "$boot_anim" == "stopped" ]]; then
+                echo "✅ Emulator fully operational"
+                
+                # Additional stability checks
+                echo "🔄 Checking package manager..."
+                adb shell pm list packages > /dev/null
+                
+                echo "📱 Device info:"
+                adb shell getprop | grep -E 'ro.build.version|ro.product.model'
+                
+                exit 0
               fi
+              
               sleep 5
             done
-            echo "Final devices list:"
-            adb devices -l
-            echo "Emulator is ready for tests."
-            sleep 20
 
-      # 5. Verify trainer APK
-      - name: Create artifacts folders
-        run: mkdir -p screenshots logs apps
+            echo "❌ Emulator failed to boot within 150 seconds"
+            adb emu kill
+            exit 1
 
-      - name: Verify .env file and APK presence
+      # 5. APK verification and installation
+      - name: Verify build artifacts
         run: |
-          if [ ! -f ".env" ]; then
-            echo "❌ .env file missing in repo root"
+          if [ ! -f "${{ env.apk_CI_PATH }}" ]; then
+            echo "::error::Missing APK at ${{ env.apk_CI_PATH }}"
             exit 1
           fi
-          if [ ! -f "apps/app-release-trainer.apk" ]; then
-            echo "❌ APK missing at apps/app-release-trainer.apk"
-            exit 1
-          fi
-          echo "✅ .env and APK are present"
+          echo "APK size: $(du -h "${{ env.apk_CI_PATH }}" | cut -f1)"
 
-      - name: Verify APK
-        run: |
-          if [ -f "${{ env.apk_CI_PATH }}" ]; then
-            echo "✅ APK verified at ${{ env.apk_CI_PATH }}"
-          else
-            echo "❌ APK missing"
-            exit 1
-          fi
-
-      # 6. Install APK onto emulator
       - name: Install APK
         run: |
-          for i in 1 2 3; do
+          max_retries=3
+          for ((i=1; i<=$max_retries; i++)); do
             if adb install -r -t -g "${{ env.apk_CI_PATH }}"; then
-              echo "✅ APK installed on try #$i"
+              echo "✅ APK installed successfully on attempt $i"
               break
             fi
-            echo "⚠️ Retry #$i"
-            sleep 5
+            echo "⚠️ Install attempt $i failed, retrying..."
+            sleep $((i * 2))
           done
-          adb shell pm list packages | grep -q "com.willma.staging" || (echo "❌ Package not found" && exit 1)
 
-      # 7. Start Appium & run WDIO
+          # Verify installation
+          if ! adb shell pm list packages | grep -q "com.willma.staging"; then
+            echo "::error::APK not found in installed packages"
+            exit 1
+          fi
+
+      # 6. Test execution
       - name: Start Appium Server
         run: |
-          npx appium > logs/appium.log 2>&1 &
-          sleep 5
+          nohup npx appium --log-timestamp --local-timezone > logs/appium.log 2>&1 &
+          sleep 10
+          echo "ℹ️ Appium server PID: $(pgrep -f 'appium')"
 
-      - name: Run E2E tests
-        run: npx wdio run ./wdio.ci.conf.js
+      - name: Run WDIO Tests
+        timeout-minutes: 15
+        run: |
+          set -x
+          npx wdio run ./wdio.ci.conf.js --specRetries 2
 
-      # 8. Upload artifacts
-      - name: Upload Allure results
+      # 7. Artifact collection
+      - name: Capture test artifacts
+        if: always()
+        run: |
+          mkdir -p artifacts
+          adb logcat -d > artifacts/logcat.log
+          adb bugreport artifacts/bugreport.zip
+          cp -r screenshots/ artifacts/
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: allure-results
-          path: allure-results
+          name: e2e-artifacts-${{ github.run_id }}
+          path: |
+            allure-results/
+            artifacts/
+            logs/
+          retention-days: 3
 
-      - name: Upload screenshots
-        uses: actions/upload-artifact@v4
-        with:
-          name: screenshots
-          path: screenshots
+      # 8. Post-execution cleanup
+      - name: Stop emulator
+        if: always()
+        run: |
+          adb emu kill || true
+          pkill -f 'emulator' || true
