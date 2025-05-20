@@ -29,7 +29,7 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      # 2. Cache SDK & node_modules
+      # 2. Cache Android SDK & node_modules
       - name: Cache Android SDK
         uses: actions/cache@v3
         with:
@@ -52,14 +52,14 @@ jobs:
       - name: Add ADB to PATH
         run: echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
 
-      # 5. Bring up a fast, x86_64 Pixel 4 API‑30 emulator and run your tests in one shot
+      # 5. Bring up a Pixel 2 x86 emulator and run tests
       - name: Run emulator, install APK, start Appium & run WDIO
         uses: reactivecircus/android-emulator-runner@v2.34.0
         with:
           api-level: 30
           target: google_apis
           arch: x86_64
-          profile: Pixel_4
+          profile: Pixel_2        # switch from Pixel_4 to Pixel_2
           force-avd-creation: true
           emulator-options: |
             -no-window
