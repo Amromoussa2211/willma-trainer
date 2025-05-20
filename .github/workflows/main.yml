@@ -63,7 +63,20 @@ jobs:
             -gpu host
             -no-boot-anim
             -memory 2048
-          script: echo "Emulator booted"
+          script: |
+            echo "Waiting for emulator to boot..."
+            adb wait-for-device
+            for i in $(seq 1 30); do
+              if adb shell getprop sys.boot_completed | grep -q "1"; then
+                echo "✅ Emulator boot completed"
+                break
+              fi
+              echo "Waiting for boot completion... ($i/30)"
+              sleep 5
+            done
+            adb devices -l
+            adb shell getprop sys.boot_completed
+            echo "Emulator is ready for tests."
 
       # 5. Verify trainer APK
       - name: Create artifacts folders
