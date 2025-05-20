@@ -48,7 +48,7 @@ jobs:
       - name: Install NPM dependencies
         run: npm ci
 
-      # 4. Bring up a fast, x86 Pixel 4 API‑30 emulator via reactivecircus v2.34.0
+      # 4. Fixed emulator boot script with proper bash formatting
       - name: Run Android emulator
         uses: reactivecircus/android-emulator-runner@v2.34.0
         with:
@@ -59,13 +59,14 @@ jobs:
           force-avd-creation: true
           emulator-options: -no-window -no-audio -gpu swiftshader_indirect -no-boot-anim
           script: |
+            #!/usr/bin/env bash
             echo "Waiting for emulator to boot..."
             adb wait-for-device
             for i in $(seq 1 30); do
               BOOTED=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
               BOOTANIM=$(adb shell getprop init.svc.bootanim 2>/dev/null | tr -d '\r')
               echo "[$(date)] sys.boot_completed=$BOOTED, bootanim=$BOOTANIM"
-              if [ "$BOOTED" = "1" ] && [ "$BOOTANIM" = "stopped" ]; then
+              if [[ "$BOOTED" == "1" && "$BOOTANIM" == "stopped" ]]; then
                 echo "✅ Emulator boot completed and boot animation stopped"
                 break
               fi
