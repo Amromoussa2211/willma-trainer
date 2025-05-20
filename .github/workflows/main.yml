@@ -52,7 +52,7 @@ jobs:
       - name: Run Android emulator
         uses: reactivecircus/android-emulator-runner@v2.34.0
         with:
-          api-level: 29
+          api-level: 28
           target: google_apis
           arch: x86
           profile: pixel
@@ -60,31 +60,21 @@ jobs:
           emulator-options: -no-window -no-audio -gpu swiftshader_indirect -no-boot-anim
           script: |
             echo "Waiting for emulator to boot..."
-            adb devices -l
             adb wait-for-device
-            i=1
-            while [ $i -le 30 ]; do
-              echo "[$(date)] Devices list at iteration $i:"
-              adb devices -l
-              DEVICE_ID=$(adb devices | grep emulator | awk '{print $1}' | head -n1)
-              if [ -n "$DEVICE_ID" ]; then
-                BOOTED=$(adb -s $DEVICE_ID shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
-                echo "[$(date)] Device $DEVICE_ID sys.boot_completed=$BOOTED"
-                if [ "$BOOTED" = "1" ]; then
-                  echo "✅ Emulator $DEVICE_ID boot completed"
-                  break
-                fi
-              else
-                echo "No emulator device found yet."
+            for i in $(seq 1 30); do
+              BOOTED=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+              BOOTANIM=$(adb shell getprop init.svc.bootanim 2>/dev/null | tr -d '\r')
+              echo "[$(date)] sys.boot_completed=$BOOTED, bootanim=$BOOTANIM"
+              if [ "$BOOTED" = "1" ] && [ "$BOOTANIM" = "stopped" ]; then
+                echo "✅ Emulator boot completed and boot animation stopped"
+                break
               fi
-              echo "Waiting for boot completion... ($i/30)"
-              i=$((i + 1))
               sleep 5
             done
             echo "Final devices list:"
             adb devices -l
             echo "Emulator is ready for tests."
-            sleep 30
+            sleep 20
 
       # 5. Verify trainer APK
       - name: Create artifacts folders
