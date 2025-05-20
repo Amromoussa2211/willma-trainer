@@ -55,7 +55,7 @@ jobs:
           api-level: 29
           target: google_apis
           arch: x86
-          profile: Nexus_5
+          profile: pixel
           force-avd-creation: true
           emulator-options: -no-window -no-audio -gpu swiftshader_indirect -no-boot-anim
           script: |
