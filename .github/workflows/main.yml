@@ -10,6 +10,7 @@ jobs:
   e2e-tests:
     runs-on: ubuntu-latest
     env:
+      # Point to your trainer APK
       apk_CI_PATH: ${{ github.workspace }}/apps/app-release-trainer.apk
 
     steps:
@@ -63,36 +64,38 @@ jobs:
       - name: Accept Android SDK Licenses
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
 
-      - name: Install SDK Packages (API 34 + Emulator)
+      - name: Install SDK Packages (API 30 + Emulator)
         run: |
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
             "platform-tools" \
-            "platforms;android-34" \
-            "build-tools;34.0.0" \
+            "platforms;android-30" \
+            "build-tools;30.0.3" \
             "emulator" \
-            "system-images;android-34;google_apis;x86_64"
+            "system-images;android-30;google_apis;x86_64"
 
       - name: Add ADB to PATH
         run: echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
 
-      # 5. Create & tune AVD
-      - name: Create AVD testAVD
+      # 5. Create & tune fastPixel2 AVD with snapshot
+      - name: Create fastPixel2 AVD
         run: |
-          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
-            --name testAVD \
-            --package "system-images;android-34;google_apis;x86_64" \
-            --device "pixel" \
+          echo no | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
+            --name fastPixel2 \
+            --package "system-images;android-30;google_apis;x86_64" \
+            --device "pixel_2" \
             --force
 
-      - name: Tune AVD Config
+      - name: Tune AVD for speed & snapshots
         run: |
-          AVD_INI="$HOME/.android/avd/testAVD.avd/config.ini"
-          {
-            echo "hw.cpu.ncore=2"
-            echo "hw.ramSize=2048"
-            echo "hw.gpu.enabled=yes"
-            echo "hw.gpu.mode=swiftshader_indirect"
-          } >> "$AVD_INI"
+          AVD_INI="$HOME/.android/avd/fastPixel2.avd/config.ini"
+          cat <<EOF >> "$AVD_INI"
+          hw.cpu.ncore=4
+          hw.ramSize=2048
+          hw.gpu.enabled=yes
+          hw.gpu.mode=host
+          snapshot.present=yes
+          fastboot.chosenSnapshot=default_boot
+          EOF
 
       # 6. Enable & verify KVM
       - name: Install KVM & Dependencies
@@ -110,18 +113,23 @@ jobs:
           fi
           echo "✅ KVM available"
 
-      # 7. Launch emulator
-      - name: Launch Emulator
+      # 7. Cold‑boot & save snapshot (first run only)
+      - name: Cold‑boot fastPixel2 & save snapshot
+        if: steps.create_avd.outcome == 'success'
         run: |
-          nohup $ANDROID_HOME/emulator/emulator -avd testAVD \
-            -no-audio \
-            -no-window \
-            -gpu host \
-            -memory 2048 \
-            -cores 2 \
-            -no-boot-anim \
-            -no-snapshot-save \
-            -qemu -enable-kvm &
+          nohup emulator -avd fastPixel2 -no-window -no-audio -gpu host \
+            -no-boot-anim -wipe-data \
+            -snapshot default_boot &
+          adb wait-for-device
+          sleep 60
+          adb emu avd snapshot save default_boot
+          adb emu avd snapshot stop
+
+      # 8. Launch emulator from snapshot
+      - name: Launch Emulator (snapshot resume)
+        run: |
+          nohup emulator -avd fastPixel2 -no-window -no-audio -gpu host \
+            -snapshot default_boot -no-boot-anim &
 
       - name: Restart ADB Server
         run: |
@@ -134,7 +142,7 @@ jobs:
           adb wait-for-device
           until [[ "$(adb shell getprop sys.boot_completed | tr -d '\r')" == "1" ]]; do
             echo "Waiting for emulator to boot..."
-            sleep 5
+            sleep 2
           done
           echo "✅ Emulator fully booted"
 
@@ -145,9 +153,9 @@ jobs:
           adb shell "setprop debug.android.hardware.camera.external 1"
           adb shell "setprop ro.test.disable_native_bridge 1"
           adb shell settings put global bluetooth_on 0
-          echo "✅ Emulator configured (camera, bridge, Bluetooth off)"
+          echo "✅ Emulator configured"
 
-      # 8. Verify trainer APK
+      # 9. Verify trainer APK
       - name: Create artifacts folders
         run: mkdir -p screenshots logs apps
 
@@ -160,7 +168,7 @@ jobs:
             exit 1
           fi
 
-      # 9. Install APK onto emulator
+      # 10. Install APK onto emulator
       - name: Install APK
         run: |
           for i in 1 2 3; do
@@ -173,7 +181,7 @@ jobs:
           done
           adb shell pm list packages | grep -q "com.willma.staging" || (echo "❌ Package not found" && exit 1)
 
-      # 10. Start Appium & run tests
+      # 11. Start Appium & run WDIO
       - name: Start Appium Server
         run: |
           npx appium > logs/appium.log 2>&1 &
@@ -182,7 +190,7 @@ jobs:
       - name: Run E2E tests
         run: npx wdio run ./wdio.ci.conf.js
 
-      # 11. Upload artifacts with v4
+      # 12. Upload artifacts
       - name: Upload Allure results
         uses: actions/upload-artifact@v4
         with:
