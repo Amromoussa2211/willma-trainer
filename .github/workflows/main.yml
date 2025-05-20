@@ -52,10 +52,10 @@ jobs:
       - name: Run Android emulator
         uses: reactivecircus/android-emulator-runner@v2.34.0
         with:
-          api-level: 30
+          api-level: 29
           target: google_apis
           arch: x86
-          profile: pixel
+          profile: Nexus_5
           force-avd-creation: true
           emulator-options: -no-window -no-audio -gpu swiftshader_indirect -no-boot-anim
           script: |
@@ -82,7 +82,8 @@ jobs:
             echo "Final devices list:"
             adb devices -l
             echo "Emulator is ready for tests."
-            sleep 20
+            # Wait extra for system to stabilize
+            sleep 30
 
       # 5. Verify trainer APK
       - name: Create artifacts folders
