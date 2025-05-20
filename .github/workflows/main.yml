@@ -1,17 +1,20 @@
-name: E2E Tests
+name: Android E2E Tests
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   e2e-tests:
     runs-on: ubuntu-latest
+    env:
+      # point to your trainer APK
+      apk_CI_PATH: ${{ github.workspace }}/apps/app-release-trainer.apk
+
     steps:
+      # 1. Checkout & runtimes
       - name: Checkout Code
         uses: actions/checkout@v3
 
@@ -19,34 +22,38 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '18'
+          cache: 'npm'
 
-      - name: Set up Java
+      - name: Set up Java 17 (Zulu)
         uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
           java-version: '17'
+
+      # 2. Cache Android SDK & node modules
+      - name: Cache Android SDK
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.ANDROID_HOME }}
+          key: android-sdk-${{ runner.os }}-${{ hashFiles('**/build.gradle') }}
+          restore-keys: android-sdk-${{ runner.os }}-
 
       - name: Cache Node Modules
         uses: actions/cache@v3
         with:
           path: node_modules
           key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            node-modules-${{ runner.os }}-
+          restore-keys: node-modules-${{ runner.os }}-
 
-      - name: Cache Android SDK
-        uses: actions/cache@v3
-        with:
-          path: $ANDROID_HOME
-          key: android-sdk-${{ runner.os }}-${{ hashFiles('**/build.gradle') }}
-          restore-keys: |
-            android-sdk-${{ runner.os }}-
+      # 3. Install npm dependencies
+      - name: Install NPM dependencies
+        run: npm ci
 
+      # 4. Prepare Android SDK
       - name: Clear SDK Cache
-        run: |
-          rm -rf $ANDROID_HOME/licenses $ANDROID_HOME/tools $ANDROID_HOME/cmdline-tools
+        run: rm -rf $ANDROID_HOME/licenses $ANDROID_HOME/tools $ANDROID_HOME/cmdline-tools
 
-      - name: Download Android Command Line Tools
+      - name: Download & Unzip Command Line Tools
         run: |
           mkdir -p $ANDROID_HOME/cmdline-tools
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
@@ -54,37 +61,42 @@ jobs:
           mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
           rm cmdline-tools.zip
 
-      - name: Accept SDK Licenses
+      - name: Accept Android SDK Licenses
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
 
-      - name: Install Android SDK Packages
+      - name: Install SDK Packages (API 34 + Emulator)
         run: |
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install \
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
             "platform-tools" \
-            "platforms;android-30" \
-            "build-tools;30.0.3" \
+            "platforms;android-34" \
+            "build-tools;34.0.0" \
             "emulator" \
-            "system-images;android-30;default;x86"
+            "system-images;android-34;google_apis;x86_64"
 
-      - name: Add adb to PATH
+      - name: Add ADB to PATH
         run: echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
 
-      - name: Create AVD
+      # 5. Create & tune AVD
+      - name: Create AVD testAVD
         run: |
           echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
             --name testAVD \
-            --package "system-images;android-30;default;x86" \
+            --package "system-images;android-34;google_apis;x86_64" \
             --device "pixel" \
             --force
 
-      - name: Configure Emulator Settings
+      - name: Tune AVD Config
         run: |
-          echo "hw.cpu.ncore=2" >> ~/.android/avd/testAVD.avd/config.ini
-          echo "hw.ramSize=1536" >> ~/.android/avd/testAVD.avd/config.ini
-          echo "hw.gpu.enabled=yes" >> ~/.android/avd/testAVD.avd/config.ini
-          echo "hw.gpu.mode=swiftshader_indirect" >> ~/.android/avd/testAVD.avd/config.ini
+          AVD_INI="$HOME/.android/avd/testAVD.avd/config.ini"
+          {
+            echo "hw.cpu.ncore=2"
+            echo "hw.ramSize=2048"
+            echo "hw.gpu.enabled=yes"
+            echo "hw.gpu.mode=swiftshader_indirect"
+          } >> "$AVD_INI"
 
-      - name: Fix KVM permissions
+      # 6. Enable & verify KVM
+      - name: Install KVM & Dependencies
         run: |
           sudo apt-get update -y
           sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
@@ -94,20 +106,29 @@ jobs:
       - name: Verify KVM
         run: |
           if [ ! -e /dev/kvm ]; then
-            echo "❌ KVM is not available."
+            echo "❌ /dev/kvm not found — nested virtualization disabled"
             exit 1
-          else
-            echo "✅ KVM is available."
           fi
+          echo "✅ KVM available"
 
-      - name: Start Emulator
+      # 7. Launch emulator
+      - name: Launch Emulator
         run: |
           nohup $ANDROID_HOME/emulator/emulator -avd testAVD \
-            -no-audio -no-window -gpu swiftshader_indirect \
-            -memory 1536 -no-boot-anim -no-snapshot-save &
+            -no-audio \
+            -no-window \
+            -gpu host \
+            -memory 2048 \
+            -cores 2 \
+            -no-boot-anim \
+            -no-snapshot-save \
+            -qemu -enable-kvm &
 
-          echo "⏳ Waiting 90 seconds for emulator to initialize..."
-          sleep 90
+      - name: Restart ADB Server
+        run: |
+          adb kill-server || true
+          adb start-server
+          echo "✅ ADB server restarted"
 
       - name: Wait for Emulator Boot
         run: |
@@ -118,22 +139,65 @@ jobs:
           done
           echo "✅ Emulator fully booted"
 
-      - name: Configure System Properties
+      - name: Configure Emulator Properties
         run: |
           adb root
           adb wait-for-device
           adb shell "setprop debug.android.hardware.camera.external 1"
           adb shell "setprop ro.test.disable_native_bridge 1"
-
-      - name: Disable Bluetooth in Emulator
-        run: |
           adb shell settings put global bluetooth_on 0
-          echo "Bluetooth disabled in the emulator."
+          echo "✅ Emulator configured (camera, bridge, Bluetooth off)"
 
-      - name: List ADB Devices
-        run: adb devices
+      # 8. Download & verify APK (if needed)
+      - name: Create artifacts folders
+        run: mkdir -p screenshots logs apps
 
-      # ✅ Your test commands go below this step
-      # Example:
-      # - name: Run Detox Tests
-      #   run: npm run test:e2e
+      - name: Download APK (skip if checked-in)
+        if: false
+        run: |
+          # (your download logic here)
+          echo "🚧 skipping download in this example"
+
+      - name: Verify APK
+        run: |
+          if [ -f "${{ env.apk_CI_PATH }}" ]; then
+            echo "✅ APK verified at ${{ env.apk_CI_PATH }}"
+          else
+            echo "❌ APK missing"
+            exit 1
+          fi
+
+      # 9. Install APK onto emulator
+      - name: Install APK
+        run: |
+          for i in 1 2 3; do
+            if adb install -r -t -g "${{ env.apk_CI_PATH }}"; then
+              echo "✅ APK installed on try #$i"
+              break
+            fi
+            echo "⚠️ Retry #$i"
+            sleep 5
+          done
+          adb shell pm list packages | grep -q "com.willma.staging" || (echo "❌ Package not found" && exit 1)
+
+      # 10. Start Appium & run tests
+      - name: Start Appium Server
+        run: |
+          npx appium > logs/appium.log 2>&1 &
+          sleep 5
+
+      - name: Run E2E tests
+        run: npx wdio run ./wdio.ci.conf.js
+
+      # 11. Upload artifacts
+      - name: Upload Allure results
+        uses: actions/upload-artifact@v3
+        with:
+          name: allure-results
+          path: allure-results
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v3
+        with:
+          name: screenshots
+          path: screenshots
