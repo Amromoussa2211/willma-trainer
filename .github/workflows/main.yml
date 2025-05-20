@@ -62,7 +62,9 @@ jobs:
             echo "Waiting for emulator to boot..."
             adb devices -l
             adb wait-for-device
-            for i in $(seq 1 30); do
+            i=1
+            while [ $i -le 30 ]
+            do
               echo "[$(date)] Devices list at iteration $i:"
               adb devices -l
               DEVICE_ID=$(adb devices | grep emulator | awk '{print $1}' | head -n1)
@@ -77,6 +79,7 @@ jobs:
                 echo "No emulator device found yet."
               fi
               echo "Waiting for boot completion... ($i/30)"
+              i=$((i + 1))
               sleep 5
             done
             echo "Final devices list:"
