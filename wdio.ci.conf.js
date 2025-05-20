@@ -8,7 +8,7 @@ const ciConfig = {
     'appium:platformVersion': '29',
     "appium:appPackage": "com.willma.staging",
     "appium:appActivity": "com.willma.staging.MainActivity",
-    'appium:app': process.env.APK_PATH,
+    'appium:app': process.env.apk_CI_PATH ,
     'appium:noReset': false,
     'appium:fullReset': true,
     'appium:autoGrantPermissions': true,

@@ -36,7 +36,7 @@ jobs:
           wget --quiet --save-cookies /tmp/cookies.txt \
             "https://docs.google.com/uc?export=download&id=${FILEID}" -O- | \
             sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1/p' > /tmp/confirm
-          
+
           wget --quiet --load-cookies /tmp/cookies.txt \
             "https://docs.google.com/uc?export=download&id=${FILEID}&confirm=$(cat /tmp/confirm)" \
             -O "$FILENAME"
@@ -75,19 +75,20 @@ jobs:
             -no-boot-anim
             -dns-server 8.8.8.8,8.8.4.4
           script: |
-            #!/usr/bin/env bash
             set -e
 
             sleep 5
             adb wait-for-device
 
-            for i in $(seq 1 30); do
+            count=0
+            while [ "$count" -lt 30 ]; do
               boot_completed=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
               if [ "$boot_completed" = "1" ]; then
-                echo "✅ Device boot completed"
+                echo "✅ Device boot completed after $count checks"
                 break
               fi
-              echo "Waiting for boot completion... ($i/30)"
+              count=$((count + 1))
+              echo "Waiting for boot completion... ($count/30)"
               sleep 5
             done
 
