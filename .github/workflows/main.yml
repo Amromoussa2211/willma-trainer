@@ -74,49 +74,54 @@ jobs:
             -noaudio
             -no-boot-anim
             -dns-server 8.8.8.8,8.8.4.4
-          # Wrap entire script in one bash -lc so loops/done work correctly
           script: |
-            bash -lc '
-              set -e
+            # write a self‑contained bash script
+            cat > emulator-setup.sh << 'EOF'
+            #!/usr/bin/env bash
+            set -e
 
-              echo "→ Sleeping initial 5s"
-              sleep 5
+            echo "→ Sleeping initial 5s"
+            sleep 5
 
-              echo "→ Waiting for ADB device"
-              adb wait-for-device
+            echo "→ Waiting for ADB device"
+            adb wait-for-device
 
-              echo "→ Polling sys.boot_completed"
-              count=0
-              while [ "$count" -lt 30 ]; do
-                val=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d "\r")
-                if [ "$val" = "1" ]; then
-                  echo "✅ Device boot completed after $count checks"
-                  break
-                fi
-                count=$((count + 1))
-                echo "… still waiting ($count/30)"
-                sleep 5
-              done
-
-              echo "→ Checking internet inside emulator"
-              if adb shell ping -c 3 google.com; then
-                echo "✅ Internet reachable"
-              else
-                echo "❌ Internet unreachable – resetting DNS/proxy"
-                adb shell settings put global http_proxy ""
-                adb shell settings put global global_http_proxy_host ""
-                adb shell settings put global global_http_proxy_port ""
-                sleep 5
+            echo "→ Polling sys.boot_completed"
+            count=0
+            while [ "$count" -lt 30 ]; do
+              val=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+              if [ "$val" = "1" ]; then
+                echo "✅ Device boot completed after $count checks"
+                break
               fi
+              count=$((count + 1))
+              echo "… still waiting ($count/30)"
+              sleep 5
+            done
 
-              echo "→ Disabling animations"
-              adb shell settings put global window_animation_scale 0.0
-              adb shell settings put global transition_animation_scale 0.0
-              adb shell settings put global animator_duration_scale 0.0
+            echo "→ Checking internet inside emulator"
+            if adb shell ping -c 3 google.com; then
+              echo "✅ Internet reachable"
+            else
+              echo "❌ Internet unreachable – resetting DNS/proxy"
+              adb shell settings put global http_proxy ""
+              adb shell settings put global global_http_proxy_host ""
+              adb shell settings put global global_http_proxy_port ""
+              sleep 5
+            fi
 
-              echo "→ Final device list"
-              adb devices -l
-            '
+            echo "→ Disabling animations"
+            adb shell settings put global window_animation_scale 0.0
+            adb shell settings put global transition_animation_scale 0.0
+            adb shell settings put global animator_duration_scale 0.0
+
+            echo "→ Final device list"
+            adb devices -l
+            EOF
+
+            # make it executable and run it under bash
+            chmod +x emulator-setup.sh
+            bash emulator-setup.sh
 
       - name: Install APK on Emulator
         run: |
