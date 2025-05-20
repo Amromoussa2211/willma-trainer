@@ -12,13 +12,14 @@ jobs:
     env:
       apk_CI_PATH: ${{ github.workspace }}/apps/app-release-trainer.apk
       ANDROID_HOME: /usr/local/lib/android/sdk
+      ADB_INSTALL_TIMEOUT: 600
 
     steps:
-      # 1. Checkout & runtimes
+      # 1. Initial setup and dependencies
       - name: Checkout Code
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0
+          fetch-depth: 2
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
@@ -26,148 +27,179 @@ jobs:
           node-version: '18'
           cache: 'npm'
 
-      - name: Set up Java 17 (Zulu)
+      - name: Set up Java 17
         uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
           java-version: '17'
 
       # 2. Cache optimization
-      - name: Cache Android SDK
+      - name: Cache Android components
         uses: actions/cache@v3
         with:
           path: |
             ~/.android/build-cache
-            ${{ env.ANDROID_HOME }}/cmdline-tools
-          key: android-cache-${{ runner.os }}-${{ hashFiles('**/*.gradle*') }}
-          restore-keys: android-cache-${{ runner.os }}-
+            ${{ env.ANDROID_HOME }}/.temp
+            ${{ env.ANDROID_HOME }}/platform-tools
+          key: android-${{ runner.os }}-${{ hashFiles('**/*.gradle') }}
+          restore-keys: android-${{ runner.os }}-
 
-      - name: Cache Node Modules
+      - name: Cache Node modules
         uses: actions/cache@v3
         with:
           path: |
             node_modules
             **/node_modules
           key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: node-modules-${{ runner.os }}-
 
       # 3. Dependency installation
-      - name: Install NPM dependencies
-        run: npm ci --prefer-offline
+      - name: Install NPM packages
+        run: npm ci --no-audit
 
-      # 4. Android emulator setup with robust boot verification
-      - name: Run Android emulator
+      # 4. Emulator setup with enhanced stability
+      - name: Start Android emulator
         uses: reactivecircus/android-emulator-runner@v2.34.0
         with:
-          api-level: 28
-          target: google_apis
-          arch: x86
+          api-level: 29
+          target: google_apis_playstore
+          arch: x86_64
           profile: pixel_4
           force-avd-creation: true
           emulator-options: |
-            -no-window 
-            -no-audio 
-            -gpu swiftshader_indirect 
-            -no-snapshot-save
+            -no-window
+            -no-audio
+            -gpu auto
+            -no-snapshot
+            -partition-size 2048
+            -memory 2048
             -no-boot-anim
-            -no-accel
           script: |
             #!/usr/bin/env bash
             set -exo pipefail
 
-            echo "🔍 Waiting for device..."
-            adb wait-for-device
+            # ADB connection handler
+            function adb_connect() {
+              local max_retries=10
+              local retry_delay=5
+              
+              echo "Initializing ADB connection..."
+              adb start-server
+              
+              for ((i=1; i<=max_retries; i++)); do
+                devices=$(adb devices -l)
+                if echo "$devices" | grep -q "emulator-.*device"; then
+                  echo "ADB connected successfully"
+                  return 0
+                fi
+                echo "ADB connection attempt $i/$max_retries failed"
+                sleep $retry_delay
+              done
+              
+              echo "::error::Failed to establish ADB connection after $max_retries attempts"
+              exit 1
+            }
 
-            echo "⏳ Checking boot completion..."
-            for attempt in {1..30}; do
-              boot_progress=$(adb shell getprop sys.boot_completed | tr -d '\r')
-              boot_anim=$(adb shell getprop init.svc.bootanim | tr -d '\r')
+            # Boot verification
+            adb_connect
+            
+            echo "Monitoring boot progress..."
+            for attempt in {1..40}; do
+              {
+                boot_progress=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+                boot_anim=$(adb shell getprop init.svc.bootanim 2>/dev/null | tr -d '\r')
+              } || true
               
-              echo "[Attempt $attempt] Boot progress: $boot_progress, Animation: $boot_anim"
+              echo "[Attempt $attempt/$40] Boot: ${boot_progress:-null}, Animation: ${boot_anim:-null}"
               
-              if [[ "$boot_progress" == "1" && "$boot_anim" == "stopped" ]]; then
-                echo "✅ Emulator fully operational"
+              if [[ "${boot_progress}" == "1" && "${boot_anim}" == "stopped" ]]; then
+                echo "Emulator ready - validating system services..."
                 
-                # Additional stability checks
-                echo "🔄 Checking package manager..."
-                adb shell pm list packages > /dev/null
+                # Service validation
+                adb shell service check package | grep -q "found" || exit 1
+                adb shell dumpsys window | grep -q "mCurrentFocus" || exit 1
                 
-                echo "📱 Device info:"
+                # Reset ADB connection
+                adb kill-server
+                adb_connect
+                
+                echo "Final system status:"
                 adb shell getprop | grep -E 'ro.build.version|ro.product.model'
-                
                 exit 0
               fi
               
               sleep 5
             done
 
-            echo "❌ Emulator failed to boot within 150 seconds"
+            echo "::error::Emulator boot timeout"
             adb emu kill
             exit 1
 
-      # 5. APK verification and installation
-      - name: Verify build artifacts
+      # 5. APK handling with retries
+      - name: Validate and install APK
+        timeout-minutes: 10
         run: |
+          function adb_retry() {
+            local cmd="$@"
+            local max=5
+            local delay=5
+            
+            for ((i=1; i<=max; i++)); do
+              if eval "$cmd"; then
+                return 0
+              fi
+              echo "Attempt $i failed. Retrying in $delay seconds..."
+              sleep $delay
+            done
+            echo "::error::Command failed after $max attempts: $cmd"
+            exit 1
+          }
+
+          # APK verification
           if [ ! -f "${{ env.apk_CI_PATH }}" ]; then
             echo "::error::Missing APK at ${{ env.apk_CI_PATH }}"
             exit 1
           fi
-          echo "APK size: $(du -h "${{ env.apk_CI_PATH }}" | cut -f1)"
 
-      - name: Install APK
-        run: |
-          max_retries=3
-          for ((i=1; i<=$max_retries; i++)); do
-            if adb install -r -t -g "${{ env.apk_CI_PATH }}"; then
-              echo "✅ APK installed successfully on attempt $i"
-              break
-            fi
-            echo "⚠️ Install attempt $i failed, retrying..."
-            sleep $((i * 2))
-          done
-
-          # Verify installation
-          if ! adb shell pm list packages | grep -q "com.willma.staging"; then
-            echo "::error::APK not found in installed packages"
-            exit 1
-          fi
+          # Installation with retries
+          adb_retry "adb install -r -t -g ${{ env.apk_CI_PATH }}"
+          adb_retry "adb shell pm list packages | grep -q com.willma.staging"
 
       # 6. Test execution
-      - name: Start Appium Server
+      - name: Run Appium server
         run: |
-          nohup npx appium --log-timestamp --local-timezone > logs/appium.log 2>&1 &
+          nohup npx appium --relaxed-security --log-timestamp > logs/appium.log 2>&1 &
           sleep 10
-          echo "ℹ️ Appium server PID: $(pgrep -f 'appium')"
+          echo "Appium PID: $(pgrep -f 'appium')"
 
-      - name: Run WDIO Tests
-        timeout-minutes: 15
+      - name: Execute E2E tests
+        timeout-minutes: 25
         run: |
           set -x
           npx wdio run ./wdio.ci.conf.js --specRetries 2
 
       # 7. Artifact collection
-      - name: Capture test artifacts
+      - name: Gather diagnostics
         if: always()
         run: |
-          mkdir -p artifacts
-          adb logcat -d > artifacts/logcat.log
-          adb bugreport artifacts/bugreport.zip
-          cp -r screenshots/ artifacts/
+          mkdir -p diagnostics
+          adb logcat -d > diagnostics/logcat.log
+          adb bugreport diagnostics/bugreport.zip
+          cp -r screenshots diagnostics/
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: e2e-artifacts-${{ github.run_id }}
+          name: test-results-${{ github.run_id }}
           path: |
             allure-results/
-            artifacts/
-            logs/
+            diagnostics/
+            logs/appium.log
           retention-days: 3
 
-      # 8. Post-execution cleanup
-      - name: Stop emulator
+      # 8. Cleanup
+      - name: Terminate emulator
         if: always()
         run: |
           adb emu kill || true
-          pkill -f 'emulator' || true
+          pkill -f 'qemu-system' || true
