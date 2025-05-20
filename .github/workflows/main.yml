@@ -153,16 +153,24 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
+      - name: Download APK from Google Drive
+        run: |
+          pip install gdown
+          gdown --fuzzy "https://drive.google.com/file/d/1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz/view?usp=drive_link" -O app-release.apk
+        # Set environment variable for later steps
+        env:
+          apk_CI_PATH: app-release.apk
 
-      # 5. APK handling with retries
       - name: Validate and install APK
         timeout-minutes: 10
+        env:
+          apk_CI_PATH: app-release.apk
         run: |
           function adb_retry() {
             local cmd="$@"
             local max=5
             local delay=5
-            
+
             for ((i=1; i<=max; i++)); do
               if eval "$cmd"; then
                 return 0
@@ -175,16 +183,15 @@ jobs:
           }
 
           # APK verification
-          if [ ! -f "${{ env.apk_CI_PATH }}" ]; then
-            echo "::error::Missing APK at ${{ env.apk_CI_PATH }}"
+          if [ ! -f "${apk_CI_PATH}" ]; then
+            echo "::error::Missing APK at ${apk_CI_PATH}"
             exit 1
           fi
 
           # Installation with retries
-          adb_retry "adb install -r -t -g ${{ env.apk_CI_PATH }}"
+          adb_retry "adb install -r -t -g ${apk_CI_PATH}"
           adb_retry "adb shell pm list packages | grep -q com.willma.staging"
 
-      # 6. Test execution
       - name: Run Appium server
         run: |
           nohup npx appium --relaxed-security --log-timestamp > logs/appium.log 2>&1 &
@@ -197,7 +204,6 @@ jobs:
           set -x
           npx wdio run ./wdio.ci.conf.js --specRetries 2
 
-      # 7. Artifact collection
       - name: Gather diagnostics
         if: always()
         run: |
@@ -217,7 +223,6 @@ jobs:
             logs/appium.log
           retention-days: 3
 
-      # 8. Cleanup
       - name: Terminate emulator
         if: always()
         run: |
