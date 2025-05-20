@@ -65,19 +65,28 @@ jobs:
             -memory 1536
           script: |
             echo "Waiting for emulator to boot..."
+            adb devices -l
             adb wait-for-device
             for i in $(seq 1 30); do
-              if adb shell getprop sys.boot_completed | grep -q "1"; then
-                echo "✅ Emulator boot completed"
-                break
+              echo "[$(date)] Devices list at iteration $i:"
+              adb devices -l
+              DEVICE_ID=$(adb devices | grep emulator | awk '{print $1}' | head -n1)
+              if [ -n "$DEVICE_ID" ]; then
+                BOOTED=$(adb -s $DEVICE_ID shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+                echo "[$(date)] Device $DEVICE_ID sys.boot_completed=$BOOTED"
+                if [ "$BOOTED" = "1"; then
+                  echo "✅ Emulator $DEVICE_ID boot completed"
+                  break
+                fi
+              else
+                echo "No emulator device found yet."
               fi
               echo "Waiting for boot completion... ($i/30)"
               sleep 5
             done
+            echo "Final devices list:"
             adb devices -l
-            adb shell getprop sys.boot_completed
             echo "Emulator is ready for tests."
-            # Keep emulator alive for a bit to avoid premature shutdown
             sleep 20
 
       # 5. Verify trainer APK
