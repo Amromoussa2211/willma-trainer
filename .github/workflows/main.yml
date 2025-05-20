@@ -48,21 +48,16 @@ jobs:
       - name: Install NPM dependencies
         run: npm ci
 
-      # 4. Bring up a fast, x86_64 Pixel 4 API‑30 emulator via reactivecircus v2.34.0
+      # 4. Bring up a fast, x86 Pixel 4 API‑30 emulator via reactivecircus v2.34.0
       - name: Run Android emulator
         uses: reactivecircus/android-emulator-runner@v2.34.0
         with:
           api-level: 30
           target: google_apis
-          arch: x86_64
+          arch: x86
           profile: pixel
           force-avd-creation: true
-          emulator-options: |
-            -no-window
-            -no-audio
-            -gpu swiftshader_indirect
-            -no-boot-anim
-            -memory 1536
+          emulator-options: -no-window -no-audio -gpu swiftshader_indirect -no-boot-anim
           script: |
             echo "Waiting for emulator to boot..."
             adb devices -l
@@ -74,7 +69,7 @@ jobs:
               if [ -n "$DEVICE_ID" ]; then
                 BOOTED=$(adb -s $DEVICE_ID shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
                 echo "[$(date)] Device $DEVICE_ID sys.boot_completed=$BOOTED"
-                if [ "$BOOTED" = "1"; then
+                if [ "$BOOTED" = "1" ]; then
                   echo "✅ Emulator $DEVICE_ID boot completed"
                   break
                 fi
