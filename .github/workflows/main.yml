@@ -29,7 +29,7 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      # 2. Cache Android SDK & Node modules
+      # 2. Cache Android SDK & node modules
       - name: Cache Android SDK
         uses: actions/cache@v3
         with:
@@ -48,23 +48,21 @@ jobs:
       - name: Install NPM dependencies
         run: npm ci
 
-      # 4. Bring up a fast, x86_64 Pixel 4 API‑30 emulator
+      # 4. Bring up a fast, x86_64 Pixel 4 API‑30 emulator via v3 runner
       - name: Run Android emulator
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@v3
         with:
           api-level: 30
           target: google_apis
           arch: x86_64
           profile: Pixel_4
           force-avd-creation: true
-          emulator-options: |
+          emulator-options: >-
             -no-window
             -no-audio
             -gpu host
             -no-boot-anim
             -memory 2048
-          script: |
-            echo "✅ Emulator is up in $((SECONDS/60))m$((SECONDS%60))s"
 
       # 5. Verify trainer APK
       - name: Create artifacts folders
