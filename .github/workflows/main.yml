@@ -60,9 +60,9 @@ jobs:
           emulator-options: |
             -no-window
             -no-audio
-            -gpu host
+            -gpu swiftshader_indirect
             -no-boot-anim
-            -memory 2048
+            -memory 1536
           script: |
             echo "Waiting for emulator to boot..."
             adb wait-for-device
@@ -77,10 +77,24 @@ jobs:
             adb devices -l
             adb shell getprop sys.boot_completed
             echo "Emulator is ready for tests."
+            # Keep emulator alive for a bit to avoid premature shutdown
+            sleep 20
 
       # 5. Verify trainer APK
       - name: Create artifacts folders
         run: mkdir -p screenshots logs apps
+
+      - name: Verify .env file and APK presence
+        run: |
+          if [ ! -f ".env" ]; then
+            echo "❌ .env file missing in repo root"
+            exit 1
+          fi
+          if [ ! -f "apps/app-release-trainer.apk" ]; then
+            echo "❌ APK missing at apps/app-release-trainer.apk"
+            exit 1
+          fi
+          echo "✅ .env and APK are present"
 
       - name: Verify APK
         run: |
