@@ -10,7 +10,6 @@ jobs:
   e2e-tests:
     runs-on: ubuntu-latest
     env:
-      # point to your trainer APK
       apk_CI_PATH: ${{ github.workspace }}/apps/app-release-trainer.apk
 
     steps:
@@ -148,15 +147,9 @@ jobs:
           adb shell settings put global bluetooth_on 0
           echo "✅ Emulator configured (camera, bridge, Bluetooth off)"
 
-      # 8. Download & verify APK (if needed)
+      # 8. Verify trainer APK
       - name: Create artifacts folders
         run: mkdir -p screenshots logs apps
-
-      - name: Download APK (skip if checked-in)
-        if: false
-        run: |
-          # (your download logic here)
-          echo "🚧 skipping download in this example"
 
       - name: Verify APK
         run: |
@@ -189,15 +182,15 @@ jobs:
       - name: Run E2E tests
         run: npx wdio run ./wdio.ci.conf.js
 
-      # 11. Upload artifacts
+      # 11. Upload artifacts (using v2)
       - name: Upload Allure results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2
         with:
           name: allure-results
           path: allure-results
 
       - name: Upload screenshots
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2
         with:
           name: screenshots
           path: screenshots
