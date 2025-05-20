@@ -29,7 +29,7 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      # 2. Cache Android SDK & Node modules
+      # 2. Cache SDK & node_modules
       - name: Cache Android SDK
         uses: actions/cache@v3
         with:
@@ -44,12 +44,16 @@ jobs:
           key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
           restore-keys: node-modules-${{ runner.os }}-
 
-      # 3. Install npm deps
+      # 3. Install deps
       - name: Install NPM dependencies
         run: npm ci
 
-      # 4. Bring up a fast, x86_64 Pixel 4 API‑30 emulator via reactivecircus v2.34.0
-      - name: Run Android emulator
+      # 4. Make sure adb is on PATH
+      - name: Add ADB to PATH
+        run: echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+
+      # 5. Bring up a fast, x86_64 Pixel 4 API‑30 emulator and run your tests in one shot
+      - name: Run emulator, install APK, start Appium & run WDIO
         uses: reactivecircus/android-emulator-runner@v2.34.0
         with:
           api-level: 30
@@ -63,43 +67,27 @@ jobs:
             -gpu host
             -no-boot-anim
             -memory 2048
+          script: |
+            set -e
 
-      # 5. Verify trainer APK
-      - name: Create artifacts folders
-        run: mkdir -p screenshots logs apps
+            echo "✅ Emulator is up. Installing APK..."
+            for i in 1 2 3; do
+              if adb install -r -t -g "${apk_CI_PATH}"; then
+                echo "✅ APK installed"
+                break
+              fi
+              echo "⚠️ Retry #$i"
+              sleep 5
+            done
 
-      - name: Verify APK
-        run: |
-          if [ -f "${{ env.apk_CI_PATH }}" ]; then
-            echo "✅ APK verified at ${{ env.apk_CI_PATH }}"
-          else
-            echo "❌ APK missing"
-            exit 1
-          fi
-
-      # 6. Install APK onto emulator
-      - name: Install APK
-        run: |
-          for i in 1 2 3; do
-            if adb install -r -t -g "${{ env.apk_CI_PATH }}"; then
-              echo "✅ APK installed on try #$i"
-              break
-            fi
-            echo "⚠️ Retry #$i"
+            echo "✅ Starting Appium..."
+            npx appium > logs/appium.log 2>&1 &
             sleep 5
-          done
-          adb shell pm list packages | grep -q "com.willma.staging" || (echo "❌ Package not found" && exit 1)
 
-      # 7. Start Appium & run WDIO
-      - name: Start Appium Server
-        run: |
-          npx appium > logs/appium.log 2>&1 &
-          sleep 5
+            echo "✅ Running WDIO tests..."
+            npx wdio run ./wdio.ci.conf.js
 
-      - name: Run E2E tests
-        run: npx wdio run ./wdio.ci.conf.js
-
-      # 8. Upload artifacts
+      # 6. Upload artifacts
       - name: Upload Allure results
         uses: actions/upload-artifact@v4
         with:
