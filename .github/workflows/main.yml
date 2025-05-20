@@ -29,7 +29,7 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      # 2. Cache Android SDK & node modules
+      # 2. Cache Android SDK & Node modules
       - name: Cache Android SDK
         uses: actions/cache@v3
         with:
@@ -48,16 +48,16 @@ jobs:
       - name: Install NPM dependencies
         run: npm ci
 
-      # 4. Bring up a fast, x86_64 Pixel 4 API‑30 emulator via v3 runner
+      # 4. Bring up a fast, x86_64 Pixel 4 API‑30 emulator via reactivecircus v2.34.0
       - name: Run Android emulator
-        uses: reactivecircus/android-emulator-runner@v3
+        uses: reactivecircus/android-emulator-runner@v2.34.0
         with:
           api-level: 30
           target: google_apis
           arch: x86_64
           profile: Pixel_4
           force-avd-creation: true
-          emulator-options: >-
+          emulator-options: |
             -no-window
             -no-audio
             -gpu host
