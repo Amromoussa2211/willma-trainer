@@ -218,10 +218,18 @@ jobs:
           adb_retry "adb shell pm list packages | grep -q com.willma.client.staging"
 
       - name: Run Appium server
-        run: |
-          nohup npx appium --relaxed-security --log-timestamp > logs/appium.log 2>&1 &
-          sleep 10
-          echo "Appium PID: $(pgrep -f 'appium')"
+         run: |
+          mkdir -p logs
+         nohup npx appium --relaxed-security --log-timestamp > logs/appium.log 2>&1 &
+         sleep 10
+         echo "Appium PID: $(pgrep -f 'appium')" || echo "Appium process not found"
+
+         echo "Checking if Appium is listening on port 4723..."
+         netstat -tuln | grep 4723 || echo "❌ Port 4723 is not active"
+
+         echo "==== Appium Logs ===="
+         tail -n 50 logs/appium.log || echo "No Appium logs found"
+
 
       - name: Execute E2E tests
         timeout-minutes: 25
