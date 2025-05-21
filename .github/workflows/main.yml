@@ -161,10 +161,24 @@ jobs:
         env:
           apk_CI_PATH: app-release.apk
 
-      - name: Validate and install APK
+      - name: Download APKs from Google Drive
+        run: |
+          pip install gdown
+          
+          echo "Downloading first APK..."
+          gdown --fuzzy "https://drive.google.com/file/d/1UmKiTZ6SlMorOBLx754Fs7_oqoNxFQ4F/view?usp=drive_link" -O app-release.apk
+          
+          echo "Downloading second APK..."
+          gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O client-app-release.apk
+        env:
+          apk_CI_PATH: app-release.apk
+          apk_CLIENT_PATH: client-app-release.apk
+
+      - name: Validate and install APKs
         timeout-minutes: 10
         env:
           apk_CI_PATH: app-release.apk
+          apk_CLIENT_PATH: client-app-release.apk
         run: |
           function adb_retry() {
             local cmd="$@"
@@ -182,15 +196,26 @@ jobs:
             exit 1
           }
 
-          # APK verification
+          # Verify both APK files exist
           if [ ! -f "${apk_CI_PATH}" ]; then
-            echo "::error::Missing APK at ${apk_CI_PATH}"
+            echo "::error::Missing first APK at ${apk_CI_PATH}"
             exit 1
           fi
 
-          # Installation with retries
+          if [ ! -f "${apk_CLIENT_PATH}" ]; then
+            echo "::error::Missing second APK at ${apk_CLIENT_PATH}"
+            exit 1
+          fi
+
+          # Install first APK
+          echo "Installing first APK..."
           adb_retry "adb install -r -t -g ${apk_CI_PATH}"
           adb_retry "adb shell pm list packages | grep -q com.willma.staging"
+
+          # Install second APK
+          echo "Installing second APK..."
+          adb_retry "adb install -r -t -g ${apk_CLIENT_PATH}"
+          adb_retry "adb shell pm list packages | grep -q com.willma.client.staging"
 
       - name: Run Appium server
         run: |

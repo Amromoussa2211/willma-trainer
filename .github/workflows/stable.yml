@@ -2,299 +2,232 @@
 
 # on:
 #   push:
-#     branches: [ main ]
+#     branches:
+#       - main
 #   pull_request:
-#     branches: [ main ]
+#     branches:
+#       - main
 
 # jobs:
 #   e2e-tests:
 #     runs-on: ubuntu-latest
 #     steps:
-#       - uses: actions/checkout@v3
-      
+#       - name: Checkout Code
+#         uses: actions/checkout@v3
+
 #       - name: Set up Node.js
 #         uses: actions/setup-node@v3
 #         with:
 #           node-version: '18'
-#           cache: 'npm'
+
+#       - name: Set up Java
+#         uses: actions/setup-java@v3
+#         with:
+#           distribution: 'zulu'
+#           java-version: '17'
+
+#       - name: Cache Android SDK
+#         uses: actions/cache@v3
+#         with:
+#           path: $ANDROID_HOME
+#           key: android-sdk-${{ runner.os }}-${{ hashFiles('**/build.gradle') }}
+#           restore-keys: |
+#             android-sdk-${{ runner.os }}-
+
+#       - name: Cache Node Modules
+#         uses: actions/cache@v3
+#         with:
+#           path: node_modules
+#           key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+#           restore-keys: |
+#             node-modules-${{ runner.os }}-
+
+#       - name: Clear SDK Cache
+#         run: |
+#           rm -rf $ANDROID_HOME/licenses $ANDROID_HOME/tools $ANDROID_HOME/cmdline-tools
+
+#       - name: Download Android Command Line Tools
+#         run: |
+#           mkdir -p $ANDROID_HOME/cmdline-tools
+#           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+#           unzip cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools
+#           mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+#           rm cmdline-tools.zip
+
+#       - name: Accept Android SDK Licenses
+#         run: |
+#           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+
+#       - name: Install Android SDK Packages
+#         run: |
+#           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install \
+#             "platform-tools" \
+#             "platforms;android-34" \
+#             "build-tools;34.0.0" \
+#             "emulator" \
+#             "system-images;android-34;google_apis;x86_64"
+
+#       - name: Add adb to PATH
+#         run: |
+#           echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+
+#       - name: Create AVD
+#         run: |
+#           # Install the required system image
+#           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "system-images;android-34;google_apis;x86_64"
+
+#           # Create the AVD
+#           echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
+#             --name testAVD \
+#             --package 'system-images;android-34;google_apis;x86_64' \
+#             --device 'pixel' \
+#             --force
+
+#       - name: Configure Emulator Settings
+#         run: |
+#           echo "hw.cpu.ncore=2" >> ~/.android/avd/testAVD.avd/config.ini
+#           echo "hw.ramSize=2048" >> ~/.android/avd/testAVD.avd/config.ini
+#           echo "hw.gpu.enabled=yes" >> ~/.android/avd/testAVD.avd/config.ini
+#           echo "hw.gpu.mode=swiftshader_indirect" >> ~/.android/avd/testAVD.avd/config.ini
+
+#       - name: Fix KVM permissions
+#         run: |
+#           sudo apt-get update -y
+#           sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
+#           sudo gpasswd -a $USER kvm
+#           sudo chmod 666 /dev/kvm
+
+#       - name: Verify KVM
+#         run: |
+#           if [ ! -e /dev/kvm ]; then
+#             echo "KVM is not available."
+#             exit 1
+#           else
+#             echo "KVM is available."
+#           fi
+
+#       - name: Start Emulator
+#         run: |
+#           # Verify the AVD exists
+#           $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager list avd
+
+#           # Start the emulator
+#           nohup $ANDROID_HOME/emulator/emulator -avd testAVD \
+#             -no-audio \
+#             -no-window \
+#             -gpu swiftshader_indirect \
+#             -memory 2048 \
+#             -cores 2 \
+#             -no-boot-anim \
+#             -no-snapshot-save \
+#             -feature -VideoPlusCodecs \
+#             -feature -NativeBridge \
+#             -writable-system \
+#             -qemu -enable-kvm &
+#           sleep 120  # Wait for 2 minutes
+
+#       - name: Wait for Emulator Boot
+#         run: |
+#           adb wait-for-device
+#           while [[ "$(adb shell getprop sys.boot_completed | tr -d '\r')" != "1" ]]; do
+#             sleep 5
+#             echo "Waiting for emulator to boot..."
+#           done
+#           echo "Emulator is fully booted."
+
+#       - name: Configure System Properties
+#         run: |
+#           adb root
+#           adb wait-for-device
+#           adb shell "setprop debug.android.hardware.camera.external 1"
+#           adb shell "setprop ro.test.disable_native_bridge 1"
+
+#       - name: Disable Bluetooth in Emulator
+#         run: |
+#           adb shell settings put global bluetooth_on 0
+#           echo "Bluetooth disabled in the emulator."
+
+#       - name: List ADB Devices
+#         run: adb devices
 
 #       - name: Install Dependencies
 #         run: npm install
 
-#       - name: Create Directories
+#       - name: Download APK from Google Drive
 #         run: |
-#           mkdir -p screenshots
-#           mkdir -p logs
-#           mkdir -p apps
+#           pip install gdown
+#           gdown --fuzzy "https://drive.google.com/file/d/1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz/view?usp=drive_link" -O app-release.apk
+#         # Set environment variable for later steps
+#         env:
+#           apk_CI_PATH: app-release.apk
 
-#       - name: Set up Python
-#         uses: actions/setup-python@v4
-#         with:
-#           python-version: '3.x'
-
-#       - name: Install gdown
+#       - name: Validate and install APK
+#         timeout-minutes: 10
+#         env:
+#           apk_CI_PATH: app-release.apk
 #         run: |
-#           python -m pip install gdown
+#           function adb_retry() {
+#             local cmd="$@"
+#             local max=5
+#             local delay=5
 
-#       - name: Download APK
-#         run: |
-#           FILEID="1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz"
-#           FILENAME="apps/app.apk"
-#           gdown --id "$FILEID" -O "$FILENAME"
-          
-#           if [ -f "$FILENAME" ]; then
-#             echo "APK downloaded successfully"
-#             echo "APK_PATH=$(pwd)/$FILENAME" >> $GITHUB_ENV
-#           else
-#             echo "APK download failed"
+#             for ((i=1; i<=max; i++)); do
+#               if eval "$cmd"; then
+#                 return 0
+#               fi
+#               echo "Attempt $i failed. Retrying in $delay seconds..."
+#               sleep $delay
+#             done
+#             echo "::error::Command failed after $max attempts: $cmd"
+#             exit 1
+#           }
+
+#           # APK verification
+#           if [ ! -f "${apk_CI_PATH}" ]; then
+#             echo "::error::Missing APK at ${apk_CI_PATH}"
 #             exit 1
 #           fi
 
-#       - name: Run Emulator and Tests
-#         uses: ReactiveCircus/android-emulator-runner@v2
-#         with:
-#           api-level: 29
-#           target: google_apis
-#           arch: x86_64
-#           ram-size: 4096M
-#           disk-size: 8192M
-#           cores: 4
-#           profile: pixel_4
-#           emulator-boot-timeout: 600
-#           disable-animations: true
-#           force-avd-creation: false
-#           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-#           script: |
-#             # Start Appium
-#             npx appium > logs/appium.log 2>&1 &
-#             sleep 10
-            
-#             # Download and setup test image
-#             wget "https://th.bing.com/th/id/R.4ff14a349cf0a4cc3db350284d6e9b34?rik=LRfd%2fxvzoMMotg&pid=ImgRaw&r=0" -O test_image.jpg
-#             adb shell "mkdir -p /sdcard/Pictures"
-#             adb push test_image.jpg /sdcard/Pictures/
-#             adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/test_image.jpg
-            
-#             # Install and verify APK
-#             adb install -r -t -g "$APK_PATH"
-#             if adb shell pm list packages | grep -q "com.willma.staging"; then
-#               echo "APK installed successfully"
-#               npm run test:ci
-#             else
-#               echo "Package not found after installation"
-#               exit 1
-#             fi
+#           # Installation with retries
+#           adb_retry "adb install -r -t -g ${apk_CI_PATH}"
+#           adb_retry "adb shell pm list packages | grep -q com.willma.staging"
 
-#       - name: Upload Screenshots
-#         if: always()
-#         uses: actions/upload-artifact@v4
-#         with:
-#           name: test-screenshots
-#           path: screenshots/
-#           if-no-files-found: warn
+#       - name: Run Appium server
+#         run: |
+#           nohup npx appium --relaxed-security --log-timestamp > logs/appium.log 2>&1 &
+#           sleep 10
+#           echo "Appium PID: $(pgrep -f 'appium')"
 
-#       - name: Upload Logs
+#       - name: Execute E2E tests
+#         timeout-minutes: 25
+#         run: |
+#           set -x
+#           npx wdio run ./wdio.ci.conf.js --specRetries 2
+
+#       - name: Gather diagnostics
 #         if: always()
+#         run: |
+#           mkdir -p diagnostics
+#           adb logcat -d > diagnostics/logcat.log
+#           adb bugreport diagnostics/bugreport.zip
+#           cp -r screenshots diagnostics/
+
+#       - name: Upload artifacts
 #         uses: actions/upload-artifact@v4
+#         if: always()
 #         with:
-#           name: test-logs
+#           name: test-results-${{ github.run_id }}
 #           path: |
+#             allure-results/
+#             diagnostics/
 #             logs/appium.log
-#             logs/device.log
-#           if-no-files-found: warn
+#           retention-days: 3
 
-#   notify-manager:
-#     needs: e2e-tests
-#     if: always() && github.event_name == 'push'
-#     runs-on: ubuntu-latest
-#     steps:
-#       - name: Send Email Notification
-#         uses: dawidd6/action-send-mail@v5
-#         with:
-#           server_address: smtp.office365.com
-#           server_port: 587
-#           secure: false
-#           username: ${{ secrets.SMTP_USER }}
-#           password: ${{ secrets.SMTP_PASSWORD }}
-#           subject: "Android Tests Update - ${{ github.event.head_commit.message }}"
-#           to: fady@wilma.life, amr.ibrahim@willma.life
-#           from: "Willma CI/CD <${{ secrets.SMTP_USER }}>"
-#           html_body: |
-#             <div style="font-family: Arial, sans-serif; padding: 20px;">
-#               <h2 style="color: #1a73e8;">New Android Test Deployment</h2>
-#               <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px;">
-#                 <p><strong>📦 Repository:</strong> ${{ github.repository }}</p>
-#                 <p><strong>🔑 Commit ID:</strong> <code>${{ github.sha }}</code></p>
-#                 <p><strong>👤 Author:</strong> ${{ github.actor }}</p>
-#                 <p><strong>📝 Message:</strong> ${{ github.event.head_commit.message }}</p>
-#                 <p><strong>📅 Date:</strong> ${{ github.event.head_commit.timestamp }}</p>
-#               </div>
-#               <p style="margin-top: 20px;">
-#                 <a href="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
-#                    style="background-color: #1a73e8; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;">
-#                   View Full Commit Details
-#                 </a>
-#               </p>
-#               <p style="margin-top: 20px; color: #666;">
-#                 Workflow Status: ${{ job.status }}<br>
-#                 This is an automated notification from Willma CI/CD System
-#               </p>
-#             </div>
-
-
-# name: Android E2E Tests
-
-# on:
-#   push:
-#     branches: [ main ]
-#   pull_request:
-#     branches: [ main ]
-
-# jobs:
-#   e2e-tests:
-#     runs-on: ubuntu-latest
-#     steps:
-#       - uses: actions/checkout@v3
-      
-#       - name: Set up Node.js
-#         uses: actions/setup-node@v3
-#         with:
-#           node-version: '18'
-#           cache: 'npm'
-
-#       - name: Install Dependencies
-#         run: npm install
-
-#       - name: Create Directories
-#         run: |
-#           mkdir -p screenshots
-#           mkdir -p logs
-#           mkdir -p apps
-
-#       - name: Set up Python
-#         uses: actions/setup-python@v4
-#         with:
-#           python-version: '3.x'
-
-#       - name: Install gdown
-#         run: |
-#           python -m pip install gdown
-
-#       - name: Download APK
-#         run: |
-#           FILEID="1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz"
-#           FILENAME="apps/app.apk"
-#           gdown --id "$FILEID" -O "$FILENAME"
-          
-#           if [ -f "$FILENAME" ]; then
-#             echo "APK downloaded successfully"
-#             echo "APK_PATH=$(pwd)/$FILENAME" >> $GITHUB_ENV
-#           else
-#             echo "APK download failed"
-#             exit 1
-#           fi
-
-#       - name: Download Test Image
-#         run: |
-#           echo "Downloading test image..."
-#           wget "https://th.bing.com/th/id/R.4ff14a349cf0a4cc3db350284d6e9b34?rik=LRfd%2fxvzoMMotg&pid=ImgRaw&r=0" -O test_image.jpg
-#           if [ -f "test_image.jpg" ]; then
-#             echo "✅ Test image downloaded successfully"
-#           else
-#             echo "❌ Failed to download test image"
-#             exit 1
-#           fi
-
-#       - name: Start Emulator and Setup Test Image
-#         uses: ReactiveCircus/android-emulator-runner@v2
-#         with:
-#           api-level: 29
-#           target: google_apis
-#           arch: x86_64
-#           ram-size: 4096M
-#           disk-size: 8192M
-#           cores: 4
-#           profile: pixel_4
-#           emulator-boot-timeout: 600
-#           disable-animations: true
-#           force-avd-creation: false
-#           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-#           script: >-
-#             adb wait-for-device;
-#             count=0;
-#             while [ $count -lt 30 ] && [ "$(adb shell getprop sys.boot_completed 2>/dev/null)" != "1" ]; do
-#               echo "Waiting for boot completion... ($count/30)";
-#               sleep 10;
-#               count=$((count + 1));
-#             done;
-#             if [ "$(adb shell getprop sys.boot_completed 2>/dev/null)" = "1" ]; then
-#               echo "✅ Device boot completed";
-#               sleep 10;
-#               echo "Setting up test image...";
-#               adb shell "mkdir -p /sdcard/Pictures";
-#               adb push test_image.jpg /sdcard/Pictures/;
-#               adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/test_image.jpg;
-#               echo "✅ Setup complete";
-#             else
-#               echo "❌ Device boot timeout";
-#               exit 1;
-
-#       - name: Start Appium Server
-#         run: |
-#           echo "Starting Appium server..."
-#           npx appium > logs/appium.log 2>&1 &
-#           sleep 5
-          
-#           # Verify Appium is running
-#           if pgrep -f "appium" > /dev/null; then
-#             echo "✅ Appium server started successfully"
-#             echo "Appium logs available at: $(pwd)/logs/appium.log"
-#           else
-#             echo "❌ Failed to start Appium server"
-#             cat logs/appium.log
-#             exit 1
-#           fi
-
-#       - name: Install APK
-#         run: |
-#           echo "Installing APK: $APK_PATH"
-#           if adb install -r -t -g "$APK_PATH"; then
-#             echo "✅ APK installed successfully"
-#           else
-#             echo "❌ APK installation failed"
-#             adb logcat -d > logs/install_failure.log
-#             exit 1
-#           fi
-          
-#           echo "Verifying package installation..."
-#           if adb shell pm list packages | grep -q "com.willma.staging"; then
-#             echo "✅ Package verification successful"
-#           else
-#             echo "❌ Package verification failed"
-#             exit 1
-#           fi
-
-#       - name: Run Tests
-#         run: |
-#           echo "Starting E2E tests..."
-#           if npm run test:ci; then
-#             echo "✅ Tests completed successfully"
-#           else
-#             echo "❌ Tests failed"
-#             adb logcat -d > logs/test_failure.log
-#             exit 1
-#           fi
-
-#       - name: Upload Test Artifacts
+#       - name: Terminate emulator
 #         if: always()
-#         uses: actions/upload-artifact@v4
-#         with:
-#           name: test-artifacts
-#           path: |
-#             screenshots/
-#             logs/*.log
-#             test-results/
-#           if-no-files-found: warn
+#         run: |
+#           adb emu kill || true
+#           pkill -f 'qemu-system' || true
 
 #   notify-manager:
 #     needs: e2e-tests
