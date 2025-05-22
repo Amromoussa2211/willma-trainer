@@ -28,10 +28,6 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: ♻️ Clear SDK Cache
-        run: |
-          rm -rf $ANDROID_HOME/licenses $ANDROID_HOME/tools $ANDROID_HOME/cmdline-tools
-
       - name: 🔄 Install Android Command Line Tools
         run: |
           mkdir -p $ANDROID_HOME/cmdline-tools
@@ -60,44 +56,44 @@ jobs:
           echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
             --name "$AVD_NAME" \
             --package "system-images;android-34;google_apis;x86_64" \
-            --device "pixel" \
+            --device "pixel_6" \
             --force
 
       - name: ⚖️ Configure Emulator Settings
         run: |
-          echo "hw.cpu.ncore=2" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
-          echo "hw.ramSize=2048" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
+          echo "hw.ramSize=4096" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
           echo "hw.gpu.enabled=yes" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
           echo "hw.gpu.mode=swiftshader_indirect" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
+          echo "disk.dataPartition.size=4G" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
 
       - name: ⚠️ Fix KVM permissions
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
-          sudo gpasswd -a $USER kvm
+          sudo apt-get install -y qemu-kvm
           sudo chmod 666 /dev/kvm
 
-      - name: ✅ Verify KVM
-        run: |
-          if [ ! -e /dev/kvm ]; then
-            echo "KVM is not available." && exit 1
-          fi
-
       - name: 🌟 Start Emulator
+        timeout-minutes: 10
         run: |
-          nohup $ANDROID_HOME/emulator/emulator -avd "$AVD_NAME" -no-audio -no-window -gpu swiftshader_indirect &
-          sleep 120
+          nohup $ANDROID_HOME/emulator/emulator -avd "$AVD_NAME" \
+            -no-audio -no-window -gpu swiftshader_indirect \
+            -no-snapshot -wipe-data -memory 4096 -logcat '*:V' &
+          sleep 300  # Extended boot time for API 34
 
       - name: ⌛ Wait for Emulator Boot
+        timeout-minutes: 8
         run: |
           adb wait-for-device
           while [[ "$(adb shell getprop sys.boot_completed | tr -d '\r')" != "1" ]]; do
             echo "Waiting for emulator to boot..."
-            sleep 5
+            sleep 10
           done
-
-      - name: ✅ Disable Bluetooth
-        run: adb shell settings put global bluetooth_on 0
+          
+          # Wake device and disable animations
+          adb shell input keyevent 82
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
 
       - name: 🔢 List ADB Devices
         run: adb devices
@@ -112,34 +108,22 @@ jobs:
           gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O appclient.apk
 
       - name: 🌐 Install APKs
+        timeout-minutes: 5
         run: |
           adb uninstall com.willma.staging || true
           adb uninstall com.willma.client.staging || true
-
-          adb install -r -g app-release-trainer.apk
-          adb install -r -g appclient.apk
-          sleep 10
-
-      - name: 🔎 Verify APK Activities
-        continue-on-error: true
-        run: |
-          adb shell pm list packages | grep willma || echo "::warning::No Willma packages found"
-
-          echo "\nListing activities for com.willma.staging"
-          adb shell dumpsys package com.willma.staging | grep -i 'com.willma.staging.MainActivity' || echo "::warning::MainActivity for staging not found"
-
-          echo "\nListing activities for com.willma.client.staging"
-          adb shell dumpsys package com.willma.client.staging | grep -i 'com.willma.client.staging.MainActivity' || echo "::warning::MainActivity for client not found"
-
-          echo "\nCurrent foreground activity:"
-          adb shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp' || echo "::warning::Unable to detect foreground activity"
+          
+          adb install -t -r -g app-release-trainer.apk
+          adb install -t -r -g appclient.apk
+          sleep 15
 
       - name: 🚀 Run Appium Server
         run: |
           nohup npx appium --relaxed-security > appium.log 2>&1 &
-          sleep 10
+          sleep 15
 
       - name: 🔧 Run E2E Tests
+        timeout-minutes: 20
         run: npx wdio run ./wdio.ci.conf.js --specRetries 2
 
       - name: 🔍 Collect Logs and Screenshots

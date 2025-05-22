@@ -1,52 +1,38 @@
-# name: Android E2E Tests
+# name: 🚀 Android E2E Tests
 
 # on:
 #   push:
-#     branches:
-#       - main
+#     branches: [main]
 #   pull_request:
-#     branches:
-#       - main
+#     branches: [main]
 
 # jobs:
 #   e2e-tests:
 #     runs-on: ubuntu-latest
+#     env:
+#       AVD_NAME: testAVD
+#       ANDROID_AVD_HOME: $HOME/.android/avd
+
 #     steps:
-#       - name: Checkout Code
+#       - name: ↓ Checkout Code
 #         uses: actions/checkout@v3
 
-#       - name: Set up Node.js
+#       - name: ⚛️ Set up Node.js
 #         uses: actions/setup-node@v3
 #         with:
 #           node-version: '18'
 
-#       - name: Set up Java
+#       - name: ☕️ Set up Java
 #         uses: actions/setup-java@v3
 #         with:
 #           distribution: 'zulu'
 #           java-version: '17'
 
-#       - name: Cache Android SDK
-#         uses: actions/cache@v3
-#         with:
-#           path: $ANDROID_HOME
-#           key: android-sdk-${{ runner.os }}-${{ hashFiles('**/build.gradle') }}
-#           restore-keys: |
-#             android-sdk-${{ runner.os }}-
-
-#       - name: Cache Node Modules
-#         uses: actions/cache@v3
-#         with:
-#           path: node_modules
-#           key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
-#           restore-keys: |
-#             node-modules-${{ runner.os }}-
-
-#       - name: Clear SDK Cache
+#       - name: ♻️ Clear SDK Cache
 #         run: |
 #           rm -rf $ANDROID_HOME/licenses $ANDROID_HOME/tools $ANDROID_HOME/cmdline-tools
 
-#       - name: Download Android Command Line Tools
+#       - name: 🔄 Install Android Command Line Tools
 #         run: |
 #           mkdir -p $ANDROID_HOME/cmdline-tools
 #           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
@@ -54,11 +40,10 @@
 #           mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
 #           rm cmdline-tools.zip
 
-#       - name: Accept Android SDK Licenses
-#         run: |
-#           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+#       - name: 🚀 Accept Android SDK Licenses
+#         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
 
-#       - name: Install Android SDK Packages
+#       - name: 🚀 Install Android SDK Packages
 #         run: |
 #           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install \
 #             "platform-tools" \
@@ -67,235 +52,113 @@
 #             "emulator" \
 #             "system-images;android-34;google_apis;x86_64"
 
-#       - name: Add adb to PATH
-#         run: |
-#           echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+#       - name: ➕ Add adb to PATH
+#         run: echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
 
-#       - name: Create AVD
+#       - name: 🛠️ Create AVD
 #         run: |
-#           # Install the required system image
-#           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "system-images;android-34;google_apis;x86_64"
-
-#           # Create the AVD
 #           echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
-#             --name testAVD \
-#             --package 'system-images;android-34;google_apis;x86_64' \
-#             --device 'pixel' \
+#             --name "$AVD_NAME" \
+#             --package "system-images;android-34;google_apis;x86_64" \
+#             --device "pixel" \
 #             --force
 
-#       - name: Configure Emulator Settings
+#       - name: ⚖️ Configure Emulator Settings
 #         run: |
-#           echo "hw.cpu.ncore=2" >> ~/.android/avd/testAVD.avd/config.ini
-#           echo "hw.ramSize=2048" >> ~/.android/avd/testAVD.avd/config.ini
-#           echo "hw.gpu.enabled=yes" >> ~/.android/avd/testAVD.avd/config.ini
-#           echo "hw.gpu.mode=swiftshader_indirect" >> ~/.android/avd/testAVD.avd/config.ini
+#           echo "hw.cpu.ncore=2" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
+#           echo "hw.ramSize=2048" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
+#           echo "hw.gpu.enabled=yes" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
+#           echo "hw.gpu.mode=swiftshader_indirect" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
 
-#       - name: Fix KVM permissions
+#       - name: ⚠️ Fix KVM permissions
 #         run: |
 #           sudo apt-get update -y
 #           sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
 #           sudo gpasswd -a $USER kvm
 #           sudo chmod 666 /dev/kvm
 
-#       - name: Verify KVM
+#       - name: ✅ Verify KVM
 #         run: |
 #           if [ ! -e /dev/kvm ]; then
-#             echo "KVM is not available."
-#             exit 1
-#           else
-#             echo "KVM is available."
+#             echo "KVM is not available." && exit 1
 #           fi
 
-#       - name: Start Emulator
+#       - name: 🌟 Start Emulator
 #         run: |
-#           # Verify the AVD exists
-#           $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager list avd
+#           nohup $ANDROID_HOME/emulator/emulator -avd "$AVD_NAME" -no-audio -no-window -gpu swiftshader_indirect &
+#           sleep 120
 
-#           # Start the emulator
-#           nohup $ANDROID_HOME/emulator/emulator -avd testAVD \
-#             -no-audio \
-#             -no-window \
-#             -gpu swiftshader_indirect \
-#             -memory 2048 \
-#             -cores 2 \
-#             -no-boot-anim \
-#             -no-snapshot-save \
-#             -feature -VideoPlusCodecs \
-#             -feature -NativeBridge \
-#             -writable-system \
-#             -qemu -enable-kvm &
-#           sleep 120  # Wait for 2 minutes
-
-#       - name: Wait for Emulator Boot
+#       - name: ⌛ Wait for Emulator Boot
 #         run: |
 #           adb wait-for-device
 #           while [[ "$(adb shell getprop sys.boot_completed | tr -d '\r')" != "1" ]]; do
-#             sleep 5
 #             echo "Waiting for emulator to boot..."
+#             sleep 5
 #           done
-#           echo "Emulator is fully booted."
 
-#       - name: Configure System Properties
-#         run: |
-#           adb root
-#           adb wait-for-device
-#           adb shell "setprop debug.android.hardware.camera.external 1"
-#           adb shell "setprop ro.test.disable_native_bridge 1"
+#       - name: ✅ Disable Bluetooth
+#         run: adb shell settings put global bluetooth_on 0
 
-#       - name: Disable Bluetooth in Emulator
-#         run: |
-#           adb shell settings put global bluetooth_on 0
-#           echo "Bluetooth disabled in the emulator."
-
-#       - name: List ADB Devices
+#       - name: 🔢 List ADB Devices
 #         run: adb devices
 
-#       - name: Install Dependencies
+#       - name: 💾 Install Node Dependencies
 #         run: npm install
 
-#       - name: Download APK from Google Drive
+#       - name: 🔽 Download APKs
 #         run: |
 #           pip install gdown
-#           gdown --fuzzy "https://drive.google.com/file/d/1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz/view?usp=drive_link" -O app-release.apk
-#         # Set environment variable for later steps
-#         env:
-#           apk_CI_PATH: app-release.apk
+#           gdown --fuzzy "https://drive.google.com/file/d/1UmKiTZ6SlMorOBLx754Fs7_oqoNxFQ4F/view?usp=drive_link" -O app-release-trainer.apk
+#           gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O appclient.apk
 
-#       - name: Download APKs from Google Drive
+#       - name: 🌐 Install APKs
 #         run: |
-#           pip install gdown
-          
-#           echo "Downloading first APK..."
-#           gdown --fuzzy "https://drive.google.com/file/d/1UmKiTZ6SlMorOBLx754Fs7_oqoNxFQ4F/view?usp=drive_link" -O app-release.apk
-          
-#           echo "Downloading second APK..."
-#           gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O client-app-release.apk
-#         env:
-#           apk_CI_PATH: app-release.apk
-#           apk_CLIENT_PATH: client-app-release.apk
+#           adb uninstall com.willma.staging || true
+#           adb uninstall com.willma.client.staging || true
 
-#       - name: Validate and install APKs
-#         timeout-minutes: 10
-#         env:
-#           apk_CI_PATH: app-release.apk
-#           apk_CLIENT_PATH: client-app-release.apk
-#         run: |
-#           function adb_retry() {
-#             local cmd="$@"
-#             local max=5
-#             local delay=5
-
-#             for ((i=1; i<=max; i++)); do
-#               if eval "$cmd"; then
-#                 return 0
-#               fi
-#               echo "Attempt $i failed. Retrying in $delay seconds..."
-#               sleep $delay
-#             done
-#             echo "::error::Command failed after $max attempts: $cmd"
-#             exit 1
-#           }
-
-#           # Verify both APK files exist
-#           if [ ! -f "${apk_CI_PATH}" ]; then
-#             echo "::error::Missing first APK at ${apk_CI_PATH}"
-#             exit 1
-#           fi
-
-#           if [ ! -f "${apk_CLIENT_PATH}" ]; then
-#             echo "::error::Missing second APK at ${apk_CLIENT_PATH}"
-#             exit 1
-#           fi
-
-#           # Install first APK
-#           echo "Installing first APK..."
-#           adb_retry "adb install -r -t -g ${apk_CI_PATH}"
-#           adb_retry "adb shell pm list packages | grep -q com.willma.staging"
-
-#           # Install second APK
-#           echo "Installing second APK..."
-#           adb_retry "adb install -r -t -g ${apk_CLIENT_PATH}"
-#           adb_retry "adb shell pm list packages | grep -q com.willma.client.staging"
-
-#       - name: Run Appium server
-#         run: |
-#           mkdir -p logs
-#           nohup npx appium --relaxed-security --log-timestamp > logs/appium.log 2>&1 &
+#           adb install -r -g app-release-trainer.apk
+#           adb install -r -g appclient.apk
 #           sleep 10
-#           echo "Appium PID: $(pgrep -f 'appium')" || echo "Appium process not found"
 
-#           echo "Checking if Appium is listening on port 4723..."
-#           netstat -tuln | grep 4723 || echo "❌ Port 4723 is not active"
-
-#           echo "==== Appium Logs ===="
-#           tail -n 50 logs/appium.log || echo "No Appium logs found"
-
-
-#       - name: Execute E2E tests
-#         timeout-minutes: 25
+#       - name: 🔎 Verify APK Activities
+#         continue-on-error: true
 #         run: |
-#           set -x
-#           npx wdio run ./wdio.ci.conf.js --specRetries 2
+#           adb shell pm list packages | grep willma || echo "::warning::No Willma packages found"
 
-#       - name: Gather diagnostics
+#           echo "\nListing activities for com.willma.staging"
+#           adb shell dumpsys package com.willma.staging | grep -i 'com.willma.staging.MainActivity' || echo "::warning::MainActivity for staging not found"
+
+#           echo "\nListing activities for com.willma.client.staging"
+#           adb shell dumpsys package com.willma.client.staging | grep -i 'com.willma.client.staging.MainActivity' || echo "::warning::MainActivity for client not found"
+
+#           echo "\nCurrent foreground activity:"
+#           adb shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp' || echo "::warning::Unable to detect foreground activity"
+
+#       - name: 🚀 Run Appium Server
+#         run: |
+#           nohup npx appium --relaxed-security > appium.log 2>&1 &
+#           sleep 10
+
+#       - name: 🔧 Run E2E Tests
+#         run: npx wdio run ./wdio.ci.conf.js --specRetries 2
+
+#       - name: 🔍 Collect Logs and Screenshots
 #         if: always()
 #         run: |
 #           mkdir -p diagnostics
 #           adb logcat -d > diagnostics/logcat.log
-#           adb bugreport diagnostics/bugreport.zip
-#           cp -r screenshots diagnostics/
+#           cp -r screenshots diagnostics/ || true
+#           cp appium.log diagnostics/appium.log || true
 
-#       - name: Upload artifacts
+#       - name: 📂 Upload Artifacts
 #         uses: actions/upload-artifact@v4
 #         if: always()
 #         with:
 #           name: test-results-${{ github.run_id }}
-#           path: |
-#             allure-results/
-#             diagnostics/
-#             logs/appium.log
-#           retention-days: 3
+#           path: diagnostics/
 
-#       - name: Terminate emulator
+#       - name: 🚪 Shutdown Emulator
 #         if: always()
 #         run: |
 #           adb emu kill || true
-#           pkill -f 'qemu-system' || true
-
-#   notify-manager:
-#     needs: e2e-tests
-#     if: always() && github.event_name == 'push'
-#     runs-on: ubuntu-latest
-#     steps:
-#       - name: Send Email Notification
-#         uses: dawidd6/action-send-mail@v5
-#         with:
-#           server_address: smtp.office365.com
-#           server_port: 587
-#           secure: false
-#           username: ${{ secrets.SMTP_USER }}
-#           password: ${{ secrets.SMTP_PASSWORD }}
-#           subject: "Android Tests Update - ${{ github.event.head_commit.message }}"
-#           to: fady@wilma.life, amr.ibrahim@willma.life
-#           from: "Willma CI/CD <${{ secrets.SMTP_USER }}>"
-#           html_body: |
-#             <div style="font-family: Arial, sans-serif; padding: 20px;">
-#               <h2 style="color: #1a73e8;">New Android Test Deployment</h2>
-#               <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px;">
-#                 <p><strong>📦 Repository:</strong> ${{ github.repository }}</p>
-#                 <p><strong>🔑 Commit ID:</strong> <code>${{ github.sha }}</code></p>
-#                 <p><strong>👤 Author:</strong> ${{ github.actor }}</p>
-#                 <p><strong>📝 Message:</strong> ${{ github.event.head_commit.message }}</p>
-#                 <p><strong>📅 Date:</strong> ${{ github.event.head_commit.timestamp }}</p>
-#               </div>
-#               <p style="margin-top: 20px;">
-#                 <a href="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
-#                    style="background-color: #1a73e8; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px;">
-#                   View Full Commit Details
-#                 </a>
-#               </p>
-#               <p style="margin-top: 20px; color: #666;">
-#                 Workflow Status: ${{ job.status }}<br>
-#                 This is an automated notification from Willma CI/CD System
-#               </p>
-#             </div>    
+#           pkill -f emulator || true
