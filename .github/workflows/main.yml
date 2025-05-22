@@ -53,18 +53,26 @@ jobs:
 
       - name: 🛠️ Create AVD
         run: |
+          # Create AVD with default device
           echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
             --name "$AVD_NAME" \
             --package "system-images;android-34;google_apis;x86_64" \
-            --device "pixel_6" \
+            --device "pixel" \
             --force
+
+          # Verify AVD directory creation
+          if [ ! -d "$ANDROID_AVD_HOME/$AVD_NAME.avd" ]; then
+            echo "::error::AVD directory not created at $ANDROID_AVD_HOME/$AVD_NAME.avd"
+            exit 1
+          fi
 
       - name: ⚖️ Configure Emulator Settings
         run: |
-          echo "hw.ramSize=4096" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
-          echo "hw.gpu.enabled=yes" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
-          echo "hw.gpu.mode=swiftshader_indirect" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
-          echo "disk.dataPartition.size=4G" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
+          echo "hw.ramSize=4096" >> "$ANDROID_AVD_HOME/$AVD_NAME.avd/config.ini"
+          echo "hw.gpu.enabled=yes" >> "$ANDROID_AVD_HOME/$AVD_NAME.avd/config.ini"
+          echo "hw.gpu.mode=swiftshader_indirect" >> "$ANDROID_AVD_HOME/$AVD_NAME.avd/config.ini"
+          echo "disk.dataPartition.size=4G" >> "$ANDROID_AVD_HOME/$AVD_NAME.avd/config.ini"
+          echo "hw.cpu.ncore=2" >> "$ANDROID_AVD_HOME/$AVD_NAME.avd/config.ini"
 
       - name: ⚠️ Fix KVM permissions
         run: |
