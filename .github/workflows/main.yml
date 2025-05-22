@@ -1,4 +1,4 @@
-name: 📱 Android E2E Tests
+name: Android E2E Tests
 
 on:
   push:
@@ -14,10 +14,10 @@ jobs:
       ANDROID_AVD_HOME: $HOME/.android/avd
 
     steps:
-      - name: 📅 Checkout Code
+      - name: 📥 Checkout Code
         uses: actions/checkout@v3
 
-      - name: 🛠️ Set up Node.js
+      - name: 🧱 Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
@@ -28,7 +28,7 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: 📦 Install Android SDK
+      - name: 📦 Install Android SDK & Emulator
         run: |
           sudo apt-get update
           sudo apt-get install -y unzip wget
@@ -43,10 +43,11 @@ jobs:
             "platforms;android-34" \
             "system-images;android-34;google_apis;x86_64" \
             "build-tools;34.0.0"
-          echo "$ANDROID_HOME/emulator" >> $GITHUB_PATH
 
-      - name: ➕ Add adb to PATH
-        run: echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+      - name: ➕ Add SDK to PATH
+        run: |
+          echo "$ANDROID_HOME/emulator" >> $GITHUB_PATH
+          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
 
       - name: 📱 Create and Configure AVD
         run: |
@@ -54,53 +55,56 @@ jobs:
           echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
             --name "$AVD_NAME" \
             --package "system-images;android-34;google_apis;x86_64" \
-            --device "pixel" --force
-
+            --device "pixel" \
+            --force
           CONFIG_FILE="$ANDROID_AVD_HOME/${AVD_NAME}.avd/config.ini"
-          for i in {1..30}; do [ -f "$CONFIG_FILE" ] && break || sleep 2; done
+          for i in {1..30}; do
+            if [ -f "$CONFIG_FILE" ]; then
+              break
+            fi
+            sleep 2
+          done
+          echo "hw.ramSize=2048" >> "$CONFIG_FILE"
+          echo "hw.gpu.enabled=yes" >> "$CONFIG_FILE"
+          echo "hw.gpu.mode=swiftshader_indirect" >> "$CONFIG_FILE"
 
-          if [ -f "$CONFIG_FILE" ]; then
-            echo "hw.ramSize=4096" >> "$CONFIG_FILE"
-            echo "vm.heapSize=256" >> "$CONFIG_FILE"
-            echo "hw.gpu.enabled=yes" >> "$CONFIG_FILE"
-            echo "hw.gpu.mode=host" >> "$CONFIG_FILE"
-            echo "disk.dataPartition.size=2048M" >> "$CONFIG_FILE"
-            echo "snapshot.present=false" >> "$CONFIG_FILE"
-            echo "boot.fastboot=1" >> "$CONFIG_FILE"
-          else
-            echo "::error::AVD config.ini not found"
-            exit 1
-          fi
-
-      - name: 🔧 KVM Permissions
+      - name: 🔧 Fix KVM Permissions
         run: |
           sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
           sudo gpasswd -a $USER kvm
           sudo chmod 666 /dev/kvm
 
-      - name: 🚀 Start Emulator
+      - name: 🚀 Start Emulator (Headless & Fast)
         run: |
           nohup $ANDROID_HOME/emulator/emulator -avd "$AVD_NAME" \
-            -no-audio -no-boot-anim -accel on -no-window \
-            -gpu host -memory 4096 -no-snapshot-save -camera-back none \
-            > /dev/null 2>&1 &
+            -no-audio -no-window -gpu swiftshader_indirect \
+            -no-boot-anim -no-snapshot -wipe-data -memory 2048 \
+            > emulator.log 2>&1 &
           sleep 10
 
-      - name: ⏳ Wait for Emulator Boot
+      - name: ⏳ Wait for Emulator Boot (with Timeout)
+        timeout-minutes: 5
         run: |
           adb wait-for-device
-          until [[ "$(adb shell getprop sys.boot_completed | tr -d '\r')" == "1" ]]; do
-            echo "Waiting for emulator to boot..."
+          for i in {1..60}; do
+            if [[ "$(adb shell getprop sys.boot_completed | tr -d '\r')" == "1" ]]; then
+              echo "✅ Emulator booted"
+              exit 0
+            fi
+            echo "⏳ Waiting for emulator to boot... ($i/60)"
             sleep 5
           done
+          echo "::error::❌ Emulator failed to boot in time"
+          cat emulator.log || true
+          exit 1
 
-      - name: 🔇 Disable Animations
+      - name: 🔇 Disable UI Animations
         run: |
           adb shell settings put global window_animation_scale 0
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
 
-      - name: 📦 Install Dependencies
+      - name: 📦 Install Node Dependencies
         run: npm ci
 
       - name: ⬇️ Download APKs
@@ -116,7 +120,7 @@ jobs:
           adb install -r -g app-release-trainer.apk
           adb install -r -g appclient.apk
 
-      - name: 🔍 Verify APK State
+      - name: 🔍 Verify Installed APKs
         continue-on-error: true
         run: |
           adb shell pm list packages | grep willma || echo "::warning::No Willma packages found"
@@ -129,7 +133,7 @@ jobs:
           nohup npx appium --relaxed-security --log-timestamp > logs/appium.log 2>&1 &
           sleep 10
 
-      - name: 🧰 Run E2E Tests
+      - name: 🧪 Run E2E Tests
         run: |
           npx wdio run ./wdio.ci.conf.js
         continue-on-error: true
@@ -142,8 +146,10 @@ jobs:
           adb shell cat /data/anr/traces.txt > diagnostics/anr-traces.log || true
           cp -r screenshots diagnostics/ || true
           cp -r logs/ diagnostics/ || true
+          echo "📋 Emulator log:"
+          cat emulator.log || echo "No emulator log"
 
-      - name: 📄 Upload Artifacts
+      - name: 📤 Upload Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -151,7 +157,7 @@ jobs:
           path: diagnostics/
           retention-days: 7
 
-      - name: ❌ Kill Emulator
+      - name: 🛑 Kill Emulator
         if: always()
         run: |
           adb emu kill || true
