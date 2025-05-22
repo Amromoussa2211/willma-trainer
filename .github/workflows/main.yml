@@ -2,15 +2,16 @@ name: Android E2E Tests
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
   e2e-tests:
     runs-on: ubuntu-latest
+    env:
+      AVD_NAME: testAVD
+      ANDROID_AVD_HOME: $HOME/.android/avd
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -26,22 +27,6 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Cache Android SDK
-        uses: actions/cache@v3
-        with:
-          path: $ANDROID_HOME
-          key: android-sdk-${{ runner.os }}-${{ hashFiles('**/build.gradle') }}
-          restore-keys: |
-            android-sdk-${{ runner.os }}-
-
-      - name: Cache Node Modules
-        uses: actions/cache@v3
-        with:
-          path: node_modules
-          key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            node-modules-${{ runner.os }}-
-
       - name: Clear SDK Cache
         run: |
           rm -rf $ANDROID_HOME/licenses $ANDROID_HOME/tools $ANDROID_HOME/cmdline-tools
@@ -55,8 +40,7 @@ jobs:
           rm cmdline-tools.zip
 
       - name: Accept Android SDK Licenses
-        run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
 
       - name: Install Android SDK Packages
         run: |
@@ -68,27 +52,24 @@ jobs:
             "system-images;android-34;google_apis;x86_64"
 
       - name: Add adb to PATH
-        run: |
-          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+        run: echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
 
       - name: Create AVD
         run: |
-          # Install the required system image
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "system-images;android-34;google_apis;x86_64"
-
-          # Create the AVD
+          mkdir -p ~/.android/avd
           echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
-            --name testAVD \
-            --package 'system-images;android-34;google_apis;x86_64' \
-            --device 'pixel' \
+            --name "$AVD_NAME" \
+            --package "system-images;android-34;google_apis;x86_64" \
+            --device "pixel" \
             --force
+          ls ~/.android/avd
 
       - name: Configure Emulator Settings
         run: |
-          echo "hw.cpu.ncore=2" >> ~/.android/avd/testAVD.avd/config.ini
-          echo "hw.ramSize=2048" >> ~/.android/avd/testAVD.avd/config.ini
-          echo "hw.gpu.enabled=yes" >> ~/.android/avd/testAVD.avd/config.ini
-          echo "hw.gpu.mode=swiftshader_indirect" >> ~/.android/avd/testAVD.avd/config.ini
+          echo "hw.cpu.ncore=2" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
+          echo "hw.ramSize=2048" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
+          echo "hw.gpu.enabled=yes" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
+          echo "hw.gpu.mode=swiftshader_indirect" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
 
       - name: Fix KVM permissions
         run: |
@@ -108,39 +89,19 @@ jobs:
 
       - name: Start Emulator
         run: |
-          # Verify the AVD exists
-          $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager list avd
-
-          # Start the emulator
-          nohup $ANDROID_HOME/emulator/emulator -avd testAVD \
-            -no-audio \
-            -no-window \
-            -gpu swiftshader_indirect \
-            -memory 2048 \
-            -cores 2 \
-            -no-boot-anim \
-            -no-snapshot-save \
-            -feature -VideoPlusCodecs \
-            -feature -NativeBridge \
-            -writable-system \
-            -qemu -enable-kvm &
-          sleep 120  # Wait for 2 minutes
+          nohup $ANDROID_HOME/emulator/emulator -avd "$AVD_NAME" \
+            -no-audio -no-window -gpu swiftshader_indirect -memory 2048 -cores 2 \
+            -no-boot-anim -no-snapshot-save -qemu -enable-kvm &
+          sleep 120
 
       - name: Wait for Emulator Boot
         run: |
           adb wait-for-device
           while [[ "$(adb shell getprop sys.boot_completed | tr -d '\r')" != "1" ]]; do
-            sleep 5
             echo "Waiting for emulator to boot..."
+            sleep 5
           done
-          echo "Emulator is fully booted."
-
-      - name: Configure System Properties
-        run: |
-          adb root
-          adb wait-for-device
-          adb shell "setprop debug.android.hardware.camera.external 1"
-          adb shell "setprop ro.test.disable_native_bridge 1"
+          echo "Emulator booted."
 
       - name: Disable Bluetooth in Emulator
         run: |
@@ -153,99 +114,64 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      - name: Download APK from Google Drive
+      - name: Download APKs
         run: |
           pip install gdown
           gdown --fuzzy "https://drive.google.com/file/d/1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz/view?usp=drive_link" -O app-release.apk
-        # Set environment variable for later steps
-        env:
-          apk_CI_PATH: app-release.apk
-
-      - name: Download APKs from Google Drive
-        run: |
-          pip install gdown
-          
-          echo "Downloading first APK..."
-          gdown --fuzzy "https://drive.google.com/file/d/1UmKiTZ6SlMorOBLx754Fs7_oqoNxFQ4F/view?usp=drive_link" -O app-release.apk
-          
-          echo "Downloading second APK..."
           gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O client-app-release.apk
         env:
           apk_CI_PATH: app-release.apk
           apk_CLIENT_PATH: client-app-release.apk
 
-      - name: Validate and install APKs
+      - name: Validate and Install APKs
         timeout-minutes: 10
-        env:
-          apk_CI_PATH: app-release.apk
-          apk_CLIENT_PATH: client-app-release.apk
         run: |
           function adb_retry() {
             local cmd="$@"
-            local max=5
-            local delay=5
-
-            for ((i=1; i<=max; i++)); do
-              if eval "$cmd"; then
-                return 0
-              fi
-              echo "Attempt $i failed. Retrying in $delay seconds..."
-              sleep $delay
+            for i in {1..5}; do
+              if eval "$cmd"; then return 0; fi
+              echo "Attempt $i failed. Retrying..."
+              sleep 5
             done
-            echo "::error::Command failed after $max attempts: $cmd"
+            echo "::error::Command failed after retries: $cmd"
             exit 1
           }
 
-          # Verify both APK files exist
-          if [ ! -f "${apk_CI_PATH}" ]; then
-            echo "::error::Missing first APK at ${apk_CI_PATH}"
+          if [ ! -f "app-release.apk" ]; then
+            echo "::error::Missing app-release.apk"
             exit 1
           fi
 
-          if [ ! -f "${apk_CLIENT_PATH}" ]; then
-            echo "::error::Missing second APK at ${apk_CLIENT_PATH}"
+          if [ ! -f "client-app-release.apk" ]; then
+            echo "::error::Missing client-app-release.apk"
             exit 1
           fi
 
-          # Install first APK
-          echo "Installing first APK..."
-          adb_retry "adb install -r -t -g ${apk_CI_PATH}"
-          adb_retry "adb shell pm list packages | grep -q com.willma.staging"
-
-          # Install second APK
-          echo "Installing second APK..."
-          adb_retry "adb install -r -t -g ${apk_CLIENT_PATH}"
-          adb_retry "adb shell pm list packages | grep -q com.willma.client.staging"
+          adb_retry "adb install -r -t -g app-release.apk"
+          adb_retry "adb install -r -t -g client-app-release.apk"
 
       - name: Run Appium server
         run: |
           mkdir -p logs
           nohup npx appium --relaxed-security --log-timestamp > logs/appium.log 2>&1 &
           sleep 10
-          echo "Appium PID: $(pgrep -f 'appium')" || echo "Appium process not found"
+          netstat -tuln | grep 4723 || echo "Appium port not found"
 
-          echo "Checking if Appium is listening on port 4723..."
-          netstat -tuln | grep 4723 || echo "❌ Port 4723 is not active"
-
-          echo "==== Appium Logs ===="
-          tail -n 50 logs/appium.log || echo "No Appium logs found"
-
-
-      - name: Execute E2E tests
+      - name: Run E2E Tests
         timeout-minutes: 25
         run: |
           set -x
           npx wdio run ./wdio.ci.conf.js --specRetries 2
 
-      - name: Gather diagnostics
+      - name: Gather Diagnostics
         if: always()
         run: |
           mkdir -p diagnostics
           adb logcat -d > diagnostics/logcat.log
-          adb bugreport diagnostics/bugreport.zip
-          cp -r screenshots diagnostics/
+          adb bugreport diagnostics/bugreport.zip || true
+          cp -r screenshots diagnostics/ || true
 
-      - name: Upload artifacts
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -256,7 +182,7 @@ jobs:
             logs/appium.log
           retention-days: 3
 
-      - name: Terminate emulator
+      - name: Kill Emulator
         if: always()
         run: |
           adb emu kill || true
