@@ -12,6 +12,7 @@ jobs:
     env:
       AVD_NAME: testAVD
       ANDROID_AVD_HOME: $HOME/.android/avd
+      ANDROID_HOME: $HOME/android-sdk
 
     steps:
       - name: ↓ Checkout Code
@@ -43,68 +44,105 @@ jobs:
         run: |
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install \
             "platform-tools" \
-            "platforms;android-34" \
+            "platforms;android-33" \
             "build-tools;34.0.0" \
             "emulator" \
-            "system-images;android-34;google_apis;x86_64"
+            "system-images;android-33;google_apis;x86_64"
 
-      - name: ➕ Add adb to PATH
-        run: echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+          # Verify system image installation
+          if [ ! -d "$ANDROID_HOME/system-images/android-33/google_apis/x86_64" ]; then
+            echo "::error::System image installation failed!"
+            exit 1
+          fi
+
+      - name: ➕ Add Android tools to PATH
+        run: |
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+          echo "$ANDROID_HOME/emulator" >> $GITHUB_PATH
 
       - name: 🛠️ Create AVD
         run: |
-          # Create AVD with default device
-          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
+          # List available devices for debugging
+          avdmanager list device
+
+          # Create AVD with explicit device ID
+          echo "no" | avdmanager create avd \
             --name "$AVD_NAME" \
-            --package "system-images;android-34;google_apis;x86_64" \
-            --device "pixel" \
+            --package "system-images;android-33;google_apis;x86_64" \
+            --device "pixel_4" \
             --force
 
           # Verify AVD directory creation
           if [ ! -d "$ANDROID_AVD_HOME/$AVD_NAME.avd" ]; then
-            echo "::error::AVD directory not created at $ANDROID_AVD_HOME/$AVD_NAME.avd"
+            echo "::error::AVD directory creation failed!"
+            echo "Contents of $ANDROID_AVD_HOME:"
+            ls -la $ANDROID_AVD_HOME
             exit 1
           fi
 
       - name: ⚖️ Configure Emulator Settings
         run: |
-          echo "hw.ramSize=4096" >> "$ANDROID_AVD_HOME/$AVD_NAME.avd/config.ini"
-          echo "hw.gpu.enabled=yes" >> "$ANDROID_AVD_HOME/$AVD_NAME.avd/config.ini"
-          echo "hw.gpu.mode=swiftshader_indirect" >> "$ANDROID_AVD_HOME/$AVD_NAME.avd/config.ini"
-          echo "disk.dataPartition.size=4G" >> "$ANDROID_AVD_HOME/$AVD_NAME.avd/config.ini"
-          echo "hw.cpu.ncore=2" >> "$ANDROID_AVD_HOME/$AVD_NAME.avd/config.ini"
+          CONFIG_FILE="$ANDROID_AVD_HOME/$AVD_NAME.avd/config.ini"
+          echo "hw.ramSize=2048" >> $CONFIG_FILE
+          echo "hw.gpu.enabled=yes" >> $CONFIG_FILE
+          echo "hw.gpu.mode=swiftshader_indirect" >> $CONFIG_FILE
+          echo "disk.dataPartition.size=2G" >> $CONFIG_FILE
+          echo "hw.cpu.ncore=2" >> $CONFIG_FILE
+          echo "vm.heapSize=256" >> $CONFIG_FILE
 
-      - name: ⚠️ Fix KVM permissions
+          # Display final configuration
+          echo "Final AVD configuration:"
+          cat $CONFIG_FILE
+
+      - name: ⚠️ Configure KVM
         run: |
           sudo apt-get update -y
           sudo apt-get install -y qemu-kvm
+          sudo chown $USER /dev/kvm
           sudo chmod 666 /dev/kvm
 
       - name: 🌟 Start Emulator
         timeout-minutes: 10
         run: |
-          nohup $ANDROID_HOME/emulator/emulator -avd "$AVD_NAME" \
-            -no-audio -no-window -gpu swiftshader_indirect \
-            -no-snapshot -wipe-data -memory 4096 -logcat '*:V' &
-          sleep 300  # Extended boot time for API 34
+          emulator -avd $AVD_NAME \
+            -no-audio \
+            -no-window \
+            -gpu swiftshader_indirect \
+            -no-snapshot \
+            -wipe-data \
+            -memory 2048 \
+            -logcat '*:V' > emulator.log 2>&1 &
+          
+          # Wait for emulator to start
+          sleep 180
 
       - name: ⌛ Wait for Emulator Boot
-        timeout-minutes: 8
+        timeout-minutes: 5
         run: |
           adb wait-for-device
-          while [[ "$(adb shell getprop sys.boot_completed | tr -d '\r')" != "1" ]]; do
-            echo "Waiting for emulator to boot..."
+          echo "Emulator serial number: $(adb get-serialno)"
+          
+          # Wait for full boot
+          until adb shell getprop sys.boot_completed | grep -q 1; do
+            echo "Waiting for boot completion..."
             sleep 10
           done
           
-          # Wake device and disable animations
-          adb shell input keyevent 82
+          # Disable animations
           adb shell settings put global window_animation_scale 0
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
+          
+          # Wake device
+          adb shell input keyevent 82
 
-      - name: 🔢 List ADB Devices
-        run: adb devices
+      - name: 🔍 Verify Emulator Status
+        run: |
+          adb devices
+          adb shell screencap -p /sdcard/screen.png
+          adb pull /sdcard/screen.png
+          ls -la
 
       - name: 💾 Install Node Dependencies
         run: npm install
@@ -116,41 +154,36 @@ jobs:
           gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O appclient.apk
 
       - name: 🌐 Install APKs
-        timeout-minutes: 5
+        timeout-minutes: 3
         run: |
-          adb uninstall com.willma.staging || true
-          adb uninstall com.willma.client.staging || true
-          
           adb install -t -r -g app-release-trainer.apk
           adb install -t -r -g appclient.apk
-          sleep 15
+          adb shell pm list packages | grep willma
 
       - name: 🚀 Run Appium Server
         run: |
-          nohup npx appium --relaxed-security > appium.log 2>&1 &
-          sleep 15
+          npx appium --relaxed-security &> appium.log &
+          sleep 10
+          echo "Appium server PID: $(pgrep appium)"
 
       - name: 🔧 Run E2E Tests
-        timeout-minutes: 20
+        timeout-minutes: 15
         run: npx wdio run ./wdio.ci.conf.js --specRetries 2
 
-      - name: 🔍 Collect Logs and Screenshots
+      - name: 📤 Upload Artifacts
         if: always()
-        run: |
-          mkdir -p diagnostics
-          adb logcat -d > diagnostics/logcat.log
-          cp -r screenshots diagnostics/ || true
-          cp appium.log diagnostics/appium.log || true
-
-      - name: 📂 Upload Artifacts
         uses: actions/upload-artifact@v4
-        if: always()
         with:
-          name: test-results-${{ github.run_id }}
-          path: diagnostics/
+          name: test-artifacts-${{ github.run_id }}
+          path: |
+            *.log
+            *.png
+            screenshots/
+            diagnostics/
 
-      - name: 🚪 Shutdown Emulator
+      - name: 🚪 Cleanup
         if: always()
         run: |
           adb emu kill || true
+          pkill -f appium || true
           pkill -f emulator || true
