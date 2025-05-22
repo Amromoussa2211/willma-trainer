@@ -47,19 +47,26 @@ jobs:
       - name: ➕ Add adb to PATH
         run: echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
 
-      - name: 📱 Create AVD
+      - name: 📱 Create and Configure AVD
         run: |
+          echo "Creating AVD..."
           echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
-            --name $AVD_NAME \
+            --name "$AVD_NAME" \
             --package "system-images;android-34;google_apis;x86_64" \
             --device "pixel" \
             --force
 
-      - name: 🛠️ Emulator Config
-        run: |
-          echo "hw.ramSize=2048" >> ~/.android/avd/${AVD_NAME}.avd/config.ini
-          echo "hw.gpu.enabled=yes" >> ~/.android/avd/${AVD_NAME}.avd/config.ini
-          echo "hw.gpu.mode=swiftshader_indirect" >> ~/.android/avd/${AVD_NAME}.avd/config.ini
+          echo "🛠️ Configuring AVD hardware..."
+          CONFIG_FILE="$ANDROID_AVD_HOME/${AVD_NAME}.avd/config.ini"
+          if [ -f "$CONFIG_FILE" ]; then
+            echo "hw.ramSize=2048" >> "$CONFIG_FILE"
+            echo "hw.gpu.enabled=yes" >> "$CONFIG_FILE"
+            echo "hw.gpu.mode=swiftshader_indirect" >> "$CONFIG_FILE"
+          else
+            echo "::error::AVD config.ini not found at $CONFIG_FILE"
+            exit 1
+          fi
+      
 
       - name: 🔧 KVM Permissions
         run: |
