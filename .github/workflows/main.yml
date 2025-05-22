@@ -117,7 +117,7 @@ jobs:
       - name: Download APKs
         run: |
           pip install gdown
-          gdown --fuzzy "https://drive.google.com/file/d/1vpmsQks5b_Q5rUGvsLUahrHwkOlu3Mtz/view?usp=drive_link" -O app-release.apk
+          gdown --fuzzy "https://drive.google.com/file/d/1UmKiTZ6SlMorOBLx754Fs7_oqoNxFQ4F/view?usp=drive_link" -O app-release-trainer.apk
           gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O client-app-release.apk
         env:
           apk_CI_PATH: app-release.apk
