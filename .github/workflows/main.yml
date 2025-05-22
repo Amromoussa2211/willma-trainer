@@ -1,4 +1,4 @@
-name: Android E2E Tests
+name: 📱 Android E2E Tests
 
 on:
   push:
@@ -14,10 +14,10 @@ jobs:
       ANDROID_AVD_HOME: $HOME/.android/avd
 
     steps:
-      - name: 📥 Checkout Code
+      - name: 📅 Checkout Code
         uses: actions/checkout@v3
 
-      - name: 🧱 Set up Node.js
+      - name: 🛠️ Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
@@ -28,7 +28,7 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: 📦 Download and Install Android SDK
+      - name: 📦 Install Android SDK
         run: |
           sudo apt-get update
           sudo apt-get install -y unzip wget
@@ -43,41 +43,32 @@ jobs:
             "platforms;android-34" \
             "system-images;android-34;google_apis;x86_64" \
             "build-tools;34.0.0"
-          # Ensure emulator binary is available in PATH
           echo "$ANDROID_HOME/emulator" >> $GITHUB_PATH
 
       - name: ➕ Add adb to PATH
-        run: |
-          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+        run: echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
 
       - name: 📱 Create and Configure AVD
         run: |
-          echo "Creating AVD..."
-          # Pre-create the AVD home directory to avoid race conditions
           mkdir -p "$ANDROID_AVD_HOME"
           echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
             --name "$AVD_NAME" \
             --package "system-images;android-34;google_apis;x86_64" \
-            --device "pixel" \
-            --force
+            --device "pixel" --force
 
-          echo "Waiting for config.ini to be created..."
           CONFIG_FILE="$ANDROID_AVD_HOME/${AVD_NAME}.avd/config.ini"
-          for i in {1..30}; do
-            if [ -f "$CONFIG_FILE" ]; then
-              break
-            fi
-            sleep 2
-          done
+          for i in {1..30}; do [ -f "$CONFIG_FILE" ] && break || sleep 2; done
 
-          echo "🛠️ Configuring AVD hardware..."
           if [ -f "$CONFIG_FILE" ]; then
-            echo "hw.ramSize=2048" >> "$CONFIG_FILE"
+            echo "hw.ramSize=4096" >> "$CONFIG_FILE"
+            echo "vm.heapSize=256" >> "$CONFIG_FILE"
             echo "hw.gpu.enabled=yes" >> "$CONFIG_FILE"
-            echo "hw.gpu.mode=swiftshader_indirect" >> "$CONFIG_FILE"
+            echo "hw.gpu.mode=host" >> "$CONFIG_FILE"
+            echo "disk.dataPartition.size=2048M" >> "$CONFIG_FILE"
+            echo "snapshot.present=false" >> "$CONFIG_FILE"
+            echo "boot.fastboot=1" >> "$CONFIG_FILE"
           else
-            echo "::error::AVD config.ini not found at $CONFIG_FILE"
-            ls -l "$ANDROID_AVD_HOME"
+            echo "::error::AVD config.ini not found"
             exit 1
           fi
 
@@ -89,14 +80,17 @@ jobs:
 
       - name: 🚀 Start Emulator
         run: |
-          nohup $ANDROID_HOME/emulator/emulator -avd "$AVD_NAME" -no-audio -no-window -gpu swiftshader_indirect -no-boot-anim &
+          nohup $ANDROID_HOME/emulator/emulator -avd "$AVD_NAME" \
+            -no-audio -no-boot-anim -accel on -no-window \
+            -gpu host -memory 4096 -no-snapshot-save -camera-back none \
+            > /dev/null 2>&1 &
+          sleep 10
 
       - name: ⏳ Wait for Emulator Boot
         run: |
           adb wait-for-device
-          boot_completed=""
-          until [ "$boot_completed" = "1" ]; do
-            boot_completed=$(adb shell getprop sys.boot_completed | tr -d '\r')
+          until [[ "$(adb shell getprop sys.boot_completed | tr -d '\r')" == "1" ]]; do
+            echo "Waiting for emulator to boot..."
             sleep 5
           done
 
@@ -135,7 +129,7 @@ jobs:
           nohup npx appium --relaxed-security --log-timestamp > logs/appium.log 2>&1 &
           sleep 10
 
-      - name: 🧪 Run E2E Tests
+      - name: 🧰 Run E2E Tests
         run: |
           npx wdio run ./wdio.ci.conf.js
         continue-on-error: true
@@ -149,7 +143,7 @@ jobs:
           cp -r screenshots diagnostics/ || true
           cp -r logs/ diagnostics/ || true
 
-      - name: 📤 Upload Artifacts
+      - name: 📄 Upload Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -157,7 +151,7 @@ jobs:
           path: diagnostics/
           retention-days: 7
 
-      - name: 🛑 Kill Emulator
+      - name: ❌ Kill Emulator
         if: always()
         run: |
           adb emu kill || true
