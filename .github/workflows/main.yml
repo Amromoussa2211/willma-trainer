@@ -47,6 +47,9 @@ jobs:
           echo "$ANDROID_HOME/emulator" >> $GITHUB_PATH
 
       - name: ➕ Add adb to PATH
+        run: |
+          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+
       - name: 📱 Create and Configure AVD
         run: |
           echo "Creating AVD..."
@@ -75,8 +78,6 @@ jobs:
           else
             echo "::error::AVD config.ini not found at $CONFIG_FILE"
             ls -l "$ANDROID_AVD_HOME"
-            exit 1
-          fi
             exit 1
           fi
 
