@@ -139,7 +139,7 @@ jobs:
             exit 1
           }
 
-          if [ ! -f "app-release.apk" ]; then
+          if [ ! -f "app-release-trainer.apk" ]; then
             echo "::error::Missing app-release.apk"
             exit 1
           fi
@@ -150,7 +150,7 @@ jobs:
           fi
 
           # Install both APKs
-          adb_retry "adb install -r -t -g app-release.apk"
+          adb_retry "adb install -r -t -g app-release-trainer.apk"
           adb_retry "adb install -r -t -g client-app-release.apk"
 
           echo "✅ Both APKs installed."
