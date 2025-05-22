@@ -11,8 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AVD_NAME: testAVD
-      ANDROID_AVD_HOME: $HOME/.android/avd
       ANDROID_HOME: $HOME/android-sdk
+      ANDROID_AVD_HOME: $HOME/.android/avd
 
     steps:
       - name: ↓ Checkout Code
@@ -23,11 +23,11 @@ jobs:
         with:
           node-version: '18'
 
-      - name: ☕️ Set up Java
+      - name: ☕️ Set up Java 11 (SDK Manager Requirement)
         uses: actions/setup-java@v3
         with:
-          distribution: 'zulu'
-          java-version: '17'
+          distribution: 'temurin'
+          java-version: '11'
 
       - name: 🔄 Install Android Command Line Tools
         run: |
@@ -38,7 +38,10 @@ jobs:
           rm cmdline-tools.zip
 
       - name: 🚀 Accept Android SDK Licenses
-        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+        run: |
+          mkdir -p $ANDROID_HOME/licenses
+          echo -e "\n24333f8a63b6825ea9c5514f83c2829b004d1fee" > $ANDROID_HOME/licenses/android-sdk-license
+          echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" > $ANDROID_HOME/licenses/android-sdk-preview-license
 
       - name: 🚀 Install Android SDK Packages
         run: |
@@ -49,11 +52,11 @@ jobs:
             "emulator" \
             "system-images;android-33;google_apis;x86_64"
 
-          # Verify system image installation
-          if [ ! -d "$ANDROID_HOME/system-images/android-33/google_apis/x86_64" ]; then
-            echo "::error::System image installation failed!"
-            exit 1
-          fi
+      - name: ☕️ Switch to Java 17 (For App Build/Test)
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
 
       - name: ➕ Add Android tools to PATH
         run: |
@@ -63,23 +66,11 @@ jobs:
 
       - name: 🛠️ Create AVD
         run: |
-          # List available devices for debugging
-          avdmanager list device
-
-          # Create AVD with explicit device ID
-          echo "no" | avdmanager create avd \
+          avdmanager create avd \
             --name "$AVD_NAME" \
             --package "system-images;android-33;google_apis;x86_64" \
             --device "pixel_4" \
             --force
-
-          # Verify AVD directory creation
-          if [ ! -d "$ANDROID_AVD_HOME/$AVD_NAME.avd" ]; then
-            echo "::error::AVD directory creation failed!"
-            echo "Contents of $ANDROID_AVD_HOME:"
-            ls -la $ANDROID_AVD_HOME
-            exit 1
-          fi
 
       - name: ⚖️ Configure Emulator Settings
         run: |
@@ -89,17 +80,11 @@ jobs:
           echo "hw.gpu.mode=swiftshader_indirect" >> $CONFIG_FILE
           echo "disk.dataPartition.size=2G" >> $CONFIG_FILE
           echo "hw.cpu.ncore=2" >> $CONFIG_FILE
-          echo "vm.heapSize=256" >> $CONFIG_FILE
-
-          # Display final configuration
-          echo "Final AVD configuration:"
-          cat $CONFIG_FILE
 
       - name: ⚠️ Configure KVM
         run: |
           sudo apt-get update -y
           sudo apt-get install -y qemu-kvm
-          sudo chown $USER /dev/kvm
           sudo chmod 666 /dev/kvm
 
       - name: 🌟 Start Emulator
@@ -113,36 +98,20 @@ jobs:
             -wipe-data \
             -memory 2048 \
             -logcat '*:V' > emulator.log 2>&1 &
-          
-          # Wait for emulator to start
-          sleep 180
+          sleep 300
 
       - name: ⌛ Wait for Emulator Boot
         timeout-minutes: 5
         run: |
           adb wait-for-device
-          echo "Emulator serial number: $(adb get-serialno)"
-          
-          # Wait for full boot
           until adb shell getprop sys.boot_completed | grep -q 1; do
             echo "Waiting for boot completion..."
             sleep 10
           done
-          
-          # Disable animations
           adb shell settings put global window_animation_scale 0
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
-          
-          # Wake device
           adb shell input keyevent 82
-
-      - name: 🔍 Verify Emulator Status
-        run: |
-          adb devices
-          adb shell screencap -p /sdcard/screen.png
-          adb pull /sdcard/screen.png
-          ls -la
 
       - name: 💾 Install Node Dependencies
         run: npm install
@@ -150,21 +119,19 @@ jobs:
       - name: 🔽 Download APKs
         run: |
           pip install gdown
-          gdown --fuzzy "https://drive.google.com/file/d/1UmKiTZ6SlMorOBLx754Fs7_oqoNxFQ4F/view?usp=drive_link" -O app-release-trainer.apk
-          gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O appclient.apk
+          gdown --fuzzy "YOUR_APK_LINK_1" -O app-release-trainer.apk
+          gdown --fuzzy "YOUR_APK_LINK_2" -O appclient.apk
 
       - name: 🌐 Install APKs
         timeout-minutes: 3
         run: |
           adb install -t -r -g app-release-trainer.apk
           adb install -t -r -g appclient.apk
-          adb shell pm list packages | grep willma
 
       - name: 🚀 Run Appium Server
         run: |
           npx appium --relaxed-security &> appium.log &
-          sleep 10
-          echo "Appium server PID: $(pgrep appium)"
+          sleep 15
 
       - name: 🔧 Run E2E Tests
         timeout-minutes: 15
@@ -174,10 +141,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-artifacts-${{ github.run_id }}
+          name: test-results-${{ github.run_id }}
           path: |
             *.log
-            *.png
             screenshots/
             diagnostics/
 
