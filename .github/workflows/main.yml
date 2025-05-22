@@ -56,8 +56,16 @@ jobs:
             --device "pixel" \
             --force
 
-          echo "🛠️ Configuring AVD hardware..."
+          echo "Waiting for config.ini to be created..."
           CONFIG_FILE="$ANDROID_AVD_HOME/${AVD_NAME}.avd/config.ini"
+          for i in {1..10}; do
+            if [ -f "$CONFIG_FILE" ]; then
+              break
+            fi
+            sleep 1
+          done
+
+          echo "🛠️ Configuring AVD hardware..."
           if [ -f "$CONFIG_FILE" ]; then
             echo "hw.ramSize=2048" >> "$CONFIG_FILE"
             echo "hw.gpu.enabled=yes" >> "$CONFIG_FILE"
@@ -66,7 +74,6 @@ jobs:
             echo "::error::AVD config.ini not found at $CONFIG_FILE"
             exit 1
           fi
-      
 
       - name: 🔧 KVM Permissions
         run: |
