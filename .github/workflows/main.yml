@@ -1,4 +1,4 @@
-name: 🚀 Android E2E Tests (Optimized)
+name: Android E2E Tests
 
 on:
   push:
@@ -17,18 +17,18 @@ jobs:
       - name: 📥 Checkout Code
         uses: actions/checkout@v3
 
+      - name: 🧱 Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
       - name: ☕ Set up Java
         uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: 🌍 Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-
-      - name: 📦 Download and Install Android SDK
+      - name: 📦 Install Android SDK & Required Tools
         run: |
           sudo apt-get update
           sudo apt-get install -y unzip wget
@@ -36,22 +36,25 @@ jobs:
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O tools.zip
           unzip tools.zip -d $ANDROID_HOME/cmdline-tools
           mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install \
             "platform-tools" \
             "emulator" \
             "platforms;android-34" \
-            "system-images;android-34;google_apis;x86" \
+            "system-images;android-34;google_apis;x86_64" \
             "build-tools;34.0.0"
-          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+
           echo "$ANDROID_HOME/emulator" >> $GITHUB_PATH
+          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
 
       - name: 📱 Create and Configure AVD
         run: |
           mkdir -p "$ANDROID_AVD_HOME"
           echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
             --name "$AVD_NAME" \
-            --package "system-images;android-34;google_apis;x86" \
+            --package "system-images;android-34;google_apis;x86_64" \
             --device "pixel" --force
 
           CONFIG_FILE="$ANDROID_AVD_HOME/${AVD_NAME}.avd/config.ini"
@@ -60,13 +63,17 @@ jobs:
             sleep 2
           done
 
-          echo "hw.ramSize=2048" >> "$CONFIG_FILE"
-          echo "hw.gpu.enabled=yes" >> "$CONFIG_FILE"
-          echo "hw.gpu.mode=swiftshader_indirect" >> "$CONFIG_FILE"
-          echo "hw.lcd.density=160" >> "$CONFIG_FILE"
-          echo "disk.dataPartition.size=2G" >> "$CONFIG_FILE"
+          if [ -f "$CONFIG_FILE" ]; then
+            echo "hw.ramSize=2048" >> "$CONFIG_FILE"
+            echo "hw.gpu.enabled=yes" >> "$CONFIG_FILE"
+            echo "hw.gpu.mode=swiftshader_indirect" >> "$CONFIG_FILE"
+          else
+            echo "::error::AVD config.ini not found at $CONFIG_FILE"
+            ls -l "$ANDROID_AVD_HOME"
+            exit 1
+          fi
 
-      - name: 🔧 KVM Permissions
+      - name: 🔧 KVM Setup
         run: |
           sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
           sudo gpasswd -a $USER kvm
@@ -74,15 +81,24 @@ jobs:
 
       - name: 🚀 Start Emulator
         run: |
-          nohup $ANDROID_HOME/emulator/emulator -avd "$AVD_NAME" -no-audio -no-window -gpu swiftshader_indirect -no-boot-anim -accel auto &
+          nohup $ANDROID_HOME/emulator/emulator -avd "$AVD_NAME" -no-audio -no-window -gpu swiftshader_indirect -no-boot-anim &
 
-      - name: ⏳ Wait for Emulator Boot
+      - name: ⏳ Wait for Emulator to Boot
         run: |
           adb wait-for-device
-          until [[ "$(adb shell getprop sys.boot_completed | tr -d '\r')" == "1" ]]; do
-            echo "Waiting for emulator to boot..."
+          boot_completed=""
+          timeout=480  # 8 minutes max
+          count=0
+          until [[ "$boot_completed" == "1" || $count -ge $timeout ]]; do
+            boot_completed=$(adb shell getprop sys.boot_completed | tr -d '\r')
+            echo "Waiting for emulator to boot... ($count s)"
             sleep 5
+            count=$((count + 5))
           done
+          if [ "$boot_completed" != "1" ]; then
+            echo "::error::Emulator failed to boot"
+            exit 1
+          fi
 
       - name: 🔇 Disable Animations
         run: |
@@ -90,10 +106,10 @@ jobs:
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
 
-      - name: 💪 Install Node Dependencies
+      - name: 📦 Install Node Dependencies
         run: npm ci
 
-      - name: 📂 Download APKs
+      - name: ⬇️ Download APKs
         run: |
           pip install gdown
           gdown --fuzzy "https://drive.google.com/file/d/1UmKiTZ6SlMorOBLx754Fs7_oqoNxFQ4F/view?usp=drive_link" -O app-release-trainer.apk
@@ -103,33 +119,35 @@ jobs:
         run: |
           adb uninstall com.willma.staging || true
           adb uninstall com.willma.client.staging || true
-          adb install -r -g -d app-release-trainer.apk
-          adb install -r -g -d appclient.apk
+          adb install -r -g app-release-trainer.apk
+          adb install -r -g appclient.apk
 
-      - name: 🔍 Verify APKs
+      - name: 🔍 Verify APK State
+        continue-on-error: true
         run: |
-          adb shell pm list packages | grep willma || echo "::warning::No Willma packages found"
+          adb shell pm list packages | grep willma || echo "::warning::Willma packages not found"
           adb shell dumpsys package com.willma.staging | grep -i 'MainActivity' || echo "::warning::MainActivity not found"
           adb shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp' || echo "::warning::No foreground activity"
 
-      - name: ⚖️ Start Appium
+      - name: 🧪 Start Appium Server
         run: |
           mkdir -p logs
           nohup npx appium --relaxed-security --log-timestamp > logs/appium.log 2>&1 &
           sleep 10
 
-      - name: 🌐 Run E2E Tests
-        run: npx wdio run ./wdio.ci.conf.js
+      - name: 🧪 Run E2E Tests
+        run: |
+          npx wdio run ./wdio.ci.conf.js
         continue-on-error: true
 
-      - name: 📸 Collect Diagnostics
+      - name: 📷 Collect Diagnostics
         if: always()
         run: |
           mkdir -p diagnostics
           adb logcat -d > diagnostics/logcat.log
           adb shell cat /data/anr/traces.txt > diagnostics/anr-traces.log || true
           cp -r screenshots diagnostics/ || true
-          cp -r logs diagnostics/ || true
+          cp -r logs/ diagnostics/ || true
 
       - name: 📤 Upload Artifacts
         if: always()
@@ -139,7 +157,7 @@ jobs:
           path: diagnostics/
           retention-days: 7
 
-      - name: ❌ Kill Emulator
+      - name: 🛑 Kill Emulator
         if: always()
         run: |
           adb emu kill || true
