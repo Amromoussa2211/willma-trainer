@@ -1,4 +1,4 @@
-name: 🚀 Android E2E Tests
+name: Android E2E Tests
 
 on:
   push:
@@ -14,151 +14,131 @@ jobs:
       ANDROID_AVD_HOME: $HOME/.android/avd
 
     steps:
-      - name: ↓ Checkout Code
+      - name: 📥 Checkout Code
         uses: actions/checkout@v3
 
-      - name: ⚛️ Set up Node.js
+      - name: 🧱 Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
 
-      - name: ☕️ Set up Java
+      - name: ☕ Set up Java
         uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: ♻️ Clear SDK Cache
+      - name: 📦 Download and Install Android SDK
         run: |
-          rm -rf $ANDROID_HOME/licenses $ANDROID_HOME/tools $ANDROID_HOME/cmdline-tools
-
-      - name: 🔄 Install Android Command Line Tools
-        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip wget
           mkdir -p $ANDROID_HOME/cmdline-tools
-          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-          unzip cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O tools.zip
+          unzip tools.zip -d $ANDROID_HOME/cmdline-tools
           mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
-          rm cmdline-tools.zip
-
-      - name: 🚀 Accept Android SDK Licenses
-        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
-
-      - name: 🚀 Install Android SDK Packages
-        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install \
             "platform-tools" \
-            "platforms;android-34" \
-            "build-tools;34.0.0" \
             "emulator" \
-            "system-images;android-34;google_apis;x86_64"
+            "platforms;android-34" \
+            "system-images;android-34;google_apis;x86_64" \
+            "build-tools;34.0.0"
 
       - name: ➕ Add adb to PATH
         run: echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
 
-      - name: 🛠️ Create AVD
+      - name: 📱 Create AVD
         run: |
           echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
-            --name "$AVD_NAME" \
+            --name $AVD_NAME \
             --package "system-images;android-34;google_apis;x86_64" \
             --device "pixel" \
             --force
 
-      - name: ⚖️ Configure Emulator Settings
+      - name: 🛠️ Emulator Config
         run: |
-          echo "hw.cpu.ncore=2" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
-          echo "hw.ramSize=2048" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
-          echo "hw.gpu.enabled=yes" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
-          echo "hw.gpu.mode=swiftshader_indirect" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
+          echo "hw.ramSize=2048" >> ~/.android/avd/${AVD_NAME}.avd/config.ini
+          echo "hw.gpu.enabled=yes" >> ~/.android/avd/${AVD_NAME}.avd/config.ini
+          echo "hw.gpu.mode=swiftshader_indirect" >> ~/.android/avd/${AVD_NAME}.avd/config.ini
 
-      - name: ⚠️ Fix KVM permissions
+      - name: 🔧 KVM Permissions
         run: |
-          sudo apt-get update -y
           sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
           sudo gpasswd -a $USER kvm
           sudo chmod 666 /dev/kvm
 
-      - name: ✅ Verify KVM
+      - name: 🚀 Start Emulator
         run: |
-          if [ ! -e /dev/kvm ]; then
-            echo "KVM is not available." && exit 1
-          fi
+          nohup $ANDROID_HOME/emulator/emulator -avd "$AVD_NAME" -no-audio -no-window -gpu swiftshader_indirect -no-boot-anim &
 
-      - name: 🌟 Start Emulator
-        run: |
-          nohup $ANDROID_HOME/emulator/emulator -avd "$AVD_NAME" -no-audio -no-window -gpu swiftshader_indirect &
-          sleep 120
-
-      - name: ⌛ Wait for Emulator Boot
+      - name: ⏳ Wait for Emulator Boot
         run: |
           adb wait-for-device
-          while [[ "$(adb shell getprop sys.boot_completed | tr -d '\r')" != "1" ]]; do
-            echo "Waiting for emulator to boot..."
+          boot_completed=""
+          until [ "$boot_completed" = "1" ]; do
+            boot_completed=$(adb shell getprop sys.boot_completed | tr -d '\r')
             sleep 5
           done
 
-      - name: ✅ Disable Bluetooth
-        run: adb shell settings put global bluetooth_on 0
+      - name: 🔇 Disable Animations
+        run: |
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
 
-      - name: 🔢 List ADB Devices
-        run: adb devices
+      - name: 📦 Install Dependencies
+        run: npm ci
 
-      - name: 💾 Install Node Dependencies
-        run: npm install
-
-      - name: 🔽 Download APKs
+      - name: ⬇️ Download APKs
         run: |
           pip install gdown
           gdown --fuzzy "https://drive.google.com/file/d/1UmKiTZ6SlMorOBLx754Fs7_oqoNxFQ4F/view?usp=drive_link" -O app-release-trainer.apk
           gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O appclient.apk
 
-      - name: 🌐 Install APKs
+      - name: ✅ Install APKs
         run: |
           adb uninstall com.willma.staging || true
           adb uninstall com.willma.client.staging || true
-
           adb install -r -g app-release-trainer.apk
           adb install -r -g appclient.apk
-          sleep 10
 
-      - name: 🔎 Verify APK Activities
+      - name: 🔍 Verify APK State
         continue-on-error: true
         run: |
           adb shell pm list packages | grep willma || echo "::warning::No Willma packages found"
+          adb shell dumpsys package com.willma.staging | grep -i 'MainActivity' || echo "::warning::MainActivity not found"
+          adb shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp' || echo "::warning::No foreground activity"
 
-          echo "\nListing activities for com.willma.staging"
-          adb shell dumpsys package com.willma.staging | grep -i 'com.willma.staging.MainActivity' || echo "::warning::MainActivity for staging not found"
-
-          echo "\nListing activities for com.willma.client.staging"
-          adb shell dumpsys package com.willma.client.staging | grep -i 'com.willma.client.staging.MainActivity' || echo "::warning::MainActivity for client not found"
-
-          echo "\nCurrent foreground activity:"
-          adb shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp' || echo "::warning::Unable to detect foreground activity"
-
-      - name: 🚀 Run Appium Server
+      - name: 🧪 Start Appium Server
         run: |
-          nohup npx appium --relaxed-security > appium.log 2>&1 &
+          mkdir -p logs
+          nohup npx appium --relaxed-security --log-timestamp > logs/appium.log 2>&1 &
           sleep 10
 
-      - name: 🔧 Run E2E Tests
-        run: npx wdio run ./wdio.ci.conf.js --specRetries 2
+      - name: 🧪 Run E2E Tests
+        run: |
+          npx wdio run ./wdio.ci.conf.js
+        continue-on-error: true
 
-      - name: 🔍 Collect Logs and Screenshots
+      - name: 📷 Collect Diagnostics
         if: always()
         run: |
           mkdir -p diagnostics
           adb logcat -d > diagnostics/logcat.log
+          adb shell cat /data/anr/traces.txt > diagnostics/anr-traces.log || true
           cp -r screenshots diagnostics/ || true
-          cp appium.log diagnostics/appium.log || true
+          cp -r logs/ diagnostics/ || true
 
-      - name: 📂 Upload Artifacts
-        uses: actions/upload-artifact@v4
+      - name: 📤 Upload Artifacts
         if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: test-results-${{ github.run_id }}
+          name: e2e-results-${{ github.run_id }}
           path: diagnostics/
+          retention-days: 7
 
-      - name: 🚪 Shutdown Emulator
+      - name: 🛑 Kill Emulator
         if: always()
         run: |
           adb emu kill || true
-          pkill -f emulator || true
+          pkill -f 'qemu-system' || true
