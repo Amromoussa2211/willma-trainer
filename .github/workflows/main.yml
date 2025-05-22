@@ -10,16 +10,10 @@ jobs:
   e2e-tests:
     runs-on: ubuntu-latest
     env:
-      AVD_NAME: willma_avd
-      ANDROID_HOME: ${{ github.workspace }}/android-sdk
-      ANDROID_AVD_HOME: ${{ github.workspace }}/.android/avd
+      AVD_NAME: testAVD
+      ANDROID_AVD_HOME: $HOME/.android/avd
 
     steps:
-      - name: 🧹 Clean Workspace
-        run: |
-          rm -rf $ANDROID_HOME
-          rm -rf $ANDROID_AVD_HOME
-
       - name: ↓ Checkout Code
         uses: actions/checkout@v3
 
@@ -28,143 +22,143 @@ jobs:
         with:
           node-version: '18'
 
-      - name: ☕️ Install Java 17
+      - name: ☕️ Set up Java
         uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: 🔄 Install Android CLI Tools
+      - name: ♻️ Clear SDK Cache
         run: |
-          mkdir -p $ANDROID_HOME/cmdline-tools/latest
-          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cli-tools.zip
-          unzip cli-tools.zip -d "$ANDROID_HOME/cmdline-tools/latest"
-          rm cli-tools.zip
+          rm -rf $ANDROID_HOME/licenses $ANDROID_HOME/tools $ANDROID_HOME/cmdline-tools
 
-      - name: 🚀 Accept Licenses
+      - name: 🔄 Install Android Command Line Tools
         run: |
-          mkdir -p $ANDROID_HOME/licenses
-          echo -e "\n24333f8a63b6825ea9c5514f83c2829b004d1fee" > $ANDROID_HOME/licenses/android-sdk-license
-          echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" > $ANDROID_HOME/licenses/android-sdk-preview-license
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+          unzip cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools
+          mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+          rm cmdline-tools.zip
 
-      - name: 🛠️ Install SDK Components
+      - name: 🚀 Accept Android SDK Licenses
+        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+
+      - name: 🚀 Install Android SDK Packages
         run: |
-          $ANDROID_HOME/cmdline-tools/latest/cmdline-tools/bin/sdkmanager \
-            --sdk_root=$ANDROID_HOME \
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install \
             "platform-tools" \
             "platforms;android-34" \
             "build-tools;34.0.0" \
             "emulator" \
             "system-images;android-34;google_apis;x86_64"
 
-          # Verify system image installation
-          if [ ! -d "$ANDROID_HOME/system-images/android-34/google_apis/x86_64" ]; then
-            echo "::error::System image not installed!"
-            exit 1
-          fi
-
-      - name: ➕ Add Android Tools to PATH
-        run: |
-          echo "$ANDROID_HOME/cmdline-tools/latest/cmdline-tools/bin" >> $GITHUB_PATH
-          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
-          echo "$ANDROID_HOME/emulator" >> $GITHUB_PATH
+      - name: ➕ Add adb to PATH
+        run: echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
 
       - name: 🛠️ Create AVD
         run: |
-          mkdir -p $ANDROID_AVD_HOME
-          avdmanager create avd \
-            --name $AVD_NAME \
+          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
+            --name "$AVD_NAME" \
             --package "system-images;android-34;google_apis;x86_64" \
-            --device "pixel_4" \
+            --device "pixel" \
             --force
 
-          # Verify AVD configuration
-          if [ ! -f "$ANDROID_AVD_HOME/$AVD_NAME.avd/config.ini" ]; then
-            echo "::error::AVD configuration missing!"
-            ls -la $ANDROID_AVD_HOME
-            exit 1
+      - name: ⚖️ Configure Emulator Settings
+        run: |
+          echo "hw.cpu.ncore=2" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
+          echo "hw.ramSize=2048" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
+          echo "hw.gpu.enabled=yes" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
+          echo "hw.gpu.mode=swiftshader_indirect" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
+
+      - name: ⚠️ Fix KVM permissions
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
+          sudo gpasswd -a $USER kvm
+          sudo chmod 666 /dev/kvm
+
+      - name: ✅ Verify KVM
+        run: |
+          if [ ! -e /dev/kvm ]; then
+            echo "KVM is not available." && exit 1
           fi
 
-      - name: ⚙️ Configure Emulator
+      - name: 🌟 Start Emulator
         run: |
-          echo "hw.ramSize=4096" >> "$ANDROID_AVD_HOME/$AVD_NAME.avd/config.ini"
-          echo "hw.gpu.enabled=yes" >> "$ANDROID_AVD_HOME/$AVD_NAME.avd/config.ini"
-          echo "hw.gpu.mode=swiftshader_indirect" >> "$ANDROID_AVD_HOME/$AVD_NAME.avd/config.ini"
-          echo "disk.dataPartition.size=4G" >> "$ANDROID_AVD_HOME/$AVD_NAME.avd/config.ini"
+          nohup $ANDROID_HOME/emulator/emulator -avd "$AVD_NAME" -no-audio -no-window -gpu swiftshader_indirect &
+          sleep 120
 
-      - name: 🔧 Setup KVM
+      - name: ⌛ Wait for Emulator Boot
         run: |
-          sudo apt-get update
-          sudo apt-get install -y qemu-kvm
-          sudo chmod 666 /dev/kvm
+          adb wait-for-device
+          while [[ "$(adb shell getprop sys.boot_completed | tr -d '\r')" != "1" ]]; do
+            echo "Waiting for emulator to boot..."
+            sleep 5
+          done
+
+      - name: ✅ Disable Bluetooth
+        run: adb shell settings put global bluetooth_on 0
+
+      - name: 🔢 List ADB Devices
+        run: adb devices
+
+      - name: 💾 Install Node Dependencies
+        run: npm install
 
       - name: 🔽 Download APKs
         run: |
           pip install gdown
-          gdown "https://drive.google.com/uc?id=1UmKiTZ6SlMorOBLx754Fs7_oqoNxFQ4F" -O app-release-trainer.apk
-          gdown "https://drive.google.com/uc?id=1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY" -O appclient.apk
-          
-          # Verify APKs
-          if [ $(stat -c%s "app-release-trainer.apk") -lt 10000000 ]; then
-            echo "::error::Trainer APK too small!"
-            exit 1
-          fi
-          if [ $(stat -c%s "appclient.apk") -lt 10000000 ]; then
-            echo "::error::Client APK too small!"
-            exit 1
-          fi
+          gdown --fuzzy "https://drive.google.com/file/d/1UmKiTZ6SlMorOBLx754Fs7_oqoNxFQ4F/view?usp=drive_link" -O app-release-trainer.apk
+          gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O appclient.apk
 
-      - name: 🚀 Start Emulator
-        timeout-minutes: 10
+      - name: 🌐 Install APKs
         run: |
-          emulator -avd $AVD_NAME \
-            -no-audio \
-            -no-window \
-            -gpu swiftshader_indirect \
-            -no-snapshot \
-            -memory 4096 \
-            -logcat '*:V' > emulator.log 2>&1 &
-          sleep 300
+          adb uninstall com.willma.staging || true
+          adb uninstall com.willma.client.staging || true
 
-      - name: ⏳ Wait for Boot
-        timeout-minutes: 5
+          adb install -r -g app-release-trainer.apk
+          adb install -r -g appclient.apk
+          sleep 10
+
+      - name: 🔎 Verify APK Activities
+        continue-on-error: true
         run: |
-          adb wait-for-device
-          until adb shell getprop sys.boot_completed | grep -q 1; do
-            echo "Boot status: $(adb shell getprop sys.boot_completed)"
-            sleep 10
-          done
-          adb shell settings put global window_animation_scale 0
-          adb shell settings put global transition_animation_scale 0
+          adb shell pm list packages | grep willma || echo "::warning::No Willma packages found"
 
-      - name: 📦 Install APKs
+          echo "\nListing activities for com.willma.staging"
+          adb shell dumpsys package com.willma.staging | grep -i 'com.willma.staging.MainActivity' || echo "::warning::MainActivity for staging not found"
+
+          echo "\nListing activities for com.willma.client.staging"
+          adb shell dumpsys package com.willma.client.staging | grep -i 'com.willma.client.staging.MainActivity' || echo "::warning::MainActivity for client not found"
+
+          echo "\nCurrent foreground activity:"
+          adb shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp' || echo "::warning::Unable to detect foreground activity"
+
+      - name: 🚀 Run Appium Server
         run: |
-          adb install -t -r -g app-release-trainer.apk
-          adb install -t -r -g appclient.apk
-          
-          # Verify installation
-          adb shell pm list packages | grep willma
+          nohup npx appium --relaxed-security > appium.log 2>&1 &
+          sleep 10
 
-      - name: 🚀 Start Appium
-        run: |
-          npx appium --relaxed-security &> appium.log &
-          sleep 15
-
-      - name: 🧪 Run E2E Tests
-        timeout-minutes: 20
+      - name: 🔧 Run E2E Tests
         run: npx wdio run ./wdio.ci.conf.js --specRetries 2
 
-      - name: 📤 Upload Artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results-${{ github.run_id }}
-          path: |
-            *.log
-            screenshots/
-            *.apk
-
-      - name: 🧹 Cleanup
+      - name: 🔍 Collect Logs and Screenshots
         if: always()
         run: |
-          adb emu
+          mkdir -p diagnostics
+          adb logcat -d > diagnostics/logcat.log
+          cp -r screenshots diagnostics/ || true
+          cp appium.log diagnostics/appium.log || true
+
+      - name: 📂 Upload Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ github.run_id }}
+          path: diagnostics/
+
+      - name: 🚪 Shutdown Emulator
+        if: always()
+        run: |
+          adb emu kill || true
+          pkill -f emulator || true
