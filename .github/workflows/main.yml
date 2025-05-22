@@ -11,8 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AVD_NAME: testAVD
-      ANDROID_HOME: $HOME/android-sdk
-      ANDROID_AVD_HOME: $HOME/.android/avd
+      ANDROID_HOME: ${{ github.workspace }}/android-sdk
+      ANDROID_AVD_HOME: ${{ github.workspace }}/.android/avd
 
     steps:
       - name: ↓ Checkout Code
@@ -23,46 +23,56 @@ jobs:
         with:
           node-version: '18'
 
-      - name: ☕️ Set up Java 11 (SDK Manager Requirement)
+      - name: ☕️ Install Java 11 (SDK Manager Requirement)
         uses: actions/setup-java@v3
+        id: java-11
         with:
           distribution: 'temurin'
           java-version: '11'
 
-      - name: 🔄 Install Android Command Line Tools
+      - name: 🔄 Install Android Command Line Tools (v8.0)
         run: |
           mkdir -p $ANDROID_HOME/cmdline-tools
-          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-          unzip cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools
-          mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+          wget https://dl.google.com/android/repository/commandlinetools-linux-8512546_latest.zip -O cmdline-tools.zip
+          unzip cmdline-tools.zip -d "$ANDROID_HOME/cmdline-tools"
+          mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
           rm cmdline-tools.zip
 
-      - name: 🚀 Accept Android SDK Licenses
-        run: |
-          mkdir -p $ANDROID_HOME/licenses
-          echo -e "\n24333f8a63b6825ea9c5514f83c2829b004d1fee" > $ANDROID_HOME/licenses/android-sdk-license
-          echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" > $ANDROID_HOME/licenses/android-sdk-preview-license
+          # Verify directory structure
+          ls -la $ANDROID_HOME/cmdline-tools/latest/lib
 
-      - name: 🚀 Install Android SDK Packages
+      - name: 📝 Configure Java 11 Environment
         run: |
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install \
+          echo "JAVA_HOME=${JAVA_HOME_11}" >> $GITHUB_ENV
+          echo "PATH=${JAVA_HOME_11}/bin:$PATH" >> $GITHUB_ENV
+
+      - name: 🚀 Accept Licenses
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+
+      - name: 🚀 Install Android SDK Components
+        run: |
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
             "platform-tools" \
             "platforms;android-33" \
             "build-tools;34.0.0" \
             "emulator" \
             "system-images;android-33;google_apis;x86_64"
 
-      - name: ☕️ Switch to Java 17 (For App Build/Test)
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'zulu'
-          java-version: '17'
+          # Verify platform installation
+          ls -la $ANDROID_HOME/platforms/android-33
 
-      - name: ➕ Add Android tools to PATH
+      - name: ➕ Add Android Tools to PATH
         run: |
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
           echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
           echo "$ANDROID_HOME/emulator" >> $GITHUB_PATH
+
+      - name: ☕️ Switch to Java 17 (For Test Execution)
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
 
       - name: 🛠️ Create AVD
         run: |
@@ -72,22 +82,22 @@ jobs:
             --device "pixel_4" \
             --force
 
-      - name: ⚖️ Configure Emulator Settings
-        run: |
-          CONFIG_FILE="$ANDROID_AVD_HOME/$AVD_NAME.avd/config.ini"
-          echo "hw.ramSize=2048" >> $CONFIG_FILE
-          echo "hw.gpu.enabled=yes" >> $CONFIG_FILE
-          echo "hw.gpu.mode=swiftshader_indirect" >> $CONFIG_FILE
-          echo "disk.dataPartition.size=2G" >> $CONFIG_FILE
-          echo "hw.cpu.ncore=2" >> $CONFIG_FILE
+          # Verify AVD creation
+          ls -la $ANDROID_AVD_HOME
 
-      - name: ⚠️ Configure KVM
+      - name: ⚙️ Configure Emulator Hardware
         run: |
-          sudo apt-get update -y
+          echo "hw.ramSize=2048" >> "$ANDROID_AVD_HOME/$AVD_NAME.avd/config.ini"
+          echo "hw.gpu.enabled=yes" >> "$ANDROID_AVD_HOME/$AVD_NAME.avd/config.ini"
+          echo "vm.heapSize=256" >> "$ANDROID_AVD_HOME/$AVD_NAME.avd/config.ini"
+
+      - name: 🔧 Setup KVM
+        run: |
+          sudo apt-get update
           sudo apt-get install -y qemu-kvm
           sudo chmod 666 /dev/kvm
 
-      - name: 🌟 Start Emulator
+      - name: 🚀 Start Emulator
         timeout-minutes: 10
         run: |
           emulator -avd $AVD_NAME \
@@ -98,56 +108,45 @@ jobs:
             -wipe-data \
             -memory 2048 \
             -logcat '*:V' > emulator.log 2>&1 &
-          sleep 300
+          sleep 300  # Extended boot time for CI
 
-      - name: ⌛ Wait for Emulator Boot
+      - name: ⏳ Wait for Boot Completion
         timeout-minutes: 5
         run: |
           adb wait-for-device
           until adb shell getprop sys.boot_completed | grep -q 1; do
-            echo "Waiting for boot completion..."
+            echo "Waiting for boot..."
             sleep 10
           done
           adb shell settings put global window_animation_scale 0
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
-          adb shell input keyevent 82
 
-      - name: 💾 Install Node Dependencies
-        run: npm install
-
-      - name: 🔽 Download APKs
+      - name: 📦 Install APKs
         run: |
-          pip install gdown
-          gdown --fuzzy "YOUR_APK_LINK_1" -O app-release-trainer.apk
-          gdown --fuzzy "YOUR_APK_LINK_2" -O appclient.apk
+          adb install -t -g app-release.apk
+          adb install -t -g app-client.apk
 
-      - name: 🌐 Install APKs
-        timeout-minutes: 3
-        run: |
-          adb install -t -r -g app-release-trainer.apk
-          adb install -t -r -g appclient.apk
-
-      - name: 🚀 Run Appium Server
+      - name: 🚀 Start Appium Server
         run: |
           npx appium --relaxed-security &> appium.log &
           sleep 15
 
-      - name: 🔧 Run E2E Tests
-        timeout-minutes: 15
-        run: npx wdio run ./wdio.ci.conf.js --specRetries 2
+      - name: 🧪 Run E2E Tests
+        timeout-minutes: 20
+        run: npx wdio run ./wdio.conf.js
 
       - name: 📤 Upload Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results-${{ github.run_id }}
+          name: test-results
           path: |
             *.log
             screenshots/
-            diagnostics/
+            artifacts/
 
-      - name: 🚪 Cleanup
+      - name: 🧹 Cleanup
         if: always()
         run: |
           adb emu kill || true
