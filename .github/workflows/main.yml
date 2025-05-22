@@ -113,31 +113,32 @@ jobs:
 
       - name: 📦 Install Dependencies
         run: npm install
-
+   
       - name: ⬇️ Download APKs
         run: |
-          run: |
           pip install gdown
           gdown --fuzzy "https://drive.google.com/file/d/1UmKiTZ6SlMorOBLx754Fs7_oqoNxFQ4F/view?usp=drive_link" -O app-release-trainer.apk
           gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O appclient.apk
         env:
           apk_CI_PATH: app-release-trainer.apk
           apk_CLIENT_PATH: appclient.apk
-          
+
       - name: ✅ Validate and Install APKs
         run: |
           echo "🔄 Uninstalling any existing Willma packages"
           adb uninstall com.willma.staging || true
           adb uninstall com.willma.client.staging || true
 
-          echo "📦 Installing APK: app-release.apk"
-          adb install -r -g app-release.apk || (echo "::error::Failed to install app-release.apk" && exit 1)
+          echo "📦 Installing APK: app-release-trainer.apk"
+          adb install -r -g app-release-trainer.apk || (echo "::error::Failed to install app-release-trainer.apk" && exit 1)
 
-          echo "📦 Installing APK: client-app-release.apk"
-          adb install -r -g client-app-release.apk || (echo "::error::Failed to install client-app-release.apk" && exit 1)
+          echo "📦 Installing APK: appclient.apk"
+          adb install -r -g appclient.apk || (echo "::error::Failed to install appclient.apk" && exit 1)
 
           echo "✅ APKs installed successfully"
           sleep 10
+   
+     
 
       - name: 🔍 Verify APK Activities and State
         continue-on-error: true
