@@ -1,4 +1,4 @@
-name: Android E2E Tests
+name: 🚀 Android E2E Tests
 
 on:
   push:
@@ -14,25 +14,25 @@ jobs:
       ANDROID_AVD_HOME: $HOME/.android/avd
 
     steps:
-      - name: 📥 Checkout Code
+      - name: ↓ Checkout Code
         uses: actions/checkout@v3
 
-      - name: 🔧 Set up Node.js
+      - name: ⚛️ Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
 
-      - name: ☕ Set up Java
+      - name: ☕️ Set up Java
         uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: 🧹 Clear SDK Cache
+      - name: ♻️ Clear SDK Cache
         run: |
           rm -rf $ANDROID_HOME/licenses $ANDROID_HOME/tools $ANDROID_HOME/cmdline-tools
 
-      - name: ⬇️ Download Android Command Line Tools
+      - name: 🔄 Install Android Command Line Tools
         run: |
           mkdir -p $ANDROID_HOME/cmdline-tools
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
@@ -40,10 +40,10 @@ jobs:
           mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
           rm cmdline-tools.zip
 
-      - name: ✔️ Accept Android SDK Licenses
+      - name: 🚀 Accept Android SDK Licenses
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
 
-      - name: 📦 Install Android SDK Packages
+      - name: 🚀 Install Android SDK Packages
         run: |
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install \
             "platform-tools" \
@@ -55,149 +55,110 @@ jobs:
       - name: ➕ Add adb to PATH
         run: echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
 
-      - name: 📱 Create AVD
+      - name: 🛠️ Create AVD
         run: |
-          mkdir -p ~/.android/avd
           echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
             --name "$AVD_NAME" \
             --package "system-images;android-34;google_apis;x86_64" \
             --device "pixel" \
             --force
 
-      - name: ⚙️ Configure Emulator Settings
+      - name: ⚖️ Configure Emulator Settings
         run: |
           echo "hw.cpu.ncore=2" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
           echo "hw.ramSize=2048" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
           echo "hw.gpu.enabled=yes" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
           echo "hw.gpu.mode=swiftshader_indirect" >> ~/.android/avd/${{ env.AVD_NAME }}.avd/config.ini
 
-      - name: 🔧 Fix KVM Permissions
+      - name: ⚠️ Fix KVM permissions
         run: |
           sudo apt-get update -y
           sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
           sudo gpasswd -a $USER kvm
           sudo chmod 666 /dev/kvm
 
-      - name: 🧪 Verify KVM
+      - name: ✅ Verify KVM
         run: |
           if [ ! -e /dev/kvm ]; then
-            echo "KVM is not available."
-            exit 1
-          else
-            echo "KVM is available."
+            echo "KVM is not available." && exit 1
           fi
 
-      - name: 🚀 Start Emulator
+      - name: 🌟 Start Emulator
         run: |
-          nohup $ANDROID_HOME/emulator/emulator -avd "$AVD_NAME" \
-            -no-audio -no-window -gpu swiftshader_indirect -memory 2048 -cores 2 \
-            -no-boot-anim -no-snapshot-save -qemu -enable-kvm &
-
+          nohup $ANDROID_HOME/emulator/emulator -avd "$AVD_NAME" -no-audio -no-window -gpu swiftshader_indirect &
           sleep 120
 
-      - name: ⏳ Wait for Emulator Boot
+      - name: ⌛ Wait for Emulator Boot
         run: |
           adb wait-for-device
           while [[ "$(adb shell getprop sys.boot_completed | tr -d '\r')" != "1" ]]; do
             echo "Waiting for emulator to boot..."
             sleep 5
           done
-          echo "Emulator booted."
 
-      - name: 🚫 Disable Bluetooth (optional)
-        run: |
-          adb shell settings put global bluetooth_on 0
+      - name: ✅ Disable Bluetooth
+        run: adb shell settings put global bluetooth_on 0
 
-      - name: 📃 List ADB Devices
+      - name: 🔢 List ADB Devices
         run: adb devices
 
-      - name: 📦 Install Dependencies
+      - name: 💾 Install Node Dependencies
         run: npm install
-   
-      - name: ⬇️ Download APKs
+
+      - name: 🔽 Download APKs
         run: |
           pip install gdown
           gdown --fuzzy "https://drive.google.com/file/d/1UmKiTZ6SlMorOBLx754Fs7_oqoNxFQ4F/view?usp=drive_link" -O app-release-trainer.apk
           gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O appclient.apk
-        env:
-          apk_CI_PATH: app-release-trainer.apk
-          apk_CLIENT_PATH: appclient.apk
 
-      - name: ✅ Validate and Install APKs
+      - name: 🌐 Install APKs
         run: |
-          echo "🔄 Uninstalling any existing Willma packages"
           adb uninstall com.willma.staging || true
           adb uninstall com.willma.client.staging || true
 
-          echo "📦 Installing APK: app-release-trainer.apk"
-          adb install -r -g app-release-trainer.apk || (echo "::error::Failed to install app-release-trainer.apk" && exit 1)
-
-          echo "📦 Installing APK: appclient.apk"
-          adb install -r -g appclient.apk || (echo "::error::Failed to install appclient.apk" && exit 1)
-
-          echo "✅ APKs installed successfully"
+          adb install -r -g app-release-trainer.apk
+          adb install -r -g appclient.apk
           sleep 10
-   
-     
 
-      - name: 🔍 Verify APK Activities and State
+      - name: 🔎 Verify APK Activities
         continue-on-error: true
         run: |
-          echo "📦 Installed packages:"
           adb shell pm list packages | grep willma || echo "::warning::No Willma packages found"
 
-          echo ""
-          echo "🔍 Trying to resolve launchable activity for com.willma.staging..."
-          adb shell cmd package resolve-activity --brief com.willma.staging || echo "::warning::No launchable activity found for com.willma.staging"
+          echo "\nListing activities for com.willma.staging"
+          adb shell dumpsys package com.willma.staging | grep -i 'com.willma.staging.MainActivity' || echo "::warning::MainActivity for staging not found"
 
-          echo ""
-          echo "🔍 Trying to resolve launchable activity for com.willma.client.staging..."
-          adb shell cmd package resolve-activity --brief com.willma.client.staging || echo "::warning::No launchable activity found for com.willma.client.staging"
+          echo "\nListing activities for com.willma.client.staging"
+          adb shell dumpsys package com.willma.client.staging | grep -i 'com.willma.client.staging.MainActivity' || echo "::warning::MainActivity for client not found"
 
-          echo ""
-          echo "📄 Listing all LAUNCHER activities for com.willma.staging:"
-          adb shell dumpsys package com.willma.staging | grep -A 20 "Activity Resolver Table" || echo "::warning::No activity data for com.willma.staging"
-
-          echo ""
-          echo "📄 Listing all LAUNCHER activities for com.willma.client.staging:"
-          adb shell dumpsys package com.willma.client.staging | grep -A 20 "Activity Resolver Table" || echo "::warning::No activity data for com.willma.client.staging"
-
-          echo ""
-          echo "📱 Current foreground activity (for debug):"
+          echo "\nCurrent foreground activity:"
           adb shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp' || echo "::warning::Unable to detect foreground activity"
 
-      - name: 🧪 Run Appium Server
+      - name: 🚀 Run Appium Server
         run: |
-          mkdir -p logs
-          nohup npx appium --relaxed-security --log-timestamp > logs/appium.log 2>&1 &
+          nohup npx appium --relaxed-security > appium.log 2>&1 &
           sleep 10
 
-      - name: 🧪 Run E2E Tests
-        timeout-minutes: 25
-        run: |
-          npx wdio run ./wdio.ci.conf.js --specRetries 2
+      - name: 🔧 Run E2E Tests
+        run: npx wdio run ./wdio.ci.conf.js --specRetries 2
 
-      - name: 🧩 Gather Diagnostics
+      - name: 🔍 Collect Logs and Screenshots
         if: always()
         run: |
           mkdir -p diagnostics
           adb logcat -d > diagnostics/logcat.log
-          adb bugreport diagnostics/bugreport.zip || true
           cp -r screenshots diagnostics/ || true
+          cp appium.log diagnostics/appium.log || true
 
-      - name: 📤 Upload Artifacts
+      - name: 📂 Upload Artifacts
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-results-${{ github.run_id }}
-          path: |
-            allure-results/
-            diagnostics/
-            logs/appium.log
-          retention-days: 3
+          path: diagnostics/
 
-      - name: 🛑 Kill Emulator
+      - name: 🚪 Shutdown Emulator
         if: always()
         run: |
           adb emu kill || true
-          pkill -f 'qemu-system' || true
+          pkill -f emulator || true

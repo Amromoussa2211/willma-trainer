@@ -15,9 +15,8 @@ exports.config = {
     maxInstances: 1,
     logLevel: 'trace',
     bail: 0,
-    waitforTimeout: 15000, // Increased from 15000 to 30000
-    connectionRetryTimeout: 200000, // Increased from 200000 to 300000
-    //connectionRetryCount: 2,
+    waitforTimeout: 15000,
+    connectionRetryTimeout: 200000,
     framework: 'mocha',
     reporters: [
         'spec',
@@ -29,41 +28,31 @@ exports.config = {
     ],
     mochaOpts: {
         ui: 'bdd',
-        timeout: 360000,  // 6 minutes
-        retries: 2,  // Retry failed tests up to 2 times
+        timeout: 360000,
+        retries: 2
     },
-    // Define appiumLogDir
-    appiumLogDir: './logs/appium',
-    onPrepare: async function (config, capabilities) {
-        console.log('Skipping device check and APK installation...');
-        // Add any other setup logic here
+    onPrepare: async function () {
+        console.log('📦 Preparing test environment');
     },
     afterTest: async function (test, context, { error }) {
         const screenshotDir = path.join(__dirname, 'screenshots');
-        if (!fs.existsSync(screenshotDir)) {
-            fs.mkdirSync(screenshotDir, { recursive: true });
-        }
+        if (!fs.existsSync(screenshotDir)) fs.mkdirSync(screenshotDir, { recursive: true });
 
-        // Generate a unique file name for the screenshot
-        const status = error ? 'FAILED' : 'PASSED';
-        const fileName = path.join(screenshotDir, `${test.title.replace(/[^a-zA-Z0-9]/g, '_')}_${status}.png`);
-
+        const fileName = path.join(screenshotDir, `${test.title.replace(/[^a-zA-Z0-9]/g, '_')}_${error ? 'FAILED' : 'PASSED'}.png`);
         try {
-            // Take and save the screenshot
             await browser.saveScreenshot(fileName);
-            console.log(`Screenshot saved: ${fileName}`);
-
-            // Attach the screenshot to the Allure report (optional)
-            await allure.createAttachment(`Screenshot (${status})`, Buffer.from(await browser.takeScreenshot(), 'base64'), 'image/png');
+            await allure.createAttachment('Screenshot', Buffer.from(await browser.takeScreenshot(), 'base64'), 'image/png');
         } catch (err) {
-            console.error(`Failed to save screenshot: ${err.message}`);
+            console.error(`❌ Failed to save screenshot: ${err.message}`);
         }
-        const appiumLogFile = path.join(appiumLogDir, `appium_failure_${Date.now()}.log`);
-        fs.writeFileSync(appiumLogFile, fs.readFileSync('appium.log'));
-  
-        // Capture device logs (logcat) on failure
-        const deviceLogDir = path.join(__dirname, 'logs');
-        const deviceLogFile = path.join(deviceLogDir, `device_failure_${Date.now()}.log`);
-        execSync(`adb logcat -d -v time > ${deviceLogFile}`);
-    },
+
+        const logDir = path.join(__dirname, 'logs');
+        if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
+        const logFile = path.join(logDir, `device_failure_${Date.now()}.log`);
+        try {
+            execSync(`adb logcat -d -v time > ${logFile}`);
+        } catch (err) {
+            console.error(`❌ Failed to fetch logcat: ${err.message}`);
+        }
+    }
 };
