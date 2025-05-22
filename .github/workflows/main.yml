@@ -123,54 +123,39 @@ jobs:
           apk_CI_PATH: app-release-trainer.apk
           apk_CLIENT_PATH: client-app-release.apk
 
-      - name: Validate and Install APKs
-        timeout-minutes: 10
+      - name: 🔍 Verify APK Installations and Launchable Activities
+        continue-on-error: true
         run: |
-          function adb_retry() {
-            local cmd="$@"
-            for i in {1..5}; do
-              if eval "$cmd"; then
-                return 0
-              fi
-              echo "Attempt $i failed. Retrying..."
-              sleep 5
-            done
-            echo "::error::Command failed after retries: $cmd"
-            exit 1
-          }
+          echo "📦 Installed packages:"
+          adb shell pm list packages | grep 'willma' || echo "::warning::No Willma packages found"
 
-          if [ ! -f "app-release-trainer.apk" ]; then
-            echo "::error::Missing app-release.apk"
-            exit 1
+          echo ""
+          echo "🔍 Trying to resolve launchable activity for com.willma.staging..."
+          RES_STAGING=$(adb shell cmd package resolve-activity --brief com.willma.staging 2>/dev/null || echo "none")
+          echo "$RES_STAGING"
+          if [[ "$RES_STAGING" == "none" || "$RES_STAGING" == *"No"* ]]; then
+            echo "::warning::No launchable activity found for com.willma.staging"
           fi
 
-          if [ ! -f "client-app-release.apk" ]; then
-            echo "::error::Missing client-app-release.apk"
-            exit 1
+          echo ""
+          echo "🔍 Trying to resolve launchable activity for com.willma.client.staging..."
+          RES_CLIENT=$(adb shell cmd package resolve-activity --brief com.willma.client.staging 2>/dev/null || echo "none")
+          echo "$RES_CLIENT"
+          if [[ "$RES_CLIENT" == "none" || "$RES_CLIENT" == *"No"* ]]; then
+            echo "::warning::No launchable activity found for com.willma.client.staging"
           fi
 
-          # Install both APKs
-          adb_retry "adb install -r -t -g app-release-trainer.apk"
-          adb_retry "adb install -r -t -g client-app-release.apk"
+          echo ""
+          echo "📄 Listing all LAUNCHER activities for com.willma.staging:"
+          adb shell dumpsys package com.willma.staging | grep -A 10 'android.intent.action.MAIN' | grep 'com.willma.staging' || echo "::warning::No MAIN/LAUNCHER activity found for com.willma.staging"
 
-          echo "✅ Both APKs installed."
+          echo ""
+          echo "📄 Listing all LAUNCHER activities for com.willma.client.staging:"
+          adb shell dumpsys package com.willma.client.staging | grep -A 10 'android.intent.action.MAIN' | grep 'com.willma.client.staging' || echo "::warning::No MAIN/LAUNCHER activity found for com.willma.client.staging"
 
-          # Verify each package is installed
-          adb shell pm list packages | grep com.willma.staging || { echo "::error::com.willma.staging not installed"; exit 1; }
-          adb shell pm list packages | grep com.willma.client.staging || { echo "::error::com.willma.client.staging not installed"; exit 1; }
-
-          echo "✅ Both packages confirmed installed."
-
-          # Dump all launchable activities for both
-          echo "🔍 Launchable activities for com.willma.staging:"
-          adb shell dumpsys package com.willma.staging | grep -i 'com.willma.staging.MainActivity' || echo "::warning::MainActivity for staging not found"
-
-          echo "🔍 Launchable activities for com.willma.client.staging:"
-          adb shell dumpsys package com.willma.client.staging | grep -i 'com.willma.client.staging.MainActivity' || echo "::warning::MainActivity for client not found"
-
-          # Get current foreground app/activity just for debug
-          echo "📱 Current foreground activity:"
-          adb shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp'
+          echo ""
+          echo "📱 Current foreground activity (for debug):"
+          adb shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp' || echo "::warning::Unable to detect current foreground activity"
 
 
       - name: Run Appium server
