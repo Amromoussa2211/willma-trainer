@@ -4,8 +4,8 @@ const ciConfig = {
   capabilities: [{
     platformName: 'Android',
     'appium:automationName': 'UiAutomator2',
-    'appium:deviceName': 'pixel_4',
-    'appium:platformVersion': '29',
+    'appium:deviceName': 'emulator-5554',
+    'appium:platformVersion': '14 ',
     "appium:appPackage": "com.willma.staging",
     "appium:appActivity": "com.willma.staging.MainActivity",
     'appium:app': process.env.apk_CI_PATH ,
