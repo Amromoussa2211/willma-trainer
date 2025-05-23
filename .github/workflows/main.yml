@@ -25,37 +25,42 @@ jobs:
         run: |
           yes | sdkmanager --licenses
           sdkmanager --install "platform-tools" "emulator" "platforms;android-29"
-          
-          # Try to install x86 image
-          sdkmanager --install "system-images;android-29;google_apis;x86" || echo "Failed to install x86 image"
-          
-          # Always install ARM64 image for fallback
-          sdkmanager --install "system-images;android-29;google_apis;arm64-v8a"
+
+          # Try fast emulation with KVM using x86 image
+          if ! sdkmanager --install "system-images;android-29;google_apis;x86"; then
+            echo "❌ Failed to install x86 image or KVM not available. Falling back to ARM64..."
+            sdkmanager --install "system-images;android-29;google_apis;arm64-v8a"
+          fi
 
       - name: 📱 Create Android Emulator
         run: |
           export ANDROID_AVD_HOME=$HOME/.android/avd
+          mkdir -p "$ANDROID_AVD_HOME"
 
-          # Determine which system image to use
-          if sdkmanager --list | grep -q "system-images;android-29;google_apis;x86"; then
-            if groups | grep -q kvm; then
-              IMAGE="system-images;android-29;google_apis;x86"
-              echo "Using x86 emulator image (KVM available)"
-            else
-              IMAGE="system-images;android-29;google_apis;arm64-v8a"
-              echo "No KVM access, fallback to ARM64 emulator image"
-            fi
-          else
+          IMAGE="system-images;android-29;google_apis;x86"
+          if ! sdkmanager --list | grep -q "$IMAGE"; then
             IMAGE="system-images;android-29;google_apis;arm64-v8a"
-            echo "x86 system image not installed, fallback to ARM64 emulator image"
           fi
+          echo "Using emulator image: $IMAGE"
 
-          echo "Creating AVD with image: $IMAGE"
           echo "no" | avdmanager create avd --force --name test --package "$IMAGE" --device "pixel" || { echo "❌ Failed to create AVD"; exit 1; }
 
       - name: 🏗️ Configure Emulator
         run: |
+          export ANDROID_AVD_HOME=$HOME/.android/avd
           CONFIG_FILE="$ANDROID_AVD_HOME/test.avd/config.ini"
+
+          if [ ! -f "$CONFIG_FILE" ]; then
+            echo "❌ Emulator config.ini not found: $CONFIG_FILE"
+            echo "Listing $ANDROID_AVD_HOME contents:"
+            ls -l "$ANDROID_AVD_HOME"
+            echo "Listing test.avd contents if exists:"
+            ls -l "$ANDROID_AVD_HOME/test.avd" || echo "Directory does not exist"
+            exit 1
+          fi
+
+          echo "Configuring emulator settings in $CONFIG_FILE"
+
           echo "hw.gpu.enabled=no" >> "$CONFIG_FILE"
           echo "hw.gpu.mode=off" >> "$CONFIG_FILE"
           echo "hw.keyboard=yes" >> "$CONFIG_FILE"
@@ -71,7 +76,7 @@ jobs:
 
       - name: 🚀 Start Emulator & Wait for Boot
         run: |
-          nohup $ANDROID_SDK_ROOT/emulator/emulator -avd test -no-window -noaudio -no-boot-anim -camera-back none -gpu swiftshader_indirect &
+          nohup $ANDROID_SDK_ROOT/emulator/emulator -avd test -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none &
 
           echo "Waiting for emulator to start..."
           adb wait-for-device
