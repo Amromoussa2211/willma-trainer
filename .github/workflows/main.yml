@@ -44,9 +44,9 @@ jobs:
           gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O appclient.apk
 
       - name: 4️⃣ Start Android Emulator
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: preved911/android-emulator-runner@v2.27.2
         with:
-          api-level: 31    # Use 31 for best reliability in CI, change if needed
+          api-level: 31
           target: google_apis
           arch: x86_64
           force-avd-creation: true
@@ -80,6 +80,11 @@ jobs:
         if: always()
         run: |
           mkdir -p diagnostics
+          adb devices
+          if ! adb devices | grep -w emulator-5554; then
+            echo "No emulator device detected, skipping diagnostics collection."
+            exit 0
+          fi
           adb logcat -d > diagnostics/logcat.log
           adb shell cat /data/anr/traces.txt > diagnostics/anr-traces.log || true
           cp -r screenshots diagnostics/ || true
