@@ -64,7 +64,7 @@ jobs:
           done
 
           if [ -f "$CONFIG_FILE" ]; then
-            echo "hw.ramSize=2048" >> "$CONFIG_FILE"
+            echo "hw.ramSize=4000" >> "$CONFIG_FILE"
             echo "hw.gpu.enabled=yes" >> "$CONFIG_FILE"
             echo "hw.gpu.mode=swiftshader_indirect" >> "$CONFIG_FILE"
           else
