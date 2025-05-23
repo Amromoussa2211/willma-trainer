@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
-      PATH: /usr/local/lib/android/sdk/cmdline-tools/latest/bin:/usr/local/lib/android/sdk/cmdline-tools/tools/bin:/usr/local/lib/android/sdk/platform-tools:${PATH}
+      PATH: /usr/local/lib/android/sdk/cmdline-tools/latest/bin:/usr/local/lib/android/sdk/cmdline-tools/tools/bin:/usr/local/lib/android/sdk/platform-tools:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH}
 
     steps:
       - name: 📥 Checkout Code
