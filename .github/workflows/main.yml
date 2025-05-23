@@ -1,121 +1,81 @@
 name: Android E2E Tests
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
   pull_request:
     branches: [main]
 
 jobs:
-  e2e-tests:
-    runs-on: ubuntu-latest
-    env:
-      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
-      PATH: /usr/local/lib/android/sdk/cmdline-tools/latest/bin:/usr/local/lib/android/sdk/cmdline-tools/tools/bin:/usr/local/lib/android/sdk/platform-tools:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH}
+  e2e:
+    runs-on: macos-latest
 
     steps:
-      - name: 📥 Checkout Code
+      - name: 📁 Checkout Code
         uses: actions/checkout@v4
 
-      - name: 🧱 Set up Node.js
-        uses: actions/setup-node@v4
+      - name: 🔧 Set up Node.js
+        uses: actions/setup-node@v3
         with:
           node-version: '18'
 
-      - name: ☕ Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: 🔧 Install Android SDK Tools
-        run: |
-          yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "emulator" "system-images;android-30;google_apis;x86_64" "system-images;android-34;google_apis;x86_64"
-
-      - name: 📦 Install Node Dependencies
+      - name: 🧱 Install Node Dependencies
         run: npm ci
+
+      - name: 🐍 Install Python + gdown
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install gdown
 
       - name: ⬇️ Download APKs
         run: |
-          pip install gdown
           gdown --fuzzy "https://drive.google.com/file/d/1UmKiTZ6SlMorOBLx754Fs7_oqoNxFQ4F/view?usp=drive_link" -O app-release-trainer.apk
           gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O appclient.apk
-          
-      - name: 5️⃣ Choose Android Version (API Level)
-        id: choose-version
-        run: |
-          # Default to API 34 (Android 14), fallback to 30 (Android 11)
-          if sdkmanager --list | grep -q "system-images;android-34;google_apis;x86_64"; then
-            echo "API_LEVEL=34" >> $GITHUB_ENV
-          elif sdkmanager --list | grep -q "system-images;android-30;google_apis;x86_64"; then
-            echo "API_LEVEL=30" >> $GITHUB_ENV
-          else
-            echo "No suitable system image found!"
-            exit 1
-          fi
 
-      - name: 6️⃣ Start Android Emulator (Pixel 6, Android 11 or 14)
-        uses: preved911/android-emulator-runner@v2.27.2
+      - name: 📱 Start Android Emulator
+        uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: ${{ env.API_LEVEL }}
-          target: google_apis
+          api-level: 30
           arch: x86_64
-          device: pixel_6
-          force-avd-creation: true
-          disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
-          script: |
-            echo "Emulator boot validation complete."
+          profile: Nexus 6
 
-      - name: Debug Emulator
+      - name: 🔄 Uninstall Old APKs (if present)
         run: |
-          adb devices
-          ps aux | grep emulator
-          cat ~/.android/avd/*.ini || true
-          cat ~/.android/avd/*/config.ini || true
-          cat $ANDROID_SDK_ROOT/emulator/emulator.log || true
+          adb shell pm list packages | grep com.willma.staging && adb uninstall com.willma.staging || echo "com.willma.staging not present"
+          adb shell pm list packages | grep com.willma.client.staging && adb uninstall com.willma.client.staging || echo "com.willma.client.staging not present"
 
-      - name: 7️⃣ Uninstall Old APKs if Present and Install New APKs
+      - name: 📦 Install New APKs
         run: |
-          adb shell pm list packages | grep com.willma.staging && adb uninstall com.willma.staging || echo "com.willma.staging not present or failed to uninstall"
-          adb shell pm list packages | grep com.willma.client.staging && adb uninstall com.willma.client.staging || echo "com.willma.client.staging not present or failed to uninstall"
+          echo "📦 Installing Trainer APK"
           adb install -r -g app-release-trainer.apk
+
+          echo "📦 Installing Client APK"
           adb install -r -g appclient.apk
 
-      - name: 8️⃣ Start Appium Server
+      - name: 🚀 Start Appium Server
         run: |
+          echo "🚀 Starting Appium"
           mkdir -p logs
           nohup npx appium --relaxed-security --log-timestamp > logs/appium.log 2>&1 &
           sleep 10
 
-      - name: 9️⃣ Run E2E Tests
+      - name: 🧪 Run E2E Tests
         run: |
+          echo "🧪 Running WDIO Tests"
+          mkdir -p test-results/screenshots
           npx wdio run ./wdio.ci.conf.js || true
 
-      - name: 🔟 Collect Diagnostics
-        if: always()
-        run: |
-          mkdir -p diagnostics
-          touch diagnostics/empty.txt
-          adb devices
-          if ! adb devices | grep -w emulator-5554; then
-            echo "No emulator device detected, skipping diagnostics collection."
-            exit 0
-          fi
-          adb logcat -d > diagnostics/logcat.log || true
-          adb shell cat /data/anr/traces.txt > diagnostics/anr-traces.log || true
-          cp -r screenshots diagnostics/ || true
-          cp -r logs/ diagnostics/ || true
-
-      - name: 📤 Upload Diagnostics Artifacts
+      - name: 📤 Upload Screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-results-${{ github.run_id }}
-          path: diagnostics/
-          retention-days: 7
-          if-no-files-found: ignore
+          name: e2e-screenshots
+          path: test-results/screenshots
 
-      - name: Terminate Emulator
-        run: adb -s emulator-5554 emu kill || true
+      - name: 📤 Upload Appium Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: appium-log
+          path: lo
