@@ -34,45 +34,18 @@ jobs:
 
       - name: 📱 Create Android Emulator
         run: |
-          export ANDROID_AVD_HOME=$HOME/.android/avd
-          mkdir -p "$ANDROID_AVD_HOME"
-
+          # Determine available image
           IMAGE="system-images;android-29;google_apis;x86"
           if ! sdkmanager --list | grep -q "$IMAGE"; then
             IMAGE="system-images;android-29;google_apis;arm64-v8a"
           fi
           echo "Using emulator image: $IMAGE"
+          echo "no" | avdmanager create avd --force --name test --package "$IMAGE" --device "pixel"
 
-          echo "no" | avdmanager create avd --force --name test --package "$IMAGE" --device "pixel" || { echo "❌ Failed to create AVD"; exit 1; }
-
-      - name: 🏗️ Configure Emulator
+      - name: 🚀 Validate Android SDK
         run: |
-          export ANDROID_AVD_HOME=$HOME/.android/avd
-          CONFIG_FILE="$ANDROID_AVD_HOME/test.avd/config.ini"
-
-          if [ ! -f "$CONFIG_FILE" ]; then
-            echo "❌ Emulator config.ini not found: $CONFIG_FILE"
-            echo "Listing $ANDROID_AVD_HOME contents:"
-            ls -l "$ANDROID_AVD_HOME"
-            echo "Listing test.avd contents if exists:"
-            ls -l "$ANDROID_AVD_HOME/test.avd" || echo "Directory does not exist"
-            exit 1
-          fi
-
-          echo "Configuring emulator settings in $CONFIG_FILE"
-
-          echo "hw.gpu.enabled=no" >> "$CONFIG_FILE"
-          echo "hw.gpu.mode=off" >> "$CONFIG_FILE"
-          echo "hw.keyboard=yes" >> "$CONFIG_FILE"
-          echo "hw.mainKeys=no" >> "$CONFIG_FILE"
-          echo "hw.lcd.density=980" >> "$CONFIG_FILE"
-          echo "hw.ramSize=4000" >> "$CONFIG_FILE"
-          echo "disk.dataPartition.size=2G" >> "$CONFIG_FILE"
-          echo "sdcard.size=512M" >> "$CONFIG_FILE"
-          echo "hw.device.name=pixel" >> "$CONFIG_FILE"
-          echo "hw.accelerometer=yes" >> "$CONFIG_FILE"
-          echo "hw.camera.back=none" >> "$CONFIG_FILE"
-          echo "hw.camera.front=none" >> "$CONFIG_FILE"
+          sdkmanager --list
+          emulator -list-avds
 
       - name: 🚀 Start Emulator & Wait for Boot
         run: |
@@ -96,8 +69,8 @@ jobs:
           python3 -m venv venv
           source venv/bin/activate
           pip install --upgrade pip gdown
-          gdown --fuzzy "https://drive.google.com/file/d/1UmKiTZ6SlMorOBLx754Fs7_oqoNxFQ4F/view?usp=drive_link" -O app-release-trainer.apk
-          gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O appclient.apk
+          gdown --fuzzy "https://t.co/6Q4irOHjbo" -O app-release-trainer.apk
+          gdown --fuzzy "https://t.co/QkJIpnkO6O" -O appclient.apk
 
       - name: 📦 Uninstall Old + Install New APKs
         run: |

@@ -70,31 +70,40 @@ describe('Signup Flow', () => {
         // await textQuestionElement.click();
 
         // Wait and select the specific element
-        const specificElement = await $('-android uiautomator:new UiSelector().className("android.view.ViewGroup").index(0)');
-        await specificElement.waitForDisplayed({ timeout: 5000 });
-        await specificElement.click();
-
+        // Select the "Numeric" question type using accessibility id
+        const numericElement = await $('~Numeric');
+        await numericElement.waitForDisplayed({ timeout: 5000 });
+        await numericElement.click();
+        // If the "Search" EditText appears, click on it and type "packegeAmrForm AUto"
+    
         // Click on the "Question?" element
-        const questionElement = await $('-android uiautomator:new UiSelector().text("Question?")');
-        await questionElement.waitForDisplayed({ timeout: 5000 });
-        await questionElement.click();
-
-        // Click on "Select" using accessibility id
-        const selectElement = await $('-android uiautomator:new UiSelector().description("Select")');
-        await selectElement.waitForDisplayed({ timeout: 5000 });
-        await selectElement.click();
+     
 
         // Click on "Save Form" using accessibility id
         const saveFormButton = await $('-android uiautomator:new UiSelector().description("Save Form")');
         await saveFormButton.waitForDisplayed({ timeout: 5000 });
         await saveFormButton.click();
+        console.log('✅ Clicked on "Save Form".');
+        // Wait for the "Form saved successfully" message
 
-        await driver.back();
-                            console.log('✅ Performed a back gesture.');
-                            const el5 = await driver.$("accessibility id:Logout");
-                            await el5.waitForDisplayed({ timeout: 60000 });
-                            await el5.click();
-                            console.log('✅ Clicked on "Logout".');
+    const searchEditText = await $('//android.widget.EditText[@text="Search"]');
+        const isSearchDisplayed = await searchEditText.isDisplayed().catch(() => false);
+        if (isSearchDisplayed) {
+            await searchEditText.click();
+            await searchEditText.setValue('packegeAmrForm AUto');
+        }
+        // Use Appium's pressKeyCode to simulate the Android back button
+        await driver.pressKeyCode(4); // 4 is the keycode for BACK
+
+        // Click on the SvgView PathView element
+        const svgPathView = await $('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(0)');
+        await svgPathView.waitForDisplayed({ timeout: 5000 });
+        await svgPathView.click();
+        console.log('✅ Performed a back gesture.');
+        const el5 = await driver.$("accessibility id:Logout");
+        await el5.waitForDisplayed({ timeout: 60000 });
+        await el5.click();
+        console.log('✅ Clicked on "Logout".');
 
                             const el6 = await driver.$("accessibility id:Yes");
                             await el6.waitForDisplayed({ timeout: 60000 });

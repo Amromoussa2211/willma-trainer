@@ -219,6 +219,8 @@ console.log('"Menu" element clicked.');
 const logoutElement = await driver.$('//android.view.ViewGroup[@content-desc="Logout"]');
 await logoutElement.waitForDisplayed({ timeout: 60000 });
 console.log('"Logout" element is displayed.');
+await logoutElement.click();
+console.log('"Logout" element clicked.');
 // Wait for the "Yes" element to appear using accessibility ID
 const yesElement = await driver.$('~Yes');
 await yesElement.waitForDisplayed({ timeout: 60000 });
@@ -229,7 +231,6 @@ await yesElement.click();
 console.log('"Yes" element clicked.');
 
 // Click on the "Logout" element
-await logoutElement.click();
 console.log('"Logout" element clicked.');
       } catch (error) {
         console.error('Test failed due to an error:', error.message);

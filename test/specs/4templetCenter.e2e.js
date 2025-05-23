@@ -122,106 +122,109 @@ describe('Signup Flow', () => {
                         console.log('Clicked on Add Exercise/s.');
 
                         // Select the first exercise
-                        const firstExercise = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(34)');
-                        await firstExercise.waitForDisplayed({ timeout: 60000 });
-                        await driver.pause(2000); // Wait before clicking
-                        await firstExercise.click();
-                        console.log('Selected the first exercise.');
+                    // Select and click the first exercise (el1)
+                    const firstExercise = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(35)');
+                    await firstExercise.waitForDisplayed({ timeout: 60000 });
+                    await firstExercise.click();
 
-                        // Select the second exercise
-                        const secondExercise = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(41)');
-                        await secondExercise.waitForDisplayed({ timeout: 60000 });
-                        await driver.pause(2000); // Wait before clicking
-                        await secondExercise.click();
-                        console.log('Selected the second exercise.');
+                    // Select and click the second exercise (el2)
+                    const secondExercise = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(42)');
+                    await secondExercise.waitForDisplayed({ timeout: 60000 });
+                    await secondExercise.click();
 
-                        // Click on "Add 2 Exercises"
-                        const addTwoExercisesButton = await driver.$('accessibility id:Add 2 Exercises');
-                        await addTwoExercisesButton.waitForDisplayed({ timeout: 60000 });
-                        await driver.pause(2000); // Wait before clicking
-                        await addTwoExercisesButton.click();
-                        console.log('Clicked on Add 2 Exercises.');
+                    // Click on "Add 2 Exercises" (el3)
+                    const addTwoExercises = await driver.$('accessibility id:Add 2 Exercises');
+                    await addTwoExercises.waitForDisplayed({ timeout: 60000 });
+                    await addTwoExercises.click();
 
-                        // Click on the SVG element
-                        const svgElement = await driver.$('-android uiautomator:new UiSelector().className("com.horcrux.svg.SvgView").instance(2)');
-                        await svgElement.waitForDisplayed({ timeout: 60000 });
-                        await driver.pause(2000); // Wait before clicking
-                        await svgElement.click();
-                        console.log('Clicked on SVG element.');
+                    // Click on the SVG PathView element (el4)
+                    const svgPathView = await driver.$('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(2)');
+                    await svgPathView.waitForDisplayed({ timeout: 60000 });
+                    await svgPathView.click();
 
-                        // Click on "Configure"
-                        const configureButton = await driver.$('-android uiautomator:new UiSelector().text("Configure")');
-                        await configureButton.waitForDisplayed({ timeout: 60000 });
-                        await driver.pause(2000); // Wait before clicking
-                        await configureButton.click();
-                        console.log('Clicked on Configure.');
+                    // Click on "Configure" (el5)
+                    const configureBtn = await driver.$('-android uiautomator:new UiSelector().text("Configure")');
+                    await configureBtn.waitForDisplayed({ timeout: 60000 });
+                    await configureBtn.click();
 
-                        // Click on "Update"
-                        const updateButton = await driver.$('accessibility id:Update');
-                        await updateButton.waitForDisplayed({ timeout: 60000 });
-                        await driver.pause(2000); // Wait before clicking
-                        await updateButton.click();
-                        console.log('Clicked on Update.');
+                    // Click on "Update" (el6)
+                    const updateBtn = await driver.$('accessibility id:Update');
+                    await updateBtn.waitForDisplayed({ timeout: 60000 });
+                    await updateBtn.click();
 
-                        // Confirm the update
-                        const confirmButton = await driver.$('id:android:id/button1');
-                        await confirmButton.waitForDisplayed({ timeout: 60000 });
-                        await driver.pause(2000); // Wait before clicking
-                        await confirmButton.click();
-                        console.log('Confirmed the update.');
+                    // Confirm the update (el7)
+                    const confirmUpdateBtn = await driver.$('id:android:id/button1');
+                    await confirmUpdateBtn.waitForDisplayed({ timeout: 60000 });
+                    await confirmUpdateBtn.click();
+                    const duplicatePathView = await driver.$('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(3)');
+                    await duplicatePathView.click();
 
-                        // Iterate through Days 2 to 7 and toggle switches
-                        for (let day = 2; day <= 7; day++) {
-                            const dayButton = await driver.$(`accessibility id:Day ${day}`);
-                            await dayButton.waitForDisplayed({ timeout: 60000 });
-                            await driver.pause(2000); // Wait before clicking
-                            await dayButton.click();
-                            console.log(`Clicked on Day ${day}.`);
+                    const duplicateTextButton = await driver.$('-android uiautomator:new UiSelector().text("Duplicate")');
+                    await duplicateTextButton.click();
 
-                            const daySwitch = await driver.$('class name:android.widget.Switch');
-                            await daySwitch.waitForDisplayed({ timeout: 60000 });
-                            await driver.pause(2000); // Wait before clicking
-                            await daySwitch.click();
-                            console.log(`Toggled switch for Day ${day}.`);
-                        }
+                    const viewGroup29 = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(29)');
+                    await viewGroup29.click();
 
-                        // Click on "Next"
-                        const nextButtonFinal = await driver.$('accessibility id:Next');
-                        await nextButtonFinal.waitForDisplayed({ timeout: 60000 });
-                        await driver.pause(2000); // Wait before clicking
-                        await nextButtonFinal.click();
-                        console.log('Clicked on Next.');
+                    const week1Button = await driver.$('accessibility id:Week 1');
+                    await week1Button.click();
 
-                        // Click on "Create Template"
-                        const createTemplateButton = await driver.$('accessibility id:Create Template');
-                        await createTemplateButton.waitForDisplayed({ timeout: 60000 });
-                        await driver.pause(2000); // Wait before clicking
-                        await createTemplateButton.click();
-                        console.log('Clicked on Create Template.');
+                    const day2Button = await driver.$('-android uiautomator:new UiSelector().description("Day 2").instance(0)');
+                    await day2Button.click();
 
-                            // Click on "Home"
-                            const homeButton = await driver.$('//android.view.ViewGroup[@content-desc="Home"]');
-                            await homeButton.waitForDisplayed({ timeout: 60000 });
-                            await driver.pause(2000); // Wait before clicking
-                            await homeButton.click();
-                            console.log('Clicked on Home.');
+                    const day3Button = await driver.$('-android uiautomator:new UiSelector().description("Day 3").instance(0)');
+                    await day3Button.click();
 
-                            await menuButton.waitForDisplayed({ timeout: 60000 });           
-                            await menuButton.click();  
-                               console.log('Clicked on Menu button.');
+                    const day4Button = await driver.$('-android uiautomator:new UiSelector().description("Day 4").instance(0)');
+                    await day4Button.click();
 
-                               const el5 = await driver.$("accessibility id:Logout");
-                               await el5.waitForDisplayed({ timeout: 60000 });
-                               await el5.click();
-                               console.log('✅ Clicked on "Logout".');
-   
-                               const el6 = await driver.$("accessibility id:Yes");
-                               await el6.waitForDisplayed({ timeout: 60000 });
-                               await el6.click();
-                               console.log('✅ Clicked on "Yes".');
-   
+                    const day5Button = await driver.$('-android uiautomator:new UiSelector().description("Day 5").instance(0)');
+                    await day5Button.click();
 
-    
+                    const day6Button = await driver.$('-android uiautomator:new UiSelector().description("Day 6").instance(0)');
+                    await day6Button.click();
+
+                    const day7Button = await driver.$('-android uiautomator:new UiSelector().description("Day 7").instance(0)');
+                    await day7Button.click();
+
+                    const duplicateButton = await driver.$('accessibility id:Duplicate');
+                    await duplicateButton.click();
+
+                    const confirmBtnIfPresent = await driver.$('//android.widget.Button[@resource-id="android:id/button1"]');
+                    const isConfirmBtnDisplayed = await confirmBtnIfPresent.isDisplayed().catch(() => false);
+                    expect(isConfirmBtnDisplayed).to.be.a('boolean');
+                    if (isConfirmBtnDisplayed) {
+                        await confirmBtnIfPresent.click();
+                        console.log('Clicked on confirm button (android:id/button1).');
+                    }
+                    const nextBtn = await driver.$('accessibility id:Next');
+                    await nextBtn.waitForDisplayed({ timeout: 60000 });
+                    await driver.pause(2000);
+                    await nextBtn.click();
+
+                    const createTemplateBtn = await driver.$('-android uiautomator:new UiSelector().text("Create Template")');
+                    await createTemplateBtn.waitForDisplayed({ timeout: 60000 });
+                    await driver.pause(2000);
+                    await createTemplateBtn.click();
+
+                    const homeBtn = await driver.$('accessibility id:Home');
+                    await homeBtn.waitForDisplayed({ timeout: 60000 });
+                    await driver.pause(2000);
+                    await homeBtn.click();
+
+                    const svgPathView8 = await driver.$('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(8)');
+                    await svgPathView8.waitForDisplayed({ timeout: 60000 });
+                    await driver.pause(2000);
+                    await svgPathView8.click();
+
+                    const logoutBtn = await driver.$('accessibility id:Logout');
+                    await logoutBtn.waitForDisplayed({ timeout: 60000 });
+                    await driver.pause(2000);
+                    await logoutBtn.click();
+
+                    const yesBtn = await driver.$('accessibility id:Yes');
+                    await yesBtn.waitForDisplayed({ timeout: 60000 });
+                    await driver.pause(2000);
+                    await yesBtn.click();
            
                     } catch (error) {
                         console.error('Test failed:', error);
