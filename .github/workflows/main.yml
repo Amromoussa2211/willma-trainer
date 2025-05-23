@@ -42,10 +42,21 @@ jobs:
           echo "Using emulator image: $IMAGE"
           echo "no" | avdmanager create avd --force --name test --package "$IMAGE" --device "pixel"
 
-      - name: 🚀 Validate Android SDK
-        # run: |
-        #   sdkmanager --list
-        #   emulator -list-avds
+      - name: 🏗️ Configure Emulator
+        run: |
+          CONFIG_FILE="$ANDROID_AVD_HOME/test.avd/config.ini"
+          echo "hw.gpu.enabled=no" >> "$CONFIG_FILE"
+          echo "hw.gpu.mode=off" >> "$CONFIG_FILE"
+          echo "hw.keyboard=yes" >> "$CONFIG_FILE"
+          echo "hw.mainKeys=no" >> "$CONFIG_FILE"
+          echo "hw.lcd.density=980" >> "$CONFIG_FILE"
+          echo "hw.ramSize=4000" >> "$CONFIG_FILE"
+          echo "disk.dataPartition.size=2G" >> "$CONFIG_FILE"
+          echo "sdcard.size=512M" >> "$CONFIG_FILE"
+          echo "hw.device.name=pixel" >> "$CONFIG_FILE"
+          echo "hw.accelerometer=yes" >> "$CONFIG_FILE"
+          echo "hw.camera.back=none" >> "$CONFIG_FILE"
+          echo "hw.camera.front=none" >> "$CONFIG_FILE"
 
       - name: 🚀 Start Emulator & Wait for Boot
         run: |
