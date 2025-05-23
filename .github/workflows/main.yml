@@ -9,6 +9,9 @@ on:
 jobs:
   e2e-tests:
     runs-on: ubuntu-latest
+    env:
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      PATH: /usr/local/lib/android/sdk/cmdline-tools/latest/bin:/usr/local/lib/android/sdk/cmdline-tools/tools/bin:/usr/local/lib/android/sdk/platform-tools:${PATH}
 
     steps:
       - name: 📥 Checkout Code
@@ -27,8 +30,6 @@ jobs:
 
       - name: 🔧 Install Android SDK Tools
         run: |
-          export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
-          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/cmdline-tools/tools/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH
           yes | sdkmanager --licenses
           sdkmanager "platform-tools" "emulator" "system-images;android-30;google_apis;x86_64" "system-images;android-34;google_apis;x86_64"
 
