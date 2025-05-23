@@ -12,14 +12,39 @@ jobs:
       - name: ⬇️ Checkout code
         uses: actions/checkout@v4
 
-      - name: ⚙️ Setup Android Emulator (API 29)
-        uses: reactivecircus/android-emulator-runner@v2
+      - name: Set up Java 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      - name: Set up Android SDK and create AVD
+        uses: android-actions/setup-android@v2
         with:
           api-level: 29
+          target: default
+          arch: x86_64
           force-avd-creation: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          disable-animations: true
-          script: echo "AVD created and ready"
+
+      - name: Start emulator and wait for boot
+        run: |
+          nohup $ANDROID_HOME/emulator/emulator -avd test -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none &
+          echo "Waiting for emulator to start..."
+
+          adb wait-for-device
+
+          boot_completed=""
+          until [[ "$boot_completed" == "1" ]]; do
+            boot_completed=$(adb shell getprop sys.boot_completed 2>&1 | tr -d '\r')
+            echo "Boot completed status: $boot_completed"
+            sleep 5
+          done
+
+          echo "Emulator booted successfully"
+
+      - name: List connected devices
+        run: adb devices
 
       - name: 🐍 Setup Python + Download APKs
         run: |
@@ -30,12 +55,10 @@ jobs:
           gdown --fuzzy "https://drive.google.com/file/d/1UmKiTZ6SlMorOBLx754Fs7_oqoNxFQ4F/view?usp=drive_link" -O app-release-trainer.apk
           gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O appclient.apk
 
-      - name: 📦 Uninstall Old APKs if Present and Install New APKs
+      - name: 📦 Uninstall old APKs and install new APKs
         run: |
-          echo "📦 Installing new APKs"
-          adb devices
-          adb shell pm list packages | grep com.willma.staging && adb uninstall com.willma.staging || echo "com.willma.staging not present or failed to uninstall"
-          adb shell pm list packages | grep com.willma.client.staging && adb uninstall com.willma.client.staging || echo "com.willma.client.staging not present or failed to uninstall"
+          adb uninstall com.willma.staging || echo "com.willma.staging not present or failed to uninstall"
+          adb uninstall com.willma.client.staging || echo "com.willma.client.staging not present or failed to uninstall"
           adb install -r -g app-release-trainer.apk
           adb install -r -g appclient.apk
 
