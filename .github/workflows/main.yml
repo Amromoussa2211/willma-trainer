@@ -25,8 +25,6 @@ jobs:
         run: |
           yes | sdkmanager --licenses
           sdkmanager --install "platform-tools" "emulator" "platforms;android-29"
-
-          # Try fast emulation with KVM using x86 image
           if ! sdkmanager --install "system-images;android-29;google_apis;x86"; then
             echo "❌ Failed to install x86 image or KVM not available. Falling back to ARM64..."
             sdkmanager --install "system-images;android-29;google_apis;arm64-v8a"
@@ -40,11 +38,14 @@ jobs:
             IMAGE="system-images;android-29;google_apis;arm64-v8a"
           fi
           echo "Using emulator image: $IMAGE"
-          echo "no" | avdmanager create avd --force --name test --package "$IMAGE" --device "pixel" || { echo "❌ Failed to create AVD"; exit 1; }
+          echo "no" | avdmanager create avd --force --name test --package "$IMAGE" --device "pixel"
 
       - name: 🏗️ Configure Emulator
         run: |
+          export ANDROID_AVD_HOME=$HOME/.android/avd
           CONFIG_FILE="$ANDROID_AVD_HOME/test.avd/config.ini"
+          mkdir -p "$(dirname "$CONFIG_FILE")"
+          touch "$CONFIG_FILE"
           echo "hw.gpu.enabled=no" >> "$CONFIG_FILE"
           echo "hw.gpu.mode=off" >> "$CONFIG_FILE"
           echo "hw.keyboard=yes" >> "$CONFIG_FILE"
@@ -61,7 +62,6 @@ jobs:
       - name: 🚀 Start Emulator & Wait for Boot
         run: |
           nohup $ANDROID_SDK_ROOT/emulator/emulator -avd test -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none &
-
           echo "Waiting for emulator to start..."
           adb wait-for-device
           boot_completed=""
