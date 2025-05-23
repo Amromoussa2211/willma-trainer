@@ -1,39 +1,31 @@
-name: E2E Tests with Appium + WebdriverIO
+name: E2E Android Test
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:
+    branches: [main]
 
 jobs:
-  e2e-tests:
+  android-e2e-tests:
     runs-on: macos-latest
 
     steps:
-      - name: 🧾 Checkout Code
+      - name: ⬇️ Checkout code
         uses: actions/checkout@v4
 
-      - name: 🐍 Set up Python Virtual Environment & Install gdown
+      - name: 🐍 Setup Python + Download APKs
         run: |
           python3 -m venv venv
           source venv/bin/activate
+          python3 -m pip install --upgrade pip
           pip install gdown
-          echo "source $PWD/venv/bin/activate" >> $GITHUB_ENV
-
-      - name: ⬇️ Download APKs
-        run: |
-          source venv/bin/activate
           gdown --fuzzy "https://drive.google.com/file/d/1UmKiTZ6SlMorOBLx754Fs7_oqoNxFQ4F/view?usp=drive_link" -O app-release-trainer.apk
           gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O appclient.apk
 
       - name: 📦 Uninstall Old APKs if Present and Install New APKs
         run: |
-          echo "🧹 Uninstalling old APKs (if any)..."
+          echo "📦 Installing new APKs"
           adb shell pm list packages | grep com.willma.staging && adb uninstall com.willma.staging || echo "com.willma.staging not present or failed to uninstall"
           adb shell pm list packages | grep com.willma.client.staging && adb uninstall com.willma.client.staging || echo "com.willma.client.staging not present or failed to uninstall"
-
-          echo "📦 Installing new APKs"
           adb install -r -g app-release-trainer.apk
           adb install -r -g appclient.apk
 
@@ -44,7 +36,7 @@ jobs:
           nohup npx appium --relaxed-security --log-timestamp > logs/appium.log 2>&1 &
           sleep 10
 
-      - name: 🧪 Run E2E Tests with WebdriverIO
+      - name: 🧪 Run E2E Tests
         run: |
           echo "🧪 Running E2E Tests"
           npx wdio run ./wdio.ci.conf.js || true
