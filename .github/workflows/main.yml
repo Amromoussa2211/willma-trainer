@@ -25,23 +25,6 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # Install KVM and verify
-      - name: ⚡ Install and Enable KVM
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
-          sudo adduser $USER kvm
-          sudo adduser $USER libvirt
-          sudo systemctl enable --now libvirtd
-          sudo systemctl start libvirtd
-          if ! grep -E -c '(vmx|svm)' /proc/cpuinfo; then
-            echo "KVM is not supported on this runner."
-            exit 1
-          fi
-          lsmod | grep kvm
-          kvm-ok || true
-          sudo chmod 666 /dev/kvm
-
       - name: 🔧 Install Android SDK Tools & API 31 Image
         run: |
           export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
@@ -73,19 +56,17 @@ jobs:
           arch: x86_64
           force-avd-creation: true
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -accel kvm
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           script: |
             echo "Emulator boot validation complete."
 
-      - name: 🗂️ Check SDK and AVD dirs after emulator
+      - name: Debug Emulator
         run: |
-          export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
-          ls -alh $ANDROID_SDK_ROOT
-          ls -alh ~/.android/avd || echo "No AVD directory"
-          echo "ADB Devices:"
           adb devices
-          echo "Emulator Processes:"
           ps aux | grep emulator
+          cat ~/.android/avd/*.ini || true
+          cat ~/.android/avd/*/config.ini || true
+          cat $ANDROID_SDK_ROOT/emulator/emulator.log || true
 
       - name: 5️⃣ Uninstall Old APKs if Present and Install New APKs
         run: |
@@ -125,3 +106,6 @@ jobs:
           name: e2e-results-${{ github.run_id }}
           path: diagnostics/
           retention-days: 7
+
+      - name: Terminate Emulator
+        run: adb -s emulator-5554 emu kill || true
