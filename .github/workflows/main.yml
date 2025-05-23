@@ -34,17 +34,6 @@ jobs:
           sudo mkswap /swapfile
           sudo swapon /swapfile
 
-      - name: Start Android Emulator
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 33
-          target: google_apis
-          arch: x86_64
-          force-avd-creation: true
-          ram-size: 3072
-          disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot
-
       - name: 📦 Install Node Dependencies
         run: npm ci
 
@@ -54,38 +43,30 @@ jobs:
           gdown --fuzzy "https://drive.google.com/file/d/1UmKiTZ6SlMorOBLx754Fs7_oqoNxFQ4F/view?usp=drive_link" -O app-release-trainer.apk
           gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O appclient.apk
 
-      - name: ✅ Install APKs
-        run: |
-          adb uninstall com.willma.staging || true
-          adb uninstall com.willma.client.staging || true
-          adb install -r -g app-release-trainer.apk
-          adb install -r -g appclient.apk
-
-      - name: 🔍 Verify APK State
-        continue-on-error: true
-        run: |
-          adb shell pm list packages | grep willma || echo "::warning::Willma packages not found"
-          adb shell dumpsys package com.willma.staging | grep -i 'MainActivity' || echo "::warning::MainActivity not found"
-          adb shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp' || echo "::warning::No foreground activity"
-
-      - name: 🧪 Start Appium Server
-        run: |
-          mkdir -p logs
-          nohup npx appium --relaxed-security --log-timestamp > logs/appium.log 2>&1 &
-          sleep 10
-
-      - name: 🧪 Run E2E Tests
-        run: npx wdio run ./wdio.ci.conf.js
-        continue-on-error: true
-
-      - name: 📷 Collect Diagnostics
-        if: always()
-        run: |
-          mkdir -p diagnostics
-          adb logcat -d > diagnostics/logcat.log
-          adb shell cat /data/anr/traces.txt > diagnostics/anr-traces.log || true
-          cp -r screenshots diagnostics/ || true
-          cp -r logs/ diagnostics/ || true
+      - name: Start Android Emulator and run E2E tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: true
+          ram-size: 3072
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot
+          script: |
+            adb uninstall com.willma.staging || true
+            adb uninstall com.willma.client.staging || true
+            adb install -r -g app-release-trainer.apk
+            adb install -r -g appclient.apk
+            mkdir -p logs
+            nohup npx appium --relaxed-security --log-timestamp > logs/appium.log 2>&1 &
+            sleep 10
+            npx wdio run ./wdio.ci.conf.js || true
+            mkdir -p diagnostics
+            adb logcat -d > diagnostics/logcat.log
+            adb shell cat /data/anr/traces.txt > diagnostics/anr-traces.log || true
+            cp -r screenshots diagnostics/ || true
+            cp -r logs/ diagnostics/ || true
 
       - name: 📤 Upload Artifacts
         if: always()
