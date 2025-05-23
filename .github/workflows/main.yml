@@ -1,81 +1,64 @@
-name: Android E2E Tests
+name: E2E Tests with Appium + WebdriverIO
 
 on:
-  workflow_dispatch:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
-  e2e:
+  e2e-tests:
     runs-on: macos-latest
 
     steps:
-      - name: 📁 Checkout Code
-        uses: actions/checkout@v4
+      - name: 🧾 Checkout Code
+        uses: actions/checkout@v3
 
-      - name: 🔧 Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-
-      - name: 🧱 Install Node Dependencies
-        run: npm ci
-
-      - name: 🐍 Install Python + gdown
+      - name: 🐍 Set up Python Virtual Environment & Install gdown
         run: |
-          python3 -m pip install --upgrade pip
+          python3 -m venv venv
+          source venv/bin/activate
           pip install gdown
+          echo "source $PWD/venv/bin/activate" >> $GITHUB_ENV
 
       - name: ⬇️ Download APKs
         run: |
+          source venv/bin/activate
           gdown --fuzzy "https://drive.google.com/file/d/1UmKiTZ6SlMorOBLx754Fs7_oqoNxFQ4F/view?usp=drive_link" -O app-release-trainer.apk
           gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O appclient.apk
 
-      - name: 📱 Start Android Emulator
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 30
-          arch: x86_64
-          profile: Nexus 6
-
-      - name: 🔄 Uninstall Old APKs (if present)
+      - name: 📦 Uninstall Old APKs if Present and Install New APKs
         run: |
-          adb shell pm list packages | grep com.willma.staging && adb uninstall com.willma.staging || echo "com.willma.staging not present"
-          adb shell pm list packages | grep com.willma.client.staging && adb uninstall com.willma.client.staging || echo "com.willma.client.staging not present"
+          echo "🧹 Uninstalling old APKs (if any)..."
+          adb shell pm list packages | grep com.willma.staging && adb uninstall com.willma.staging || echo "com.willma.staging not present or failed to uninstall"
+          adb shell pm list packages | grep com.willma.client.staging && adb uninstall com.willma.client.staging || echo "com.willma.client.staging not present or failed to uninstall"
 
-      - name: 📦 Install New APKs
-        run: |
-          echo "📦 Installing Trainer APK"
+          echo "📦 Installing new APKs"
           adb install -r -g app-release-trainer.apk
-
-          echo "📦 Installing Client APK"
           adb install -r -g appclient.apk
 
       - name: 🚀 Start Appium Server
         run: |
-          echo "🚀 Starting Appium"
+          echo "🚀 Starting Appium Server"
           mkdir -p logs
           nohup npx appium --relaxed-security --log-timestamp > logs/appium.log 2>&1 &
           sleep 10
 
-      - name: 🧪 Run E2E Tests
+      - name: 🧪 Run E2E Tests with WebdriverIO
         run: |
-          echo "🧪 Running WDIO Tests"
-          mkdir -p test-results/screenshots
+          echo "🧪 Running E2E Tests"
           npx wdio run ./wdio.ci.conf.js || true
 
-      - name: 📤 Upload Screenshots
+      - name: 📸 Upload Screenshots (if any)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
-          name: e2e-screenshots
-          path: test-results/screenshots
+          name: screenshots
+          path: ./errorShots/
 
-      - name: 📤 Upload Appium Logs
+      - name: 📄 Upload Appium Logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
-          name: appium-log
-          path: lo
+          name: appium-logs
+          path: logs/appium.log
