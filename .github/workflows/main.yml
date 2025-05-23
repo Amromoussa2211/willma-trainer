@@ -24,17 +24,34 @@ jobs:
       - name: 🧱 Install Android components
         run: |
           yes | sdkmanager --licenses
-          sdkmanager --install "platform-tools" "emulator" "platforms;android-29" "system-images;android-29;google_apis;x86"
- 
+          sdkmanager --install "platform-tools" "emulator" "platforms;android-29"
+
+          # Try to install fast x86 image (requires KVM)
+          sdkmanager --install "system-images;android-29;google_apis;x86" || echo "Failed to install x86 image"
+
+          # Fallback: Install ARM image if no KVM (slower but no virtualization required)
+          sdkmanager --install "system-images;android-29;google_apis;armeabi-v7a" || echo "Failed to install ARM image"
+
+          # List installed and available system images for android-29
+          sdkmanager --list | grep android-29
+
+      # Optional: Check KVM access (commented because likely requires sudo and may fail on GitHub runner)
+      - name: 🖥️ Check KVM access (informational)
+        run: |
+          if command -v sudo &> /dev/null && command -v kvm-ok &> /dev/null; then
+            sudo kvm-ok || echo "KVM not accessible - add user to kvm group and reboot"
+          else
+            echo "kvm-ok command not found or sudo not available"
+          fi
+
       - name: 📱 Create Android Emulator
         run: |
-          echo "no" | avdmanager create avd --force --name test --package "system-images;android-29;google_apis;x86" --device "pixel"
-    
+          echo "no" | avdmanager create avd --force --name test --package "system-images;android-29;google_apis;armeabi-v7a" --device "pixel"
+
       - name: 🚀 Validate Android SDK
         run: |
-              sdkmanager --list
-              emulator -list-avds
-
+          sdkmanager --list
+          emulator -list-avds
 
       - name: 🚀 Start Emulator & Wait for Boot
         run: |
@@ -42,12 +59,23 @@ jobs:
 
           echo "Waiting for emulator to start..."
           adb wait-for-device
+
+          timeout=300
+          elapsed=0
           boot_completed=""
-          until [[ "$boot_completed" == "1" ]]; do
+
+          until [[ "$boot_completed" == "1" ]] || [[ $elapsed -ge $timeout ]]; do
             boot_completed=$(adb shell getprop sys.boot_completed 2>&1 | tr -d '\r')
             echo "Boot completed status: $boot_completed"
             sleep 5
+            elapsed=$((elapsed + 5))
           done
+
+          if [[ $elapsed -ge $timeout ]]; then
+            echo "❌ Emulator boot timed out after $timeout seconds"
+            exit 1
+          fi
+
           adb shell settings put global window_animation_scale 0
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
@@ -63,9 +91,8 @@ jobs:
 
       - name: 📦 Uninstall Old + Install New APKs
         run: |
-          echo "📦 Installing APKs"
-          adb shell pm list packages | grep com.willma.staging && adb uninstall com.willma.staging || echo "Trainer not installed"
-          adb shell pm list packages | grep com.willma.client.staging && adb uninstall com.willma.client.staging || echo "Client not installed"
+          adb uninstall com.willma.staging || echo "Trainer app not installed"
+          adb uninstall com.willma.client.staging || echo "Client app not installed"
           adb install -r -g app-release-trainer.apk
           adb install -r -g appclient.apk
 
@@ -86,7 +113,7 @@ jobs:
       - name: 🧪 Run E2E Tests
         run: |
           echo "🧪 Running WebdriverIO tests"
-          npx wdio run ./wdio.ci.conf.js || true
+          npx wdio run ./wdio.ci.conf.js || echo "Tests failed"
 
       - name: 📸 Upload Screenshots (if any)
         if: always()
