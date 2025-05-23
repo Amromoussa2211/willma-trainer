@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: 🧾 Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: 🐍 Set up Python Virtual Environment & Install gdown
         run: |
@@ -51,14 +51,14 @@ jobs:
 
       - name: 📸 Upload Screenshots (if any)
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: screenshots
           path: ./errorShots/
 
       - name: 📄 Upload Appium Logs
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: appium-logs
           path: logs/appium.log
