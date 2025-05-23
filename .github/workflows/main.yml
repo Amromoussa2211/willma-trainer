@@ -27,15 +27,20 @@ jobs:
           sdkmanager --install "platform-tools" "emulator" "platforms;android-29"
 
           # Try fast emulation with KVM using x86 image
-          sdkmanager --install "system-images;android-29;google_apis;x86" || echo "Failed to install x86 image"
-
-          # Fallback ARM64 image if no KVM (slower, no virtualization needed)
-          sdkmanager --install "system-images;android-29;google_apis;arm64-v8a" || echo "Failed to install ARM64 image"
+          if ! sdkmanager --install "system-images;android-29;google_apis;x86"; then
+            echo "❌ Failed to install x86 image or KVM not available. Falling back to ARM64..."
+            sdkmanager --install "system-images;android-29;google_apis;arm64-v8a"
+          fi
 
       - name: 📱 Create Android Emulator
         run: |
-          # Using ARM64 system image (no KVM needed, slower)
-          echo "no" | avdmanager create avd --force --name test --package "system-images;android-29;google_apis;arm64-v8a" --device "pixel"
+          # Determine available image
+          IMAGE="system-images;android-29;google_apis;x86"
+          if ! sdkmanager --list | grep -q "$IMAGE"; then
+            IMAGE="system-images;android-29;google_apis;arm64-v8a"
+          fi
+          echo "Using emulator image: $IMAGE"
+          echo "no" | avdmanager create avd --force --name test --package "$IMAGE" --device "pixel"
 
       - name: 🚀 Validate Android SDK
         run: |
