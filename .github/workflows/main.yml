@@ -89,12 +89,13 @@ jobs:
         if: always()
         run: |
           mkdir -p diagnostics
+          touch diagnostics/empty.txt
           adb devices
           if ! adb devices | grep -w emulator-5554; then
             echo "No emulator device detected, skipping diagnostics collection."
             exit 0
           fi
-          adb logcat -d > diagnostics/logcat.log
+          adb logcat -d > diagnostics/logcat.log || true
           adb shell cat /data/anr/traces.txt > diagnostics/anr-traces.log || true
           cp -r screenshots diagnostics/ || true
           cp -r logs/ diagnostics/ || true
@@ -106,6 +107,7 @@ jobs:
           name: e2e-results-${{ github.run_id }}
           path: diagnostics/
           retention-days: 7
+          if-no-files-found: ignore
 
       - name: Terminate Emulator
         run: adb -s emulator-5554 emu kill || true
