@@ -24,11 +24,17 @@ jobs:
       - name: 🧱 Install Android components
         run: |
           yes | sdkmanager --licenses
-          sdkmanager --install "platform-tools" "emulator" "platforms;android-29" "system-images;android-29;default;armeabi-v7a"
-
+          sdkmanager --install "platform-tools" "emulator" "platforms;android-29" "system-images;android-29;google_apis;x86"
+ 
       - name: 📱 Create Android Emulator
         run: |
-          echo "no" | avdmanager create avd --force --name test --package "system-images;android-29;default;armeabi-v7a" --device "pixel"
+          echo "no" | avdmanager create avd --force --name test --package "system-images;android-29;google_apis;x86" --device "pixel"
+    
+      - name: 🚀 Validate Android SDK
+        run: |
+              sdkmanager --list
+              emulator -list-avds
+
 
       - name: 🚀 Start Emulator & Wait for Boot
         run: |
