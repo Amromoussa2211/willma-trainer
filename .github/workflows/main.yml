@@ -12,6 +12,16 @@ jobs:
       - name: ⬇️ Checkout code
         uses: actions/checkout@v4
 
+      - name: ⚙️ Setup Android Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29             # You can adjust API level here or make it a matrix
+          force-avd-creation: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            echo "✅ Emulator is ready"
+
       - name: 🐍 Setup Python + Download APKs
         run: |
           python3 -m venv venv
