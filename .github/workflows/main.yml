@@ -12,22 +12,14 @@ jobs:
       - name: ⬇️ Checkout code
         uses: actions/checkout@v4
 
-      - name: ⚙️ Setup Android Emulator
+      - name: ⚙️ Setup Android Emulator (API 29)
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
           force-avd-creation: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-
-      - name: ⏳ Wait for emulator to be ready
-        run: |
-          adb wait-for-device
-          until adb shell getprop sys.boot_completed | grep -m 1 '1'; do
-            echo "Waiting for emulator to boot..."
-            sleep 5
-          done
-          echo "Emulator is fully booted!"
+          script: echo "AVD created and ready"
 
       - name: 🐍 Setup Python + Download APKs
         run: |
@@ -41,6 +33,7 @@ jobs:
       - name: 📦 Uninstall Old APKs if Present and Install New APKs
         run: |
           echo "📦 Installing new APKs"
+          adb devices
           adb shell pm list packages | grep com.willma.staging && adb uninstall com.willma.staging || echo "com.willma.staging not present or failed to uninstall"
           adb shell pm list packages | grep com.willma.client.staging && adb uninstall com.willma.client.staging || echo "com.willma.client.staging not present or failed to uninstall"
           adb install -r -g app-release-trainer.apk
