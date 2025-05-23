@@ -24,41 +24,28 @@ jobs:
       - name: 🧱 Install Android components
         run: |
           yes | sdkmanager --licenses
-          sdkmanager --install "platform-tools" "emulator" "platforms;android-29" "system-images;android-29;default;x86"
+          sdkmanager --install "platform-tools" "emulator" "platforms;android-29" "system-images;android-29;default;armeabi-v7a"
 
       - name: 📱 Create Android Emulator
         run: |
-          echo "no" | avdmanager create avd --force --name test --package "system-images;android-29;default;x86" --device "pixel"
+          echo "no" | avdmanager create avd --force --name test --package "system-images;android-29;default;armeabi-v7a" --device "pixel"
 
       - name: 🚀 Start Emulator & Wait for Boot
         run: |
           nohup $ANDROID_SDK_ROOT/emulator/emulator -avd test -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none &
 
-          echo "Waiting for emulator to boot..."
+          echo "Waiting for emulator to start..."
           adb wait-for-device
-
-          TIMEOUT=300
-          BOOTED=0
-          while [[ $TIMEOUT -gt 0 ]]; do
-            BOOT_STATUS=$(adb shell getprop sys.boot_completed 2>&1 | tr -d '\r')
-            if [[ "$BOOT_STATUS" == "1" ]]; then
-              BOOTED=1
-              break
-            fi
-            echo "⏳ Boot status: $BOOT_STATUS (retrying...)"
+          boot_completed=""
+          until [[ "$boot_completed" == "1" ]]; do
+            boot_completed=$(adb shell getprop sys.boot_completed 2>&1 | tr -d '\r')
+            echo "Boot completed status: $boot_completed"
             sleep 5
-            TIMEOUT=$((TIMEOUT - 5))
           done
-
-          if [[ $BOOTED -ne 1 ]]; then
-            echo "❌ Emulator boot timed out!"
-            exit 1
-          fi
-
-          echo "✅ Emulator booted"
           adb shell settings put global window_animation_scale 0
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
+          echo "✅ Emulator ready"
 
       - name: 🐍 Download APKs via Python
         run: |
@@ -88,8 +75,7 @@ jobs:
         run: |
           mkdir -p logs
           nohup npx appium --relaxed-security --log-timestamp > logs/appium.log 2>&1 &
-          sleep 15
-          echo "✅ Appium server started"
+          sleep 10
 
       - name: 🧪 Run E2E Tests
         run: |
