@@ -25,17 +25,18 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # Explicit Android SDK setup and image download
       - name: 🔧 Install Android SDK Tools & API 31 Image
         run: |
+          export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
+          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/cmdline-tools/tools/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH
           yes | sdkmanager --licenses
           sdkmanager "platform-tools" "platforms;android-31" "system-images;android-31;google_apis;x86_64" "emulator" "build-tools;33.0.0"
 
       - name: 🗂️ Check SDK and AVD dirs before emulator
         run: |
-          echo "ANDROID_HOME: $ANDROID_HOME"
-          ls -alh $ANDROID_HOME
-          ls -alh $ANDROID_HOME/platforms || echo "No platforms"
+          export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
+          ls -alh $ANDROID_SDK_ROOT
+          ls -alh $ANDROID_SDK_ROOT/platforms || echo "No platforms"
           ls -alh ~/.android/avd || echo "No AVDs yet"
 
       - name: 📦 Install Node Dependencies
@@ -61,7 +62,8 @@ jobs:
 
       - name: 🗂️ Check SDK and AVD dirs after emulator
         run: |
-          echo "Checking AVD directory after emulator startup:"
+          export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
+          ls -alh $ANDROID_SDK_ROOT
           ls -alh ~/.android/avd || echo "No AVD directory"
           echo "ADB Devices:"
           adb devices
