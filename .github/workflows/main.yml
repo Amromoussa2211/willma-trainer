@@ -25,19 +25,33 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: 🔧 Install Android SDK Tools & API 31 Image
+      - name: 🔧 Install Android SDK Tools
         run: |
           export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
           export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/cmdline-tools/tools/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH
           yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "platforms;android-31" "system-images;android-31;google_apis;x86_64" "emulator" "build-tools;33.0.0"
+          sdkmanager "platform-tools" "emulator"
 
-      - name: 🗂️ Check SDK and AVD dirs before emulator
+      - name: 3️⃣ List available system images (Pixel 6, API 30/34)
+        id: list-images
         run: |
           export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
-          ls -alh $ANDROID_SDK_ROOT
-          ls -alh $ANDROID_SDK_ROOT/platforms || echo "No platforms"
-          ls -alh ~/.android/avd || echo "No AVDs yet"
+          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/cmdline-tools/tools/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH
+          sdkmanager --list | grep -i "system-images;" | grep -i "pixel_6" | grep -E "android-30|android-34" | tee available_pixel6_images.txt
+          if [ ! -s available_pixel6_images.txt ]; then
+            echo "No Pixel 6 system images for Android 11 or 14 found!"
+            exit 1
+          fi
+          IMAGE=$(head -n 1 available_pixel6_images.txt | awk '{print $1}')
+          echo "CHOSEN_IMAGE=$IMAGE" >> $GITHUB_ENV
+          echo "Chosen system image: $IMAGE"
+      
+      - name: 4️⃣ Install chosen system image
+        if: env.CHOSEN_IMAGE
+        run: |
+          export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
+          export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/cmdline-tools/tools/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH
+          sdkmanager "$CHOSEN_IMAGE"
 
       - name: 📦 Install Node Dependencies
         run: npm ci
@@ -48,12 +62,13 @@ jobs:
           gdown --fuzzy "https://drive.google.com/file/d/1UmKiTZ6SlMorOBLx754Fs7_oqoNxFQ4F/view?usp=drive_link" -O app-release-trainer.apk
           gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O appclient.apk
 
-      - name: 4️⃣ Start Android Emulator
+      - name: 5️⃣ Start Android Emulator (Pixel 6, version 11 or 14)
         uses: preved911/android-emulator-runner@v2.27.2
         with:
-          api-level: 31
+          api-level: ${{ env.CHOSEN_IMAGE && (env.CHOSEN_IMAGE contains 'android-34' && '34' || '30') }}
           target: google_apis
           arch: x86_64
+          device: pixel_6
           force-avd-creation: true
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
@@ -68,24 +83,24 @@ jobs:
           cat ~/.android/avd/*/config.ini || true
           cat $ANDROID_SDK_ROOT/emulator/emulator.log || true
 
-      - name: 5️⃣ Uninstall Old APKs if Present and Install New APKs
+      - name: 6️⃣ Uninstall Old APKs if Present and Install New APKs
         run: |
           adb shell pm list packages | grep com.willma.staging && adb uninstall com.willma.staging || echo "com.willma.staging not present or failed to uninstall"
           adb shell pm list packages | grep com.willma.client.staging && adb uninstall com.willma.client.staging || echo "com.willma.client.staging not present or failed to uninstall"
           adb install -r -g app-release-trainer.apk
           adb install -r -g appclient.apk
 
-      - name: 6️⃣ Start Appium Server
+      - name: 7️⃣ Start Appium Server
         run: |
           mkdir -p logs
           nohup npx appium --relaxed-security --log-timestamp > logs/appium.log 2>&1 &
           sleep 10
 
-      - name: 7️⃣ Run E2E Tests
+      - name: 8️⃣ Run E2E Tests
         run: |
           npx wdio run ./wdio.ci.conf.js || true
 
-      - name: 8️⃣ Collect Diagnostics
+      - name: 9️⃣ Collect Diagnostics
         if: always()
         run: |
           mkdir -p diagnostics
