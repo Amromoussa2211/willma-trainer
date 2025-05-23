@@ -43,32 +43,43 @@ jobs:
           gdown --fuzzy "https://drive.google.com/file/d/1UmKiTZ6SlMorOBLx754Fs7_oqoNxFQ4F/view?usp=drive_link" -O app-release-trainer.apk
           gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O appclient.apk
 
-      - name: Start Android Emulator and run E2E tests
+      - name: 4️⃣ Start Android Emulator and Install APKs
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 33
+          api-level: 31
           target: google_apis
           arch: x86_64
           force-avd-creation: true
           ram-size: 3072
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          emulator-boot-timeout: 900
           script: |
             adb uninstall com.willma.staging || true
             adb uninstall com.willma.client.staging || true
             adb install -r -g app-release-trainer.apk
             adb install -r -g appclient.apk
             mkdir -p logs
-            nohup npx appium --relaxed-security --log-timestamp > logs/appium.log 2>&1 &
-            sleep 10
-            npx wdio run ./wdio.ci.conf.js || true
-            mkdir -p diagnostics
-            adb logcat -d > diagnostics/logcat.log
-            adb shell cat /data/anr/traces.txt > diagnostics/anr-traces.log || true
-            cp -r screenshots diagnostics/ || true
-            cp -r logs/ diagnostics/ || true
 
-      - name: 📤 Upload Artifacts
+      - name: 5️⃣ Start Appium Server
+        run: |
+          nohup npx appium --relaxed-security --log-timestamp > logs/appium.log 2>&1 &
+          sleep 10
+
+      - name: 6️⃣ Running E2E Tests
+        run: |
+          npx wdio run ./wdio.ci.conf.js || true
+
+      - name: 7️⃣ Collect Diagnostics
+        if: always()
+        run: |
+          mkdir -p diagnostics
+          adb logcat -d > diagnostics/logcat.log
+          adb shell cat /data/anr/traces.txt > diagnostics/anr-traces.log || true
+          cp -r screenshots diagnostics/ || true
+          cp -r logs/ diagnostics/ || true
+
+      - name: 📤 Upload Diagnostics Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
