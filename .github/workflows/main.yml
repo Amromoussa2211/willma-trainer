@@ -44,8 +44,16 @@ jobs:
           fi
           IMAGE=$(head -n 1 available_pixel6_images.txt | awk '{print $1}')
           echo "CHOSEN_IMAGE=$IMAGE" >> $GITHUB_ENV
+          # Extract API level (android-XX) from image name
+          if echo "$IMAGE" | grep -q "android-34"; then
+            echo "API_LEVEL=34" >> $GITHUB_ENV
+          elif echo "$IMAGE" | grep -q "android-30"; then
+            echo "API_LEVEL=30" >> $GITHUB_ENV
+          else
+            echo "API_LEVEL=30" >> $GITHUB_ENV
+          fi
           echo "Chosen system image: $IMAGE"
-      
+
       - name: 4️⃣ Install chosen system image
         if: env.CHOSEN_IMAGE
         run: |
@@ -65,7 +73,7 @@ jobs:
       - name: 5️⃣ Start Android Emulator (Pixel 6, version 11 or 14)
         uses: preved911/android-emulator-runner@v2.27.2
         with:
-          api-level: ${{ env.CHOSEN_IMAGE && (env.CHOSEN_IMAGE contains 'android-34' && '34' || '30') }}
+          api-level: ${{ env.API_LEVEL }}
           target: google_apis
           arch: x86_64
           device: pixel_6
