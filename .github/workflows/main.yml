@@ -42,10 +42,10 @@ jobs:
           echo "Using emulator image: $IMAGE"
           echo "no" | avdmanager create avd --force --name test --package "$IMAGE" --device "pixel"
 
-      - name: 🚀 Validate Android SDK
-        run: |
-          sdkmanager --list
-          emulator -list-avds
+      # - name: 🚀 Validate Android SDK
+      #   run: |
+      #     sdkmanager --list
+      #     emulator -list-avds
 
       - name: 🚀 Start Emulator & Wait for Boot
         run: |
