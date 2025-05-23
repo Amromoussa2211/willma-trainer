@@ -15,12 +15,19 @@ jobs:
       - name: ⚙️ Setup Android Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29             # You can adjust API level here or make it a matrix
+          api-level: 29
           force-avd-creation: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: |
-            echo "✅ Emulator is ready"
+
+      - name: ⏳ Wait for emulator to be ready
+        run: |
+          adb wait-for-device
+          until adb shell getprop sys.boot_completed | grep -m 1 '1'; do
+            echo "Waiting for emulator to boot..."
+            sleep 5
+          done
+          echo "Emulator is fully booted!"
 
       - name: 🐍 Setup Python + Download APKs
         run: |
