@@ -46,6 +46,15 @@ jobs:
           script: |
             echo "Emulator boot validation complete."
 
+      - name: 🔍 Debug Emulator State
+        run: |
+          echo "AVD Directory:"
+          ls -alh ~/.android/avd/ || echo "No AVD directory"
+          echo "ADB Devices:"
+          adb devices
+          echo "Emulator Processes:"
+          ps aux | grep emulator
+
       - name: 5️⃣ Uninstall Old APKs if Present and Install New APKs
         run: |
           adb shell pm list packages | grep com.willma.staging && adb uninstall com.willma.staging || echo "com.willma.staging not present or failed to uninstall"
