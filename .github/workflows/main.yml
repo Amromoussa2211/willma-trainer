@@ -25,15 +25,15 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # Add swap space to reduce memory-related emulator/system UI issues
       - name: Add swap space
         run: |
+          sudo swapoff /swapfile || true
+          sudo rm -f /swapfile
           sudo fallocate -l 4G /swapfile
           sudo chmod 600 /swapfile
           sudo mkswap /swapfile
           sudo swapon /swapfile
 
-      # Use a stable emulator runner action
       - name: Start Android Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
