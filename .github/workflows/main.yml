@@ -34,13 +34,13 @@ jobs:
 
       - name: 📱 Create Android Emulator
         run: |
-          # Determine available image
+          export ANDROID_AVD_HOME=$HOME/.android/avd
           IMAGE="system-images;android-29;google_apis;x86"
           if ! sdkmanager --list | grep -q "$IMAGE"; then
             IMAGE="system-images;android-29;google_apis;arm64-v8a"
           fi
           echo "Using emulator image: $IMAGE"
-          echo "no" | avdmanager create avd --force --name test --package "$IMAGE" --device "pixel"
+          echo "no" | avdmanager create avd --force --name test --package "$IMAGE" --device "pixel" || { echo "❌ Failed to create AVD"; exit 1; }
 
       - name: 🏗️ Configure Emulator
         run: |
