@@ -84,36 +84,55 @@ describe('Signup Flow', () => {
         await saveFormButton.waitForDisplayed({ timeout: 5000 });
         await saveFormButton.click();
         console.log('✅ Clicked on "Save Form".');
-        // Wait for the "Form saved successfully" message
+        driver.refresh(); // Refresh the driver to ensure the latest state is captured
+        // Wait for the "Form saved successfully" message   
+        const el1 = await driver.$('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(0)');
+        await el1.click();
 
-    const searchEditText = await $('//android.widget.EditText[@text="Search"]');
-        const isSearchDisplayed = await searchEditText.isDisplayed().catch(() => false);
-        if (isSearchDisplayed) {
-            await searchEditText.click();
-            await searchEditText.setValue('packegeAmrForm AUto');
-        }
-        // Use Appium's pressKeyCode to simulate the Android back button
-        await driver.pressKeyCode(4); // 4 is the keycode for BACK
+    });
 
-        // Click on the SvgView PathView element
-        const svgPathView = await $('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(0)');
-        await svgPathView.waitForDisplayed({ timeout: 5000 });
-        await svgPathView.click();
-        console.log('✅ Performed a back gesture.');
-        const el5 = await driver.$("accessibility id:Logout");
-        await el5.waitForDisplayed({ timeout: 60000 });
-        await el5.click();
-        console.log('✅ Clicked on "Logout".');
+        it('assign form to client', async () => {
+            // Assumes you are already logged in and on the Form Center screen
+            const svgViewElement = await driver.$('-android uiautomator:new UiSelector().className("com.horcrux.svg.SvgView").instance(3)');
+            await svgViewElement.waitForDisplayed({ timeout: 5000 });
+            await svgViewElement.click();
 
-                            const el6 = await driver.$("accessibility id:Yes");
-                            await el6.waitForDisplayed({ timeout: 60000 });
-                            await el6.click();
-                            console.log('✅ Clicked on "Yes".');
+            const sendToClientButton = await driver.$('accessibility id:Send To Client');
+            await sendToClientButton.waitForDisplayed({ timeout: 5000 });
+            await sendToClientButton.click();
 
-        
+            console.log('✅ Clicked on "Send To Client".');
 
-        console.log('Form creation flow completed successfully.');
-        // Click on the SvgView element
+            // Assert that android.widget.EditText appears
+            const editText = await $('android.widget.EditText');
+            await editText.waitForDisplayed({ timeout: 5000 });
+            expect(await editText.isDisplayed()).to.be.true;
+
+            // Wait for the form to appear in the list and click on it
+       
+        const selectAllButton = await driver.$("accessibility id:Select All");
+        await selectAllButton.click();
+
+        const selectPackageButton = await driver.$("accessibility id:Select a package");
+        await selectPackageButton.click();
+
+        const sendToClientOption = await driver.$('-android uiautomator:new UiSelector().text("Send to client")');
+        await sendToClientOption.click();
+
+        const pathViewElement = await driver.$('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(0)');
+        await pathViewElement.click();
+
+        const viewGroupElement = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(17)');
+        await viewGroupElement.click();
+
+        const logoutButton = await driver.$("accessibility id:Logout");
+        await logoutButton.click();
+
+        const confirmYesButton = await driver.$("accessibility id:Yes");
+        await confirmYesButton.click();
+
+          
+           
 
     });
 });
