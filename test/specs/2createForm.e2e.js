@@ -118,21 +118,51 @@ describe('Signup Flow', () => {
 
         const sendToClientOption = await driver.$('-android uiautomator:new UiSelector().text("Send to client")');
         await sendToClientOption.click();
-
-        const pathViewElement = await driver.$('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(0)');
+          const pathViewElement = await driver.$('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(0)');
         await pathViewElement.click();
+        
+         });
+
+        it('search for form', async () => {
+
+            const searchInput = await driver.$('class name:android.widget.EditText');
+            await searchInput.waitForDisplayed({ timeout: 5000 });
+            await searchInput.click();
+            // Type "AUto" into the search input using pressKeyCode
+        //     await driver.pressKeyCode(29, undefined, 1); // 'A' (metaState=1 for SHIFT on)
+        //                 await driver.pause(1000); // Wait for search results to update
+        //    await driver.pressKeyCode(94, undefined, 1); // 'u'
+        //                 await driver.pause(1000); // Wait for search results to update
+        //     await driver.pressKeyCode(48, undefined, 1); // 't' (lowercase, metaState=1 for SHIFT off)
+        //                 await driver.pause(1000); // Wait for search results to update
+        //     await driver.pressKeyCode(43); // 'o'
+        //     await driver.pressKeyCode(66); // Enter key
+        //     await driver.pause(1000); // Wait for search results to update
+         });
+
+       it('edite form', async () => {
+        const svgViewElement = await driver.$('-android uiautomator:new UiSelector().className("com.horcrux.svg.SvgView").instance(3)');
+        await svgViewElement.waitForDisplayed({ timeout: 5000 });
+        await svgViewElement.click();
+        const editButton = await driver.$('accessibility id:Edit');
+        await editButton.waitForDisplayed({ timeout: 5000 });
+        await editButton.click();
+        const saveFormButton = await driver.$('accessibility id:Save Form');
+        await saveFormButton.waitForDisplayed({ timeout: 5000 });
+        await saveFormButton.click();
+
+      
 
         const viewGroupElement = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(17)');
+        await viewGroupElement.waitForDisplayed({ timeout: 5000 });
         await viewGroupElement.click();
 
         const logoutButton = await driver.$("accessibility id:Logout");
+        await logoutButton.waitForDisplayed({ timeout: 5000 });
         await logoutButton.click();
 
         const confirmYesButton = await driver.$("accessibility id:Yes");
+        await confirmYesButton.waitForDisplayed({ timeout: 5000 });
         await confirmYesButton.click();
-
-          
-           
-
     });
 });
