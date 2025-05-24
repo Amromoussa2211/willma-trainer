@@ -162,3 +162,4 @@ jobs:
         run: |
           adb emu kill || true
           pkill -f 'qemu-system' || true
+          pkill -f 'emulator' || true
