@@ -151,8 +151,7 @@ describe('Signup Flow', () => {
         await saveFormButton.waitForDisplayed({ timeout: 5000 });
         await saveFormButton.click();
 
-      
-
+        console.log('✅ Clicked on "Save Form".');
         const viewGroupElement = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(17)');
         await viewGroupElement.waitForDisplayed({ timeout: 5000 });
         await viewGroupElement.click();
