@@ -241,3 +241,5 @@ console.log('"Logout" element clicked.');
       }
     });
   });
+
+ 

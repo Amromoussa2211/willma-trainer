@@ -106,9 +106,26 @@ jobs:
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
 
-      - name: 📦 Install Node Dependencies
-        run: npm ci
+      - name: 🌐 Download Reference Image from Web
+        run: |
+          curl -L "https://res.infoq.com/news/2020/03/webdriverio-6-release-puppeteer/en/headerimage/webdriverio-1585340491755.jpg" -o webdriverio.jpg
+          if [ ! -f "webdriverio.jpg" ]; then
+            echo "::error::Image download failed"
+            exit 1
+          else
+            echo "Image downloaded successfully: webdriverio.jpg"
+          fi
 
+      - name: 📸 Take Emulator Screenshot (Alternative)
+        if: ${{ false }}  # Set to true if you prefer a screenshot over downloading
+        run: |
+          adb exec-out screencap -p > emulator_screenshot.png
+          if [ ! -f "emulator_screenshot.png" ]; then
+            echo "::error::Screenshot capture failed"
+            exit 1
+          else
+            echo "Screenshot saved: emulator_screenshot.png"
+          fi
       - name: ⬇️ Download APKs
         run: |
           pip install gdown
