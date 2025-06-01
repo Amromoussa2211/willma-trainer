@@ -9,18 +9,18 @@
     "test:ci": "wdio run ./wdio.ci.conf.js",
     "generate-report": "allure generate allure-results --clean -o allure-report",
     "open-report": "allure open allure-report",
-    "start:appium": "appium",
-    "pretest:ci": "rm -rf allure-results screenshots logs && mkdir -p screenshots logs"
+    "start:appium": "appium"
   },
   "dependencies": {
+    "@faker-js/faker": "^7.6.0",
     "@wdio/allure-reporter": "latest",
     "@wdio/cli": "^9.4.5",
     "axios": "^1.8.4",
     "chai": "^4.3.6",
     "dotenv": "^16.4.7",
     "eslint": "latest",
-    "webdriverio": "latest",
-    "@faker-js/faker": "^7.6.0"
+    "node-fetch": "^3.3.2",
+    "webdriverio": "latest"
   },
   "devDependencies": {
     "@wdio/appium-service": "^9.4.5",

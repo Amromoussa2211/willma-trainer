@@ -36,7 +36,7 @@ describe('Signup Flow', () => {
         }
     });
 
-    it('should sign up successfully', async () => {
+    it('should sign up successfully and create workout templet', async () => {
         try {
              //Wait for the sign-up button to appear
             const emailInput = await $('//android.widget.EditText[@resource-id="email-input"]');
@@ -206,15 +206,21 @@ describe('Signup Flow', () => {
                     await driver.pause(2000);
                     await createTemplateBtn.click();
 
-                    const homeBtn = await driver.$('accessibility id:Home');
+                    const homeButton = await driver.$('-android uiautomator:new UiSelector().description("Home")');
+                    await homeButton.waitForDisplayed({ timeout: 60000 });
+                    await driver.pause(2000);
+                    await homeButton.click();
+                    console.log('Clicked on Home button.');
+
+                    
+
+                    // Prefer using resource-id with UiSelector for better reliability
+                    const homeBtn = await driver.$('-android uiautomator:new UiSelector().resourceId("menu-tab")');
                     await homeBtn.waitForDisplayed({ timeout: 60000 });
                     await driver.pause(2000);
                     await homeBtn.click();
 
-                    const svgPathView8 = await driver.$('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(8)');
-                    await svgPathView8.waitForDisplayed({ timeout: 60000 });
-                    await driver.pause(2000);
-                    await svgPathView8.click();
+                  
 
                     const logoutBtn = await driver.$('accessibility id:Logout');
                     await logoutBtn.waitForDisplayed({ timeout: 60000 });
