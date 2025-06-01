@@ -1,5 +1,4 @@
 import { expect } from 'chai';
-import { Profiler } from 'react';
 import { remote } from 'webdriverio';
 describe('App Launch and Login Flow', () => {
     before(async () => {
