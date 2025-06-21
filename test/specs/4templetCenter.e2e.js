@@ -21,7 +21,7 @@ async function restartUiAutomator2Server() {
     console.log('UiAutomator2 server restarted.');
 }
 
-describe('Signup Flow', () => {
+describe('templet workout ', () => {
     before(async () => {
         try {
             // Launch the app

@@ -107,20 +107,33 @@ describe('Signup Flow', () => {
                         await nextButton.click();
                         console.log('Clicked on Next.');
 
-                        const instance26Button = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(26)');
-                        await driver.pause(2000); // Wait before clicking
-                        await instance26Button.click();
-                        console.log('Clicked on instance 26.');
+                        // Add the requested selector before instance26Button
+                       
+
+                        // const instance26Button = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(26)');
+                        // await driver.pause(2000); // Wait before clicking
+                        // await instance26Button.click();
+                        // console.log('Clicked on instance 26.');
 
                         const addMealButton = await driver.$('-android uiautomator:new UiSelector().description("Add Meal/s").instance(0)');
                         await driver.pause(2000); // Wait before clicking
                         await addMealButton.click();
                         console.log('Clicked on Add Meal/s.');
 
-                        const instance42Button = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(42)');
+                         const addingrediant = await driver.$('//android.widget.ScrollView/android.view.ViewGroup/android.view.ViewGroup[3]/android.view.ViewGroup[1]/android.view.ViewGroup/android.view.ViewGroup[2]/android.view.ViewGroup/com.horcrux.svg.SvgView/com.horcrux.svg.GroupView/com.horcrux.svg.PathView');
                         await driver.pause(2000); // Wait before clicking
-                        await instance42Button.click();
-                        console.log('Clicked on instance 42.');
+                        await addingrediant.click();
+                        console.log('Clicked on custom PathView.');
+
+                        const ingrediant2 = await driver.$('//android.widget.ScrollView/android.view.ViewGroup/android.view.ViewGroup[3]/android.view.ViewGroup[2]/android.view.ViewGroup/android.view.ViewGroup[2]/android.view.ViewGroup/com.horcrux.svg.SvgView');
+                        await driver.pause(2000); // Wait before clicking
+                        await ingrediant2.click();
+                        console.log('Clicked on SvgView.');
+
+                        // const instance42Button = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(42)');
+                        // await driver.pause(2000); // Wait before clicking
+                        // await instance42Button.click();
+                        // console.log('Clicked on instance 42.');
 
                         const fruitsButton = await driver.$('-android uiautomator:new UiSelector().text("Fruits")');
                         await driver.pause(2000); // Wait before clicking
@@ -137,7 +150,10 @@ describe('Signup Flow', () => {
                         await pathViewInstance4.click();
                         console.log('Clicked on PathView instance 4.');
 
-
+                        const copyButton = await driver.$("-android uiautomator:new UiSelector().className(\"com.horcrux.svg.PathView\").instance(3)");;
+                        await driver.pause(2000); // Wait before clicking
+                        await copyButton.click();
+                        console.log('Clicked on Copy.');
                         // Wait for "Week 1" element to appear and click
                         const week1Button = await driver.$('-android uiautomator:new UiSelector().description("Week 1")');
                         await week1Button.waitForDisplayed({ timeout: 60000 });

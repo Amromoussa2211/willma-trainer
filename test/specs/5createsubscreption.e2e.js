@@ -112,12 +112,15 @@ describe('App Launch and Login Flow', () => {
         await yogaElement.waitForDisplayed({ timeout: 60000 });
         console.log('"Yoga" element is displayed.');
 
-        // Click on the "Yoga" element
+        // Wait before clicking the "Yoga" element
+        await driver.pause(1000);
         await yogaElement.click();
         console.log('"Yoga" element clicked.');
 
         // Scroll into the ScrollView using Android UIAutomator
         const scrollView = await driver.$('android=new UiSelector().className("android.widget.ScrollView")');
+        await scrollView.waitForDisplayed({ timeout: 60000 });
+        await driver.pause(1000);
         await scrollView.scrollIntoView();
         console.log('Scrolled into the ScrollView.');
 
@@ -126,7 +129,8 @@ describe('App Launch and Login Flow', () => {
         await willmaTesterElement.waitForDisplayed({ timeout: 60000 });
         console.log('"Willma Tester" element is displayed.');
 
-        // Click on the "Willma Tester" element
+        // Wait before clicking the "Willma Tester" element
+        await driver.pause(1000);
         await willmaTesterElement.click();
         console.log('"Willma Tester" element clicked.');
         driver.refresh(); // Refresh the driver to ensure the app is in the correct state
