@@ -145,6 +145,12 @@ jobs:
             exit 1
           fi
 
+      - name: 🐛 Debug App Launch Failure
+        if: failure()
+        run: |
+          echo "::error::Dumping device logs (logcat) for debugging..."
+          adb logcat -d
+
       - name: 🔍 Verify APK State
         continue-on-error: true
         run: |
