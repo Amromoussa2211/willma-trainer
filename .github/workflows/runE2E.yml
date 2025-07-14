@@ -151,11 +151,7 @@ jobs:
             exit 1
           fi
 
-      - name: 🐛 Debug App Launch Failure
-        if: failure()
-        run: |
-          echo "::error::Filtering for FATAL EXCEPTION..."
-          adb logcat -d | grep -E 'AndroidRuntime|FATAL'
+      
 
       - name: 🔍 Verify APK State
         continue-on-error: true
