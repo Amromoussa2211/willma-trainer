@@ -116,6 +116,12 @@ jobs:
           gdown --fuzzy "https://drive.google.com/file/d/1UmKiTZ6SlMorOBLx754Fs7_oqoNxFQ4F/view?usp=drive_link" -O app-release-trainer.apk
           gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O appclient.apk
 
+      - name: 🔍 Verify Downloaded APK
+        run: |
+          echo "--- Verifying app-release-trainer.apk ---"
+          ls -l app-release-trainer.apk
+          $ANDROID_HOME/build-tools/34.0.0/aapt dump badging app-release-trainer.apk
+
       - name: ✅ Install APKs
         run: |
           adb uninstall com.willma.staging || true
@@ -148,9 +154,8 @@ jobs:
       - name: 🐛 Debug App Launch Failure
         if: failure()
         run: |
-          echo "::error::Increasing logcat buffer and dumping logs for debugging..."
-          adb logcat -G 16M
-          adb logcat -d *:W
+          echo "::error::Filtering for FATAL EXCEPTION..."
+          adb logcat -d | grep -E 'AndroidRuntime|FATAL'
 
       - name: 🔍 Verify APK State
         continue-on-error: true
