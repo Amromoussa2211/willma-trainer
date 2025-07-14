@@ -12,7 +12,7 @@ const ciConfig = {
     'appium:noReset': false,
     'appium:fullReset': false,
     'appium:autoGrantPermissions': true,
-    'appium:newCommandTimeout': 600,
+    'appium:newCommandTimeout': 1800,
     'appium:androidDeviceReadyTimeout': 1200,
     'appium:avdLaunchTimeout': 1200000,
     'appium:avdReadyTimeout': 1200000,
