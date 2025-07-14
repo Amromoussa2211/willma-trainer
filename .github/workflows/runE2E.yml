@@ -148,8 +148,9 @@ jobs:
       - name: 🐛 Debug App Launch Failure
         if: failure()
         run: |
-          echo "::error::Dumping device logs (logcat) for debugging..."
-          adb logcat -d
+          echo "::error::Increasing logcat buffer and dumping logs for debugging..."
+          adb logcat -G 16M
+          adb logcat -d *:W
 
       - name: 🔍 Verify APK State
         continue-on-error: true
