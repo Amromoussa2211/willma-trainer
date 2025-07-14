@@ -130,26 +130,7 @@ jobs:
           adb install -r -g appclient.apk
           sleep 15
 
-      - name: 🚀 Start App and Wait for Focus
-        run: |
-          adb shell am start -n com.willma.staging/.MainActivity
-          timeout=120
-          count=0
-          while [[ $count -lt $timeout ]]; do
-            foreground_app=$(adb shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp' | grep 'com.willma.staging' || echo "not found")
-            if [[ "$foreground_app" != "not found" ]]; then
-              echo "✅ App is in the foreground."
-              break
-            fi
-            echo "⏳ Waiting for app to gain focus... ($count s)"
-            sleep 2
-            count=$((count + 2))
-          done
-          if [[ $count -ge $timeout ]]; then
-            echo "❌ Error: Timed out waiting for app to gain focus."
-            adb shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp'
-            exit 1
-          fi
+      
 
       
 
