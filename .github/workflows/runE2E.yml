@@ -14,24 +14,24 @@ jobs:
       ANDROID_AVD_HOME: $HOME/.android/avd
 
     steps:
-      - name: 📥 Checkout Code
+      - name:  Checkout Code
         uses: actions/checkout@v3
 
-      - name: 🧱 Set up Node.js
+      - name:  Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
 
-      - name: 📦 Install Dependencies
+      - name:  Install Dependencies
         run: npm install
 
-      - name: ☕ Set up Java
+      - name:  Set up Java
         uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: 📦 Install Android SDK & Required Tools
+      - name:  Install Android SDK & Required Tools
         run: |
           sudo apt-get update
           sudo apt-get install -y unzip wget
@@ -52,13 +52,13 @@ jobs:
           echo "$ANDROID_HOME/emulator" >> $GITHUB_PATH
           echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
 
-      - name: 🔧 KVM Setup
+      - name:  KVM Setup
         run: |
           sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
           sudo gpasswd -a $USER kvm
           sudo chmod 666 /dev/kvm
 
-      - name: 📱 Create and Configure AVD
+      - name:  Create and Configure AVD
         run: |
           mkdir -p "$ANDROID_AVD_HOME"
           echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
@@ -82,11 +82,11 @@ jobs:
             exit 1
           fi
 
-      - name: 🚀 Start Emulator
+      - name:  Start Emulator
         run: |
           nohup $ANDROID_HOME/emulator/emulator -avd "$AVD_NAME" -no-audio -no-window -gpu swiftshader_indirect -no-boot-anim -no-snapshot-load &
 
-      - name: ⏳ Wait for Emulator to Boot
+      - name:  Wait for Emulator to Boot
         run: |
           adb wait-for-device
           boot_completed=""
@@ -104,39 +104,19 @@ jobs:
             exit 1
           fi
 
-      - name: 🔇 Disable Animations
+      - name:  Disable Animations
         run: |
           adb shell settings put global window_animation_scale 0
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
 
-      - name: 🌐 Download Reference Image from Web
-        run: |
-          curl -L "https://res.infoq.com/news/2020/03/webdriverio-6-release-puppeteer/en/headerimage/webdriverio-1585340491755.jpg" -o webdriverio.jpg
-          if [ ! -f "webdriverio.jpg" ]; then
-            echo "::error::Image download failed"
-            exit 1
-          else
-            echo "Image downloaded successfully: webdriverio.jpg"
-          fi
-
-      - name: 📸 Take Emulator Screenshot (Alternative)
-        if: ${{ false }}  # Set to true if you prefer a screenshot over downloading
-        run: |
-          adb exec-out screencap -p > emulator_screenshot.png
-          if [ ! -f "emulator_screenshot.png" ]; then
-            echo "::error::Screenshot capture failed"
-            exit 1
-          else
-            echo "Screenshot saved: emulator_screenshot.png"
-          fi
-      - name: ⬇️ Download APKs
+      - name:  Download APKs
         run: |
           pip install gdown
           gdown --fuzzy "https://drive.google.com/file/d/1UmKiTZ6SlMorOBLx754Fs7_oqoNxFQ4F/view?usp=drive_link" -O app-release-trainer.apk
           gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O appclient.apk
 
-      """      - name: ✅ Install APKs
+      - name:  Install APKs
         run: |
           adb uninstall com.willma.staging || true
           adb uninstall com.willma.client.staging || true
@@ -144,7 +124,7 @@ jobs:
           adb install -r -g appclient.apk
           sleep 15
 
-      - name: 🚀 Start App and Wait for Focus
+      - name:  Start App and Wait for Focus
         run: |
           adb shell am start -n com.willma.staging/.MainActivity
           timeout=120
@@ -152,40 +132,38 @@ jobs:
           while [[ $count -lt $timeout ]]; do
             foreground_app=$(adb shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp' | grep 'com.willma.staging' || echo "not found")
             if [[ "$foreground_app" != "not found" ]]; then
-              echo "✅ App is in the foreground."
+              echo " App is in the foreground."
               break
             fi
-            echo "⏳ Waiting for app to gain focus... ($count s)"
+            echo " Waiting for app to gain focus... ($count s)"
             sleep 2
             count=$((count + 2))
           done
           if [[ $count -ge $timeout ]]; then
-            echo "❌ Error: Timed out waiting for app to gain focus."
+            echo " Error: Timed out waiting for app to gain focus."
             adb shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp'
             exit 1
           fi
-""
 
-      - name: 🔍 Verify APK State
+      - name:  Verify APK State
         continue-on-error: true
         run: |
           adb shell pm list packages | grep willma || echo "::warning::Willma packages not found"
           adb shell dumpsys package com.willma.staging | grep -i 'MainActivity' || echo "::warning::MainActivity not found"
           adb shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp' || echo "::warning::No foreground activity"
 
-          
-      - name: 🧪 Start Appium Server
+      - name:  Start Appium Server
         run: |
           mkdir -p logs
           nohup npx appium --relaxed-security --log-timestamp > logs/appium.log 2>&1 &
           sleep 10
 
-      - name: 🧪 Run E2E Tests
+      - name:  Run E2E Tests
         run: |
           npx wdio run ./wdio.ci.conf.js
         continue-on-error: true
 
-      - name: 📷 Collect Diagnostics
+      - name:  Collect Diagnostics
         if: always()
         run: |
           mkdir -p diagnostics
@@ -194,7 +172,7 @@ jobs:
           cp -r screenshots diagnostics/ || true
           cp -r logs/ diagnostics/ || true
 
-      - name: 📤 Upload Artifacts
+      - name:  Upload Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -202,7 +180,7 @@ jobs:
           path: diagnostics/
           retention-days: 7
 
-      - name: 🛑 Kill Emulator
+      - name:  Kill Emulator
         if: always()
         run: |
           adb emu kill || true
