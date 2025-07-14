@@ -173,6 +173,7 @@ jobs:
           adb shell dumpsys package com.willma.staging | grep -i 'MainActivity' || echo "::warning::MainActivity not found"
           adb shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp' || echo "::warning::No foreground activity"
 
+          
       - name: 🧪 Start Appium Server
         run: |
           mkdir -p logs
