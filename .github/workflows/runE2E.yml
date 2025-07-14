@@ -49,6 +49,12 @@ jobs:
           echo "$ANDROID_HOME/emulator" >> $GITHUB_PATH
           echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
 
+      - name: 🔧 KVM Setup
+        run: |
+          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
+          sudo gpasswd -a $USER kvm
+          sudo chmod 666 /dev/kvm
+
       - name: 📱 Create and Configure AVD
         run: |
           mkdir -p "$ANDROID_AVD_HOME"
@@ -64,7 +70,7 @@ jobs:
           done
 
           if [ -f "$CONFIG_FILE" ]; then
-            echo "hw.ramSize=2048" >> "$CONFIG_FILE"
+            echo "hw.ramSize=4096" >> "$CONFIG_FILE"
             echo "hw.gpu.enabled=yes" >> "$CONFIG_FILE"
             echo "hw.gpu.mode=swiftshader_indirect" >> "$CONFIG_FILE"
           else
@@ -73,15 +79,9 @@ jobs:
             exit 1
           fi
 
-      - name: 🔧 KVM Setup
-        run: |
-          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
-          sudo gpasswd -a $USER kvm
-          sudo chmod 666 /dev/kvm
-
       - name: 🚀 Start Emulator
         run: |
-          nohup $ANDROID_HOME/emulator/emulator -avd "$AVD_NAME" -no-audio -no-window -gpu swiftshader_indirect -no-boot-anim &
+          nohup $ANDROID_HOME/emulator/emulator -avd "$AVD_NAME" -no-audio -no-window -gpu swiftshader_indirect -no-boot-anim -no-snapshot-load &
 
       - name: ⏳ Wait for Emulator to Boot
         run: |
@@ -91,12 +91,13 @@ jobs:
           count=0
           until [[ "$boot_completed" == "1" || $count -ge $timeout ]]; do
             boot_completed=$(adb shell getprop sys.boot_completed | tr -d '\r')
-            echo "Waiting for emulator to boot... ($count s)"
+            echo "Waiting for emulator to boot... ($count s) - boot_completed: $boot_completed"
             sleep 5
             count=$((count + 5))
           done
           if [ "$boot_completed" != "1" ]; then
             echo "::error::Emulator failed to boot"
+            adb shell getprop
             exit 1
           fi
 
@@ -138,6 +139,7 @@ jobs:
           adb uninstall com.willma.client.staging || true
           adb install -r -g app-release-trainer.apk
           adb install -r -g appclient.apk
+          sleep 15
 
       - name: 🔍 Verify APK State
         continue-on-error: true
