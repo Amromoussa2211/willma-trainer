@@ -136,13 +136,35 @@ jobs:
           gdown --fuzzy "https://drive.google.com/file/d/1UmKiTZ6SlMorOBLx754Fs7_oqoNxFQ4F/view?usp=drive_link" -O app-release-trainer.apk
           gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O appclient.apk
 
-      - name: ✅ Install APKs
+      """      - name: ✅ Install APKs
         run: |
           adb uninstall com.willma.staging || true
           adb uninstall com.willma.client.staging || true
           adb install -r -g app-release-trainer.apk
           adb install -r -g appclient.apk
           sleep 15
+
+      - name: 🚀 Start App and Wait for Focus
+        run: |
+          adb shell am start -n com.willma.staging/.MainActivity
+          timeout=120
+          count=0
+          while [[ $count -lt $timeout ]]; do
+            foreground_app=$(adb shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp' | grep 'com.willma.staging' || echo "not found")
+            if [[ "$foreground_app" != "not found" ]]; then
+              echo "✅ App is in the foreground."
+              break
+            fi
+            echo "⏳ Waiting for app to gain focus... ($count s)"
+            sleep 2
+            count=$((count + 2))
+          done
+          if [[ $count -ge $timeout ]]; then
+            echo "❌ Error: Timed out waiting for app to gain focus."
+            adb shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp'
+            exit 1
+          fi
+""
 
       - name: 🔍 Verify APK State
         continue-on-error: true
