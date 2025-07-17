@@ -26,11 +26,11 @@ describe('Signup Flow', () => {
     it('makeform', async () => {
         // Enter email
         const emailInput = await $('android=new UiSelector().resourceId("email-input")');
-        await emailInput.setValue('femojo8968@deenur.com');
+        await emailInput.setValue('amr@test.test');
 
         // Enter password
         const passwordInput = await $('android=new UiSelector().resourceId("password-input")');
-        await passwordInput.setValue('Willma123!');
+        await passwordInput.setValue('Abc@1234');
 
         // Click on Sign In button
         const signInButton = await $('android=new UiSelector().resourceId("login-button")');

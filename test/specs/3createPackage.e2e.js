@@ -73,9 +73,16 @@ describe('Signup & Create Package Flow', () => {
 
     it('should sign in and create a package successfully', async () => {
         // Sign in
-        await waitAndType('//android.widget.EditText[@resource-id="email-input"]', 'femojo8968@deenur.com');
-        await waitAndType('//android.widget.EditText[@resource-id="password-input"]', 'Willma123!');
-        await waitAndClick('//android.view.ViewGroup[@content-desc="Sign In"]');
+        const emailInput = await $('android=new UiSelector().resourceId("email-input")');
+        await emailInput.setValue('amr@test.test');
+
+        // Enter password
+        const passwordInput = await $('android=new UiSelector().resourceId("password-input")');
+        await passwordInput.setValue('Abc@1234');
+
+        // Click on Sign In button
+        const signInButton = await $('android=new UiSelector().resourceId("login-button")');
+        await signInButton.click();
 
         // Navigate to Packages
         await waitAndClick('//android.view.View[@content-desc="Menu"]');
@@ -90,26 +97,15 @@ describe('Signup & Create Package Flow', () => {
         // Select Package Types
         await waitAndClick('android=new UiSelector().text("Workout")');
         await waitAndClick('android=new UiSelector().text("Nutrition")');
-
+        await waitAndClick("accessibility id:select-type");
+       
         // Add Tags
-        let tagsAdded = false;
-        while (!tagsAdded) {
-            try {
-                const tagEl = await $('//android.view.ViewGroup[@content-desc="Add up to 6 tags"]');
-                if (await tagEl.isDisplayed()) {
-                    await tagEl.click();
-                    await waitAndClick('android=new UiSelector().text("Strength Training")');
-                    tagsAdded = true;
-                }
-            } catch {
-                await driver.execute('mobile: scroll', { direction: 'down' });
-            }
-        }
 
+ await waitAndClick("-android uiautomator:new UiSelector().text(\"Strength Training\")");
         // Proceed
         await waitAndClick('android=new UiSelector().description("Next")');
         await waitAndClick('-android uiautomator:new UiSelector().text("Select item")');
-        await waitAndClick('-android uiautomator:new UiSelector().text("packegeAmrForm AUto").instance(0)');
+        await waitAndClick('-android uiautomator:new UiSelector().text("pkform").instance(0)');
         await waitAndClick('accessibility id:Next');
         await waitAndType('class name:android.widget.EditText', '1000');
         await waitAndClick('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(16)');
@@ -117,12 +113,13 @@ describe('Signup & Create Package Flow', () => {
 
         // Upload Image
         await scrollToText('Upload file, PNG, JPG (max size 5MB)');
-        await waitAndClick('//android.view.ViewGroup[@content-desc="Upload file, PNG, JPG (max size 5MB)"]');
-
-        const galleryHeader = await $('android=new UiSelector().textContains("Photos")');
-        await galleryHeader.waitForDisplayed({ timeout: 10000 });
-
-        await clickThumbnailIfExists(); // 👈 This line calls the new helper
+        // await waitAndClick('//android.view.ViewGroup[@content-desc="Upload file, PNG, JPG (max size 5MB)"]');
+const el1 = await driver.$("accessibility id:Upload file, PNG, JPG (max size 15MB)");
+await el1.click();
+const el2 = await driver.$("id:com.google.android.providers.media.module:id/icon_thumbnail");
+await el2.click();
+const el3 = await driver.$("accessibility id:Crop");
+await el3.click();
 
         // Finalize Package
         await scrollToText('Next');

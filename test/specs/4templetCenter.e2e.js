@@ -1,242 +1,136 @@
 import { expect } from 'chai';
-
-async function clickWithRetry(element, retries = 0) {
+import { faker } from '@faker-js/faker'; // Uncomment if needed
+async function clickWithRetry(element, retries = 3) {
     while (retries > 0) {
         try {
+            await element.waitForDisplayed({ timeout: 60000 });
             await element.click();
-            await driver.pause(2000); // Wait for 2 seconds
             return;
         } catch (error) {
-            console.error('Error clicking element:', error);
             retries--;
-            if (retries === 0) throw error; // Rethrow error if out of retries
+            await driver.pause(1000);
         }
     }
+    throw new Error('Element not clickable after retries.');
 }
 
-async function restartUiAutomator2Server() {
-    console.log('Restarting UiAutomator2 server...');
-    await driver.deleteSession(); // End the current session
-    await driver.startSession(); // Start a new session
-    console.log('UiAutomator2 server restarted.');
+async function setValueWithRetry(element, value) {
+    await element.waitForDisplayed({ timeout: 60000 });
+    await element.setValue(value);
 }
 
-describe('templet workout ', () => {
+describe('templet workout', () => {
     before(async () => {
-        try {
-            // Launch the app
-            await driver.startActivity(
-                'com.willma.staging',
-                'com.willma.staging.MainActivity'
-            );
-            console.log('App launched successfully.');
-        } catch (error) {
-            console.error('Error launching the app:', error);
-            await restartUiAutomator2Server(); // Restart UiAutomator2 if needed
-        }
+        await driver.startActivity('com.willma.staging', 'com.willma.staging.MainActivity');
     });
 
     it('should sign up successfully and create workout templet', async () => {
-        try {
-             //Wait for the sign-up button to appear
-            const emailInput = await $('//android.widget.EditText[@resource-id="email-input"]');
-                   await emailInput.waitForDisplayed({ timeout: 60000 });
-                  await emailInput.setValue('femojo8968@deenur.com');
-                   console.log('Entered email.');
-              
-                   // Step 2: Enter password
-                   const passwordInput = await $('//android.widget.EditText[@resource-id="password-input"]');
-                   await passwordInput.waitForDisplayed({ timeout: 60000 });
-                   await passwordInput.setValue('Willma123!');
-                   console.log('Entered password.');
-              
-                   // Step 3: Click on Sign In button
-                   const signInButton = await $('//android.view.ViewGroup[@content-desc="Sign In"]');
-                   await signInButton.waitForDisplayed({ timeout: 60000 });
-                   await signInButton.click();
-                   console.log('Clicked on Sign In button.');
+        const emailInput = await $('android=new UiSelector().resourceId("email-input")');
+        await setValueWithRetry(emailInput, 'amr@test.test');
 
-                   const menuButton = await $('//android.view.View[@content-desc="Menu"]');
-                   await menuButton.waitForDisplayed({ timeout: 60000 });           
-                     await menuButton.click();  
-                        console.log('Clicked on Menu button.');
+        const passwordInput = await $('android=new UiSelector().resourceId("password-input")');
+        await setValueWithRetry(passwordInput, 'Abc@1234');
 
-                        // Click on "Template Center"
-                        const templateCenterButton = await $('//android.view.ViewGroup[@content-desc="Template Center"]');
-                        await templateCenterButton.waitForDisplayed({ timeout: 60000 });
-                        await driver.pause(2000); // Wait before clicking
-                        await templateCenterButton.click();
-                        console.log('Clicked on Template Center.');
-                        await driver.pause(2000); // Wait after clicking
+        const signInButton = await $('android=new UiSelector().resourceId("login-button")');
+        await clickWithRetry(signInButton);
 
-                        // Click on "New Template"
-                        const newTemplateButton = await $('//android.view.ViewGroup[@content-desc="New Template"]');
-                        await newTemplateButton.waitForDisplayed({ timeout: 60000 });
-                        await driver.pause(2000); // Wait before clicking
-                        await newTemplateButton.click();
-                        console.log('Clicked on New Template.');
-                        await driver.pause(2000); // Wait after clicking
+        const menuButton = await $('//android.view.View[@content-desc="Menu"]');
+        await clickWithRetry(menuButton);
 
-                        // Click on "New Workout Template"
-                        const newWorkoutTemplateButton = await $('//android.view.ViewGroup[@content-desc="New Workout Template"]');
-                        await newWorkoutTemplateButton.waitForDisplayed({ timeout: 60000 });
-                        await driver.pause(2000); // Wait before clicking
-                        await newWorkoutTemplateButton.click();
-                        console.log('Clicked on New Workout Template.');
+        const templateCenterButton = await $('//android.view.ViewGroup[@content-desc="Template Center"]');
+        await clickWithRetry(templateCenterButton);
 
-                        // Enter "templetworkout" in the plan name input
-                        const planNameInput = await $('//android.widget.EditText[@text="Enter plan name"]');
-                        await planNameInput.waitForDisplayed({ timeout: 60000 });
-                        await planNameInput.setValue('templetworkout');
-                        console.log('Entered plan name: templetworkout.');
+        const newTemplateButton = await $('//android.view.ViewGroup[@content-desc="New Template"]');
+        await clickWithRetry(newTemplateButton);
 
-                        // Click on "Workout"
-                        const workoutButton = await $('//android.view.ViewGroup[@content-desc="Workout"]');
-                        await workoutButton.waitForDisplayed({ timeout: 60000 });
-                        await driver.pause(2000); // Wait before clicking
-                        await workoutButton.click();
-                        console.log('Clicked on Workout.');
+        const newWorkoutTemplateButton = await $('//android.view.ViewGroup[@content-desc="New Workout Template"]');
+        await clickWithRetry(newWorkoutTemplateButton);
 
-                        // Click on "Next"
-                        const nextButton = await $('//android.view.ViewGroup[@content-desc="Next"]');
-                        await nextButton.waitForDisplayed({ timeout: 60000 });
-                        await driver.pause(2000); // Wait before clicking
-                        await nextButton.click();
-                        console.log('Clicked on Next.');
+        const planNameInput = await $('//android.widget.EditText[@text="Enter plan name"]');
+        await setValueWithRetry(planNameInput, 'templetworkout');
 
-                    
-                         // Step 6: Select on Day 1
-                         await driver.pause(2000); // Wait before clicking
-                        // Select "Day 1"
-                        const day1Button = await driver.$('-android uiautomator:new UiSelector().description("Day 1").instance(0)');
-                        await day1Button.waitForDisplayed({ timeout: 60000 });
-                        await driver.pause(2000); // Wait before clicking
-                        await day1Button.click();
-                        console.log('Clicked on Day 1.');
+        const workoutButton = await $('//android.view.ViewGroup[@content-desc="Workout"]');
+        await clickWithRetry(workoutButton);
 
-                        // Click on "Add Exercise/s"
-                        const addExercisesButton = await driver.$('accessibility id:Add Exercise/s');
-                        await addExercisesButton.waitForDisplayed({ timeout: 60000 });
-                        await driver.pause(2000); // Wait before clicking
-                        await addExercisesButton.click();
-                        console.log('Clicked on Add Exercise/s.');
+        const nextButton = await $('//android.view.ViewGroup[@content-desc="Next"]');
+        await clickWithRetry(nextButton);
 
-                        // Select the first exercise
-                    // Select and click the first exercise (el1)
-                    const firstExercise = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(35)');
-                    await firstExercise.waitForDisplayed({ timeout: 60000 });
-                    await firstExercise.click();
+        const day1Button = await driver.$('-android uiautomator:new UiSelector().description("Day 1")');
+        await clickWithRetry(day1Button);
 
-                    // Select and click the second exercise (el2)
-                    const secondExercise = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(42)');
-                    await secondExercise.waitForDisplayed({ timeout: 60000 });
-                    await secondExercise.click();
+        const addExercisesButton = await driver.$('accessibility id:Add Exercise/s');
+        await clickWithRetry(addExercisesButton);
 
-                    // Click on "Add 2 Exercises" (el3)
-                    const addTwoExercises = await driver.$('accessibility id:Add 2 Exercises');
-                    await addTwoExercises.waitForDisplayed({ timeout: 60000 });
-                    await addTwoExercises.click();
+        const firstExercise = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(35)');
+        await clickWithRetry(firstExercise);
 
-                    // Click on the SVG PathView element (el4)
-                    const svgPathView = await driver.$('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(2)');
-                    await svgPathView.waitForDisplayed({ timeout: 60000 });
-                    await svgPathView.click();
+        const secondExercise = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(42)');
+        await clickWithRetry(secondExercise);
 
-                    // Click on "Configure" (el5)
-                    const configureBtn = await driver.$('-android uiautomator:new UiSelector().text("Configure")');
-                    await configureBtn.waitForDisplayed({ timeout: 60000 });
-                    await configureBtn.click();
+        const addTwoExercises = await driver.$('accessibility id:Add 2 Exercises');
+        await clickWithRetry(addTwoExercises);
 
-                    // Click on "Update" (el6)
-                    const updateBtn = await driver.$('accessibility id:Update');
-                    await updateBtn.waitForDisplayed({ timeout: 60000 });
-                    await updateBtn.click();
+        const svgPathView = await driver.$('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(2)');
+        await clickWithRetry(svgPathView);
 
-                    // Confirm the update (el7)
-                    const confirmUpdateBtn = await driver.$('id:android:id/button1');
-                    await confirmUpdateBtn.waitForDisplayed({ timeout: 60000 });
-                    await confirmUpdateBtn.click();
-                    const duplicatePathView = await driver.$('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(3)');
-                    await duplicatePathView.click();
+        const configureBtn = await driver.$('-android uiautomator:new UiSelector().text("Configure")');
+        await clickWithRetry(configureBtn);
 
-                    const duplicateTextButton = await driver.$('-android uiautomator:new UiSelector().text("Duplicate")');
-                    await duplicateTextButton.click();
+        const updateBtn = await driver.$('accessibility id:Update');
+        await clickWithRetry(updateBtn);
 
-                    const viewGroup29 = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(29)');
-                    await viewGroup29.click();
+        const confirmUpdateBtn = await driver.$('id:android:id/button1');
+        if (await confirmUpdateBtn.isDisplayed().catch(() => false)) {
+            await clickWithRetry(confirmUpdateBtn);
+        }
 
-                    const week1Button = await driver.$('accessibility id:Week 1');
-                    await week1Button.click();
+        const duplicatePathView = await driver.$('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(3)');
+        await clickWithRetry(duplicatePathView);
 
-                    const day2Button = await driver.$('-android uiautomator:new UiSelector().description("Day 2").instance(0)');
-                    await day2Button.click();
+        const duplicateTextButton = await driver.$('-android uiautomator:new UiSelector().text("Duplicate")');
+        await clickWithRetry(duplicateTextButton);
 
-                    const day3Button = await driver.$('-android uiautomator:new UiSelector().description("Day 3").instance(0)');
-                    await day3Button.click();
+        const viewGroup29 = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(29)');
+        await clickWithRetry(viewGroup29);
 
-                    const day4Button = await driver.$('-android uiautomator:new UiSelector().description("Day 4").instance(0)');
-                    await day4Button.click();
+        const week1Button = await driver.$('accessibility id:Week 1');
+        await clickWithRetry(week1Button);
 
-                    const day5Button = await driver.$('-android uiautomator:new UiSelector().description("Day 5").instance(0)');
-                    await day5Button.click();
+        for (let i = 2; i <= 7; i++) {
+            const dayButton = await driver.$(`-android uiautomator:new UiSelector().description("Day ${i}").instance(0)`);
+            await clickWithRetry(dayButton);
+        }
 
-                    const day6Button = await driver.$('-android uiautomator:new UiSelector().description("Day 6").instance(0)');
-                    await day6Button.click();
+        const duplicateButton = await driver.$('accessibility id:Duplicate');
+        await clickWithRetry(duplicateButton);
 
-                    const day7Button = await driver.$('-android uiautomator:new UiSelector().description("Day 7").instance(0)');
-                    await day7Button.click();
+        const confirmBtnIfPresent = await driver.$('//android.widget.Button[@resource-id="android:id/button1"]');
+        await clickWithRetry(confirmBtnIfPresent);
 
-                    const duplicateButton = await driver.$('accessibility id:Duplicate');
-                    await duplicateButton.click();
+        await driver.pause(3000);
 
-                    const confirmBtnIfPresent = await driver.$('//android.widget.Button[@resource-id="android:id/button1"]');
-                    const isConfirmBtnDisplayed = await confirmBtnIfPresent.isDisplayed().catch(() => false);
-                    expect(isConfirmBtnDisplayed).to.be.a('boolean');
-                    if (isConfirmBtnDisplayed) {
-                        await confirmBtnIfPresent.click();
-                        console.log('Clicked on confirm button (android:id/button1).');
-                    }
-                    const nextBtn = await driver.$('accessibility id:Next');
-                    await nextBtn.waitForDisplayed({ timeout: 60000 });
-                    await driver.pause(2000);
-                    await nextBtn.click();
+        const nextBtn = await driver.$('accessibility id:Next');
+        await clickWithRetry(nextBtn);
 
-                    const createTemplateBtn = await driver.$('-android uiautomator:new UiSelector().text("Create Template")');
-                    await createTemplateBtn.waitForDisplayed({ timeout: 60000 });
-                    await driver.pause(2000);
-                    await createTemplateBtn.click();
+        await driver.pause(3000);
 
-                    const homeButton = await driver.$('-android uiautomator:new UiSelector().description("Home")');
-                    await homeButton.waitForDisplayed({ timeout: 60000 });
-                    await driver.pause(2000);
-                    await homeButton.click();
-                    console.log('Clicked on Home button.');
+        const createTemplateBtn = await driver.$('-android uiautomator:new UiSelector().text("Create Template")');
+        await clickWithRetry(createTemplateBtn);
 
-                    
+        // ✅ Wait until the button disappears
+        await createTemplateBtn.waitForExist({ timeout: 30000, reverse: true });
 
-                    // Prefer using resource-id with UiSelector for better reliability
-                    const homeBtn = await driver.$('-android uiautomator:new UiSelector().resourceId("menu-tab")');
-                    await homeBtn.waitForDisplayed({ timeout: 60000 });
-                    await driver.pause(2000);
-                    await homeBtn.click();
+        const homeButton = await driver.$('-android uiautomator:new UiSelector().description("Home")');
+        await homeButton.waitForDisplayed({ timeout: 30000 });
+        await clickWithRetry(homeButton);
 
-                  
+        const homeBtn = await driver.$('-android uiautomator:new UiSelector().resourceId("menu-tab")');
+        await clickWithRetry(homeBtn);
 
-                    const logoutBtn = await driver.$('accessibility id:Logout');
-                    await logoutBtn.waitForDisplayed({ timeout: 60000 });
-                    await driver.pause(2000);
-                    await logoutBtn.click();
+        const logoutBtn = await driver.$('accessibility id:Logout');
+        await clickWithRetry(logoutBtn);
 
-                    const yesBtn = await driver.$('accessibility id:Yes');
-                    await yesBtn.waitForDisplayed({ timeout: 60000 });
-                    await driver.pause(2000);
-                    await yesBtn.click();
-           
-                    } catch (error) {
-                        console.error('Test failed:', error);
-                        await driver.saveScreenshot('./error-workout-plan.png');
-                        throw error;
-                    }
-                });
-            });
-            
+        const yesBtn = await driver.$('accessibility id:Yes');
+        await clickWithRetry(yesBtn);
+    });
+});
