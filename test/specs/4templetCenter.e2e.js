@@ -47,7 +47,8 @@ describe('templet workout', () => {
         await clickWithRetry(newWorkoutTemplateButton);
 
         const planNameInput = await $('//android.widget.EditText[@text="Enter plan name"]');
-        await setValueWithRetry(planNameInput, 'templetworkout');
+        const randomPlanName = `auto${Math.floor(100 + Math.random() * 900)}`;
+        await setValueWithRetry(planNameInput, randomPlanName);
 
         const workoutButton = await $('//android.view.ViewGroup[@content-desc="Workout"]');
         await clickWithRetry(workoutButton);

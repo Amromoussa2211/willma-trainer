@@ -8,7 +8,7 @@ const localConfig = {
       "appium:appPackage": "com.willma.staging",
       "appium:appActivity": "com.willma.staging.MainActivity",
       'appium:app': 'C:\\Users\\ZBOOK\\Desktop\\appium\\Trainer\\apps\\app-release-v20-0.4.0-2025-03-24-03-10.apk',
-      'appium:noReset': true,
+      'appium:noReset': false,
       'appium:fullReset': false,
       'appium:autoGrantPermissions': true,
       'appium:newCommandTimeout': 600, // Increased to 600 seconds (10 minutes)

@@ -68,7 +68,8 @@ describe('Signup Flow', () => {
 
             const planNameInput = await $('android=new UiSelector().text("Enter plan name")');
             await clickWithRetry(planNameInput);
-            await planNameInput.addValue('nuttemplet');
+            const randomPlanName = `autoNut${Math.floor(Math.random() * 100000)}`;
+            await planNameInput.addValue(randomPlanName);
 //  const el1 = await driver.$("id:android:id/button1");
 // await el1.click();
 const el2 = await driver.$("-android uiautomator:new UiSelector().text(\"Nutrition\")");
