@@ -123,6 +123,19 @@ jobs:
           echo "--- Client APK ---"
           $ANDROID_HOME/build-tools/34.0.0/aapt dump badging appclient.apk | grep package
 
+      - name: ❌ Fail if APKs have the same package name
+        run: |
+          TRAINER_PKG=$($ANDROID_HOME/build-tools/34.0.0/aapt dump badging app-release-trainer.apk | grep package | awk -F"'" '{print $2}')
+          CLIENT_PKG=$($ANDROID_HOME/build-tools/34.0.0/aapt dump badging appclient.apk | grep package | awk -F"'" '{print $2}')
+
+          echo "Trainer package: $TRAINER_PKG"
+          echo "Client package:  $CLIENT_PKG"
+
+          if [ "$TRAINER_PKG" = "$CLIENT_PKG" ]; then
+            echo "❌ ERROR: Trainer and Client APKs have the same package name!"
+            exit 1
+          fi
+
       - name: 📲 Install APKs
         run: |
           adb uninstall com.willma.staging || true
@@ -136,7 +149,6 @@ jobs:
         run: |
           echo "--- Installed Packages ---"
           adb shell pm list packages | grep com.willma
-
       - name: 🧪 Start Appium Server
         run: |
           mkdir -p logs
