@@ -113,8 +113,8 @@ jobs:
       - name: ⬇️ Download APKs
         run: |
           pip install gdown
-          gdown --fuzzy "https://drive.google.com/file/d/1UmKiTZ6SlMorOBLx754Fs7_oqoNxFQ4F/view?usp=drive_link" -O app-release-trainer.apk
-          gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O appclient.apk
+            gdown --fuzzy "https://drive.google.com/file/d/1moB6CyW6wC5MJDlDlfkT_TZ0QIfsuNEz/view?usp=drive_link" -O app-release-trainer.apk
+            gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O appclient.apk
 
       - name: 🔍 Verify Downloaded APK
         run: |
