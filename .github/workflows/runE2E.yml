@@ -126,8 +126,8 @@ jobs:
         run: |
           adb shell pm clear com.willma.staging || true
           adb shell pm clear com.willma.client.staging || true
-          adb uninstall com.willma.staging || true
-          adb uninstall com.willma.client.staging || true
+          adb uninstall --user 0 com.willma.staging || true
+          adb uninstall --user 0 com.willma.client.staging || true
           adb shell rm -rf /data/data/com.willma.staging || true
           adb shell rm -rf /data/data/com.willma.client.staging || true
           adb install -r -g app-release-trainer.apk
