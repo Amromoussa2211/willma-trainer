@@ -116,14 +116,11 @@ jobs:
           ~/.local/bin/gdown --fuzzy "https://drive.google.com/file/d/1moB6CyW6wC5MJDlDlfkT_TZ0QIfsuNEz/view?usp=drive_link" -O app-release-trainer.apk
           ~/.local/bin/gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O appclient.apk
 
-      - name: 🔍 Verify Downloaded APKs
+      - name: 🔍 Verify Package Names
         run: |
-          echo "--- Verifying app-release-trainer.apk ---"
-          ls -lh app-release-trainer.apk
+          echo "--- Trainer APK ---"
           $ANDROID_HOME/build-tools/34.0.0/aapt dump badging app-release-trainer.apk | grep package
-
-          echo "--- Verifying appclient.apk ---"
-          ls -lh appclient.apk
+          echo "--- Client APK ---"
           $ANDROID_HOME/build-tools/34.0.0/aapt dump badging appclient.apk | grep package
 
       - name: 📲 Install APKs
@@ -139,7 +136,7 @@ jobs:
         run: |
           echo "--- Installed Packages ---"
           adb shell pm list packages | grep com.willma
-          
+
       - name: 🧪 Start Appium Server
         run: |
           mkdir -p logs
