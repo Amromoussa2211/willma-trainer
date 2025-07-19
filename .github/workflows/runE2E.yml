@@ -130,8 +130,8 @@ jobs:
       - name: 📲 Install APKs
         run: |
           adb install -g app-release-trainer.apk
+          sleep 2
           adb install -g appclient.apk
-          sleep 15
 
       - name: 🔍 Verify APK State
         continue-on-error: true
