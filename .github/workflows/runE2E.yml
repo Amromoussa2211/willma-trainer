@@ -134,98 +134,137 @@ jobs:
 
       - name: 🧹 Force Uninstall and Clean Install APKs
         run: |
-          # Ultra-aggressive cleanup approach
-          echo "=== PHASE 1: Comprehensive Package Removal ==="
+      - name: 🧹 Force Uninstall and Clean Install APKs
+        run: |
+          echo "=== PHASE 1: Nuclear Package Cleanup ==="
+          
+          # First, restart package manager to clear caches
+          echo "Restarting package manager..."
+          adb shell stop
+          sleep 3
+          adb shell start
+          adb wait-for-device
+          
+          # Wait for system to fully boot again
+          boot_completed=""
+          timeout=120
+          count=0
+          until [[ "$boot_completed" == "1" || $count -ge $timeout ]]; do
+            boot_completed=$(adb shell getprop sys.boot_completed | tr -d '\r')
+            echo "Waiting for system restart... ($count s) - boot_completed: $boot_completed"
+            sleep 2
+            count=$((count + 2))
+          done
           
           for PACKAGE in com.willma.staging com.willma.client.staging; do
-            echo "=== Handling $PACKAGE ==="
+            echo "=== Deep cleanup for $PACKAGE ==="
             
-            # Kill all processes first
-            echo "Stopping all processes for $PACKAGE..."
+            # Kill everything related to this package
             adb shell am force-stop $PACKAGE || true
             adb shell killall $PACKAGE 2>/dev/null || true
             
-            # Try multiple uninstall methods
-            echo "Attempting comprehensive uninstall..."
+            # Clear all possible data locations
             adb shell pm clear $PACKAGE || true
+            
+            # Comprehensive uninstall attempts
             adb shell pm uninstall --user 0 $PACKAGE || true
             adb shell pm uninstall -k --user 0 $PACKAGE || true
             adb shell pm uninstall --user all $PACKAGE || true
             adb uninstall $PACKAGE || true
             
-            # Check all user profiles
-            echo "Checking all user profiles..."
-            USER_IDS=$(adb shell pm list users | grep -o 'UserInfo{[0-9]*' | cut -d'{' -f2)
+            # Get all users and try to uninstall from each
+            USER_IDS=$(adb shell pm list users | grep -o 'UserInfo{[0-9]*' | cut -d'{' -f2 | tr '\n' ' ')
             for USER_ID in $USER_IDS; do
-              echo "Uninstalling for user $USER_ID..."
               adb shell pm uninstall --user $USER_ID $PACKAGE 2>/dev/null || true
             done
             
-            echo "Cleanup attempts completed for $PACKAGE"
-          done
-
-          # Wait and verify cleanup worked
-          sleep 3
-          echo "=== Verifying cleanup status ==="
-          REMAINING_PACKAGES=$(adb shell pm list packages | grep willma || echo "")
-          if [[ -n "$REMAINING_PACKAGES" ]]; then
-            echo "⚠️ WARNING: Some packages still detected:"
-            echo "$REMAINING_PACKAGES"
+            # Try to disable and hide the package if it still exists
+            adb shell pm disable-user --user 0 $PACKAGE 2>/dev/null || true
+            adb shell pm hide --user 0 $PACKAGE 2>/dev/null || true
             
-            # Last resort: try to force remove each remaining package
-            echo "=== PHASE 2: Last Resort Cleanup ==="
-            while IFS= read -r line; do
-              if [[ $line == package:* ]]; then
-                PKG_NAME=$(echo $line | cut -d':' -f2)
-                echo "Force removing stubborn package: $PKG_NAME"
-                adb shell pm disable-user --user 0 $PKG_NAME || true
-                adb shell pm uninstall --user 0 $PKG_NAME || true
-                adb shell pm hide --user 0 $PKG_NAME || true
-              fi
-            done <<< "$REMAINING_PACKAGES"
+            # Manual cleanup of package directories
+            adb shell rm -rf /data/data/$PACKAGE 2>/dev/null || true
+            adb shell rm -rf /data/user/0/$PACKAGE 2>/dev/null || true
+            adb shell rm -rf /data/user_de/0/$PACKAGE 2>/dev/null || true
+            
+            echo "Intensive cleanup completed for $PACKAGE"
+          done
+          
+          # Clear package manager caches
+          echo "Clearing package manager caches..."
+          adb shell pm clear com.google.android.packageinstaller || true
+          adb shell pm clear com.android.packageinstaller || true
+          adb shell pm trim-caches 1000000000 || true
+          
+          # Restart package manager again to ensure clean state
+          echo "Final package manager restart..."
+          adb shell stop
+          sleep 5
+          adb shell start
+          adb wait-for-device
+          
+          # Wait for system to be ready
+          boot_completed=""
+          timeout=120
+          count=0
+          until [[ "$boot_completed" == "1" || $count -ge $timeout ]]; do
+            boot_completed=$(adb shell getprop sys.boot_completed | tr -d '\r')
+            echo "Waiting for final system restart... ($count s)"
+            sleep 2
+            count=$((count + 2))
+          done
+          
+          # Ultimate verification
+          echo "=== Final verification of cleanup ==="
+          REMAINING=$(adb shell pm list packages | grep willma || echo "")
+          if [[ -n "$REMAINING" ]]; then
+            echo "::error::CRITICAL: Packages still detected after nuclear cleanup:"
+            echo "$REMAINING"
+            # Let's see detailed package info
+            for line in $REMAINING; do
+              PKG=$(echo $line | cut -d':' -f2)
+              echo "--- Details for $PKG ---"
+              adb shell dumpsys package $PKG | grep -E "pkg=|codePath=|signatures=" || true
+            done
+            echo "Attempting to proceed anyway..."
           else
-            echo "✅ All willma packages successfully removed"
+            echo "✅ Nuclear cleanup successful - no willma packages detected"
           fi
 
-          # Final verification before install
-          sleep 2
-          FINAL_CHECK=$(adb shell pm list packages | grep willma || echo "")
-          if [[ -n "$FINAL_CHECK" ]]; then
-            echo "::warning::Some packages still present after cleanup:"
-            echo "$FINAL_CHECK"
-            echo "Proceeding with installation anyway..."
-          fi
-
-          # Install APKs with all available flags
-          echo "=== PHASE 3: Installing APKs ==="
+          # Install with maximum aggressive settings
+          echo "=== PHASE 2: Installing APKs with maximum force ==="
+          
+          # Disable all verification systems
+          adb shell settings put global verifier_verify_adb_installs 0 || true
+          adb shell settings put global package_verifier_enable 0 || true
+          adb shell settings put secure install_non_market_apps 1 || true
+          adb shell settings put global development_settings_enabled 1 || true
           
           echo "Installing Trainer APK..."
-          if adb install -r -d -g --force-sdk app-release-trainer.apk 2>&1; then
+          if adb install -r -d -g --force-sdk --bypass-low-target-sdk-block app-release-trainer.apk 2>&1; then
             echo "✅ Trainer APK installed successfully"
           else
             echo "::error::❌ Trainer APK install failed"
-            adb shell pm list packages | grep willma || echo "No willma packages found"
             exit 1
           fi
 
-          echo "Installing Client APK..."
-          # Try with maximum flags for problematic APK
-          if adb install -r -d -g --force-sdk appclient.apk 2>&1; then
+          echo "Installing Client APK with maximum force..."
+          # Try the most aggressive install possible
+          if adb install -r -d -g --force-sdk --bypass-low-target-sdk-block --force-queryable appclient.apk 2>&1; then
             echo "✅ Client APK installed successfully"
           else
-            echo "❌ Standard install failed, trying alternative approach..."
-            # Alternative: disable package verification
-            adb shell settings put global verifier_verify_adb_installs 0 || true
-            adb shell settings put global package_verifier_enable 0 || true
-            sleep 2
-            
-            if adb install -r -d -g --force-sdk --bypass-low-target-sdk-block appclient.apk 2>&1; then
-              echo "✅ Client APK installed successfully (alternative method)"
+            echo "❌ Direct install failed, trying push method..."
+            # Alternative method: push and install manually
+            adb push appclient.apk /data/local/tmp/appclient.apk
+            if adb shell pm install -r -d -g --force-sdk /data/local/tmp/appclient.apk 2>&1; then
+              echo "✅ Client APK installed via push method"
+              adb shell rm /data/local/tmp/appclient.apk
             else
-              echo "::error::❌ Client APK install failed completely"
-              echo "Dumping detailed error info..."
+              echo "::error::❌ All installation methods failed for client APK"
+              echo "Final package state:"
               adb shell pm list packages | grep willma
-              adb logcat -d | grep -i "install\|package" | tail -20
+              echo "Detailed error info:"
+              adb logcat -d | grep -E "PackageManager|INSTALL_FAILED" | tail -30
               exit 1
             fi
           fi
