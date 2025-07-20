@@ -121,27 +121,112 @@ jobs:
           ls -l appclient.apk
           $ANDROID_HOME/build-tools/34.0.0/aapt dump badging appclient.apk | grep -E "package:|launchable-activity"
 
-      - name: 🧹 Force Uninstall and Clean Install APKs
+      - name: 📋 Check Current Package State
         run: |
+          echo "=== Current installed packages ==="
+          adb shell pm list packages | grep willma || echo "No willma packages found"
+          
+          echo "=== Package details if they exist ==="
           for PACKAGE in com.willma.staging com.willma.client.staging; do
-            echo "Handling $PACKAGE"
-            adb shell am force-stop $PACKAGE || true
-            adb shell pm clear $PACKAGE || true
-            adb uninstall $PACKAGE || true
-            adb shell rm -rf /data/data/$PACKAGE || true
+            echo "--- $PACKAGE ---"
+            adb shell dumpsys package $PACKAGE | grep -E "versionName|signatures|firstInstallTime" || echo "Package $PACKAGE not found"
           done
 
-          echo "Installing trainer APK..."
-          adb install -r -g app-release-trainer.apk || (echo "::error::Trainer APK install failed" && exit 1)
-
-          echo "Installing client APK..."
-          adb install -r -g appclient.apk || (echo "::error::Client APK install failed" && exit 1)
-
-      - name: 🔍 Confirm APKs Installed
+      - name: 🧹 Force Uninstall and Clean Install APKs
         run: |
-          adb shell pm list packages | grep willma || echo "::warning::Missing packages"
-          adb shell dumpsys package com.willma.client.staging | grep versionName
-          adb shell dumpsys package com.willma.staging | grep versionName
+          # More aggressive cleanup approach
+          for PACKAGE in com.willma.staging com.willma.client.staging; do
+            echo "=== Handling $PACKAGE ==="
+            
+            # Step 1: Kill all processes
+            echo "Stopping processes..."
+            adb shell am force-stop $PACKAGE || true
+            adb shell killall $PACKAGE || true
+            
+            # Step 2: Clear app data
+            echo "Clearing app data..."
+            adb shell pm clear $PACKAGE || true
+            
+            # Step 3: Multiple uninstall attempts
+            echo "Attempting to uninstall..."
+            adb shell pm uninstall --user 0 $PACKAGE || true
+            adb uninstall $PACKAGE || true
+            
+            # Step 4: Nuclear option - direct filesystem cleanup (requires root)
+            echo "Filesystem cleanup..."
+            adb shell su -c "rm -rf /data/data/$PACKAGE" 2>/dev/null || true
+            adb shell su -c "rm -rf /data/app/*$PACKAGE*" 2>/dev/null || true
+            adb shell rm -rf /data/data/$PACKAGE 2>/dev/null || true
+            
+            echo "Cleanup completed for $PACKAGE"
+          done
+
+          # Wait for cleanup to settle
+          echo "Waiting for system to settle..."
+          sleep 5
+
+          # Verify cleanup
+          echo "=== Verifying cleanup ==="
+          adb shell pm list packages | grep willma || echo "✅ All willma packages removed"
+
+          # Install APKs with aggressive flags
+          echo "=== Installing Trainer APK ==="
+          if adb install -r -d -g app-release-trainer.apk; then
+            echo "✅ Trainer APK installed successfully"
+          else
+            echo "::error::❌ Trainer APK install failed"
+            exit 1
+          fi
+
+          echo "=== Installing Client APK ==="
+          if adb install -r -d -g appclient.apk; then
+            echo "✅ Client APK installed successfully"
+          else
+            echo "::error::❌ Client APK install failed"
+            exit 1
+          fi
+
+      - name: ✅ Verify Both APKs Are Installed
+        run: |
+          echo "=== Final Installation Verification ==="
+          
+          # Check if both packages are listed
+          INSTALLED_PACKAGES=$(adb shell pm list packages | grep willma)
+          echo "Installed willma packages:"
+          echo "$INSTALLED_PACKAGES"
+          
+          # Verify specific packages
+          TRAINER_INSTALLED=$(adb shell pm list packages | grep com.willma.staging || echo "")
+          CLIENT_INSTALLED=$(adb shell pm list packages | grep com.willma.client.staging || echo "")
+          
+          if [[ -z "$TRAINER_INSTALLED" ]]; then
+            echo "::error::❌ Trainer package (com.willma.staging) not found!"
+            exit 1
+          else
+            echo "✅ Trainer package confirmed: $TRAINER_INSTALLED"
+          fi
+          
+          if [[ -z "$CLIENT_INSTALLED" ]]; then
+            echo "::error::❌ Client package (com.willma.client.staging) not found!"
+            exit 1
+          else
+            echo "✅ Client package confirmed: $CLIENT_INSTALLED"
+          fi
+          
+          # Get detailed info about both packages
+          echo "=== Package Details ==="
+          for PACKAGE in com.willma.staging com.willma.client.staging; do
+            echo "--- $PACKAGE ---"
+            adb shell dumpsys package $PACKAGE | grep -E "versionName|versionCode|firstInstallTime"
+          done
+          
+          # Test that we can launch both apps (optional)
+          echo "=== Testing App Launch Capability ==="
+          adb shell monkey -p com.willma.staging -c android.intent.category.LAUNCHER 1 || echo "Warning: Could not launch trainer app"
+          sleep 2
+          adb shell monkey -p com.willma.client.staging -c android.intent.category.LAUNCHER 1 || echo "Warning: Could not launch client app"
+          
+          echo "🎉 Both APKs are successfully installed and verified!"
 
       - name: 🧪 Start Appium Server
         run: |
@@ -162,6 +247,10 @@ jobs:
           adb shell cat /data/anr/traces.txt > diagnostics/anr-traces.log || true
           cp -r screenshots diagnostics/ || true
           cp -r logs/ diagnostics/ || true
+          
+          # Add package state to diagnostics
+          echo "=== Final Package State ===" > diagnostics/final-package-state.log
+          adb shell pm list packages | grep willma >> diagnostics/final-package-state.log || echo "No willma packages" >> diagnostics/final-package-state.log
 
       - name: 📤 Upload Artifacts
         if: always()
@@ -177,3 +266,5 @@ jobs:
           adb emu kill || true
           pkill -f 'qemu-system' || true
           pkill -f 'emulator' || true
+
+      
