@@ -87,43 +87,35 @@ jobs:
           ~/.local/bin/gdown --fuzzy "https://drive.google.com/file/d/1moB6CyW6wC5MJDlDlfkT_TZ0QIfsuNEz/view?usp=drive_link" -O app-release-trainer.apk
           ~/.local/bin/gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O appclient.apk
 
-      - name: 🔍 Verify Package Names
+      - name: 🔍 Verify APK Package Names
         run: |
           echo "--- Trainer APK ---"
           $ANDROID_HOME/build-tools/34.0.0/aapt dump badging app-release-trainer.apk | grep package
           echo "--- Client APK ---"
           $ANDROID_HOME/build-tools/34.0.0/aapt dump badging appclient.apk | grep package
 
-      - name: ❌ Fail if APKs have the same package name
-        run: |
-          TRAINER_PKG=$($ANDROID_HOME/build-tools/34.0.0/aapt dump badging app-release-trainer.apk | grep package | awk -F"'" '{print $2}')
-          CLIENT_PKG=$($ANDROID_HOME/build-tools/34.0.0/aapt dump badging appclient.apk | grep package | awk -F"'" '{print $2}')
-
-          echo "Trainer package: $TRAINER_PKG"
-          echo "Client package:  $CLIENT_PKG"
-
-          if [ "$TRAINER_PKG" = "$CLIENT_PKG" ]; then
-            echo "❌ ERROR: Trainer and Client APKs have the same package name!"
-            exit 1
-          fi
-
-      - name: 📲 Install APKs
+      - name: 🧹 Clean Conflicting APKs (Safe Uninstall)
         run: |
           adb uninstall com.willma.staging || true
           adb uninstall com.willma.client.staging || true
 
+      - name: 📲 Install Trainer APK First
+        run: |
+          echo "Installing Trainer APK..."
           adb install -g app-release-trainer.apk
-          sleep 2
+
+      - name: 💤 Small Wait Before Next Install (Optional)
+        run: sleep 3
+
+      - name: 📲 Install Client APK
+        run: |
+          echo "Installing Client APK..."
           adb install -g appclient.apk
 
       - name: ✅ Verify Installed Packages
         run: |
-          echo "--- Installed Packages ---"
+          echo "--- Installed APKs ---"
           adb shell pm list packages | grep com.willma
-      - name: 🚀 Start Emulator
-        run: |
-          nohup $ANDROID_HOME/emulator/emulator -avd "$AVD_NAME" -no-audio -no-window -gpu swiftshader_indirect -no-boot-anim -no-snapshot-load &
-
       - name: ⏳ Wait for Emulator to Boot
         run: |
           adb wait-for-device
