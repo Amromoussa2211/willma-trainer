@@ -39,16 +39,13 @@ jobs:
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O tools.zip
           unzip tools.zip -d $ANDROID_HOME/cmdline-tools
           mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
-
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
-
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install \
             "platform-tools" \
             "emulator" \
             "platforms;android-34" \
             "system-images;android-34;google_apis;x86_64" \
             "build-tools;34.0.0"
-
           echo "$ANDROID_HOME/emulator" >> $GITHUB_PATH
           echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
 
@@ -65,13 +62,11 @@ jobs:
             --name "$AVD_NAME" \
             --package "system-images;android-34;google_apis;x86_64" \
             --device "pixel" --force
-
           CONFIG_FILE="$ANDROID_AVD_HOME/${AVD_NAME}.avd/config.ini"
           for i in {1..30}; do
             [ -f "$CONFIG_FILE" ] && break
             sleep 2
           done
-
           if [ -f "$CONFIG_FILE" ]; then
             echo "hw.ramSize=4096" >> "$CONFIG_FILE"
             echo "hw.gpu.enabled=yes" >> "$CONFIG_FILE"
@@ -90,7 +85,7 @@ jobs:
         run: |
           adb wait-for-device
           boot_completed=""
-          timeout=480  # 8 minutes max
+          timeout=480
           count=0
           until [[ "$boot_completed" == "1" || $count -ge $timeout ]]; do
             boot_completed=$(adb shell getprop sys.boot_completed | tr -d '\r')
@@ -116,15 +111,38 @@ jobs:
           ~/.local/bin/gdown --fuzzy "https://drive.google.com/file/d/1moB6CyW6wC5MJDlDlfkT_TZ0QIfsuNEz/view?usp=drive_link" -O app-release-trainer.apk
           ~/.local/bin/gdown --fuzzy "https://drive.google.com/file/d/1cJH7DtaorZNJt6oUGiuWrnBxEh6VjJmY/view?usp=drive_link" -O appclient.apk
 
-      - name: 🔍 Verify Package Names
+      - name: 🔍 Verify Downloaded APKs
         run: |
-          echo "--- Trainer APK ---"
-          $ANDROID_HOME/build-tools/34.0.0/aapt dump badging app-release-trainer.apk | grep package
-          echo "--- Client APK ---"
-          $ANDROID_HOME/build-tools/34.0.0/aapt dump badging appclient.apk | grep package
-      
+          echo "--- app-release-trainer.apk ---"
+          ls -l app-release-trainer.apk
+          $ANDROID_HOME/build-tools/34.0.0/aapt dump badging app-release-trainer.apk | grep -E "package:|launchable-activity"
 
-      
+          echo "--- appclient.apk ---"
+          ls -l appclient.apk
+          $ANDROID_HOME/build-tools/34.0.0/aapt dump badging appclient.apk | grep -E "package:|launchable-activity"
+
+      - name: ✅ Install APKs
+        run: |
+          adb uninstall com.willma.staging || true
+          adb uninstall com.willma.client.staging || true
+          adb install -r -g app-release-trainer.apk
+          adb install -r -g appclient.apk
+          sleep 10
+
+      - name: ▶️ Launch Installed Apps (Verify They're Launchable)
+        run: |
+          echo "Starting client app..."
+          adb shell monkey -p com.willma.client.staging -c android.intent.category.LAUNCHER 1 || echo "::warning::Client app not started"
+          sleep 5
+          echo "Starting trainer app..."
+          adb shell monkey -p com.willma.staging -c android.intent.category.LAUNCHER 1 || echo "::warning::Trainer app not started"
+
+      - name: 🔍 Verify APK State
+        continue-on-error: true
+        run: |
+          adb shell pm list packages | grep willma || echo "::warning::Willma packages not found"
+          adb shell dumpsys package com.willma.staging | grep -i 'MainActivity' || echo "::warning::MainActivity not found"
+          adb shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp' || echo "::warning::No foreground activity"
 
       - name: 🧪 Start Appium Server
         run: |
