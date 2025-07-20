@@ -121,28 +121,27 @@ jobs:
           ls -l appclient.apk
           $ANDROID_HOME/build-tools/34.0.0/aapt dump badging appclient.apk | grep -E "package:|launchable-activity"
 
-      - name: ✅ Install APKs
+      - name: 🧹 Force Uninstall and Clean Install APKs
         run: |
-          adb uninstall com.willma.staging || true
-          adb uninstall com.willma.client.staging || true
-          adb install -r -g app-release-trainer.apk
-          adb install -r -g appclient.apk
-          sleep 10
+          for PACKAGE in com.willma.staging com.willma.client.staging; do
+            echo "Handling $PACKAGE"
+            adb shell am force-stop $PACKAGE || true
+            adb shell pm clear $PACKAGE || true
+            adb uninstall $PACKAGE || true
+            adb shell rm -rf /data/data/$PACKAGE || true
+          done
 
-      - name: ▶️ Launch Installed Apps (Verify They're Launchable)
-        run: |
-          echo "Starting client app..."
-          adb shell monkey -p com.willma.client.staging -c android.intent.category.LAUNCHER 1 || echo "::warning::Client app not started"
-          sleep 5
-          echo "Starting trainer app..."
-          adb shell monkey -p com.willma.staging -c android.intent.category.LAUNCHER 1 || echo "::warning::Trainer app not started"
+          echo "Installing trainer APK..."
+          adb install -r -g app-release-trainer.apk || (echo "::error::Trainer APK install failed" && exit 1)
 
-      - name: 🔍 Verify APK State
-        continue-on-error: true
+          echo "Installing client APK..."
+          adb install -r -g appclient.apk || (echo "::error::Client APK install failed" && exit 1)
+
+      - name: 🔍 Confirm APKs Installed
         run: |
-          adb shell pm list packages | grep willma || echo "::warning::Willma packages not found"
-          adb shell dumpsys package com.willma.staging | grep -i 'MainActivity' || echo "::warning::MainActivity not found"
-          adb shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp' || echo "::warning::No foreground activity"
+          adb shell pm list packages | grep willma || echo "::warning::Missing packages"
+          adb shell dumpsys package com.willma.client.staging | grep versionName
+          adb shell dumpsys package com.willma.staging | grep versionName
 
       - name: 🧪 Start Appium Server
         run: |
