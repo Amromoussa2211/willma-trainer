@@ -110,10 +110,11 @@ jobs:
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
 
-      - name: 📦 Download APKs
+     - name: 📦 Install gdown and Download APKs
         run: |
-          curl -L -o appclient.apk "https://drive.google.com/file/d/1moB6CyW6wC5MJDlDlfkT_TZ0QIfsuNEz/view?usp=drive_link"
-          curl -L -o app-release-trainer.apk "https://drive.google.com/file/d/1MKToOdsMRfzuX4yI18hhKRZWt8rCZWLH/view?usp=drive_link"
+          pip install --user gdown
+          ~/.local/bin/gdown --fuzzy "https://drive.google.com/file/d/1moB6CyW6wC5MJDlDlfkT_TZ0QIfsuNEz/view?usp=drive_link" -O appclient.apk
+          ~/.local/bin/gdown --fuzzy "https://drive.google.com/file/d/1MKToOdsMRfzuX4yI18hhKRZWt8rCZWLH/view?usp=drive_link" -O app-release-trainer.apk
 
       - name: 📂 List APK Info
         run: |
