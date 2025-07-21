@@ -1,3 +1,4 @@
+
 name: Android E2E Tests
 
 on:
@@ -110,7 +111,7 @@ jobs:
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
 
-     - name: 📦 Install gdown and Download APKs
+      - name: 📦 Install gdown and Download APKs
         run: |
           pip install --user gdown
           ~/.local/bin/gdown --fuzzy "https://drive.google.com/file/d/1moB6CyW6wC5MJDlDlfkT_TZ0QIfsuNEz/view?usp=drive_link" -O appclient.apk
