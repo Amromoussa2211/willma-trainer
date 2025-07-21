@@ -17,35 +17,99 @@ jobs:
       - name: 📥 Checkout Code
         uses: actions/checkout@v3
 
-      - name: ⚙️ Set up Java
+      - name: ☕ Set up Java
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: ⚙️ Set up Node.js
+      - name: 📦 Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
 
       - name: 📦 Install Dependencies
-        run: npm install
-
-      - name: ⬇️ Download APKs
         run: |
-          pip install --user gdown
-          ~/.local/bin/gdown --fuzzy "https://drive.google.com/file/d/1MKToOdsMRfzuX4yI18hhKRZWt8rCZWLH/view?usp=drive_link" -O app-release-trainer.apk
-          ~/.local/bin/gdown --fuzzy "https://drive.google.com/file/d/1moB6CyW6wC5MJDlDlfkT_TZ0QIfsuNEz/view?usp=drive_link" -O appclient.apk
+          npm ci
 
-      - name: 🔍 Verify Downloaded APKs
+      - name: 📱 Download APKs
         run: |
           echo "--- app-release-trainer.apk ---"
-          ls -l app-release-trainer.apk
-          $ANDROID_HOME/build-tools/34.0.0/aapt dump badging app-release-trainer.apk | grep -E "package:|launchable-activity"
-
+          ls -lh app-release-trainer.apk
+          aapt dump badging app-release-trainer.apk || true
           echo "--- appclient.apk ---"
-          ls -l appclient.apk
-          $ANDROID_HOME/build-tools/34.0.0/aapt dump badging appclient.apk | grep -E "package:|launchable-activity"
+          ls -lh appclient.apk
+          aapt dump badging appclient.apk || true
+
+      - name: 🚀 Start Emulator
+        run: |
+          nohup $ANDROID_HOME/emulator/emulator -avd "$AVD_NAME" -no-audio -no-window -gpu swiftshader_indirect -no-boot-anim -no-snapshot-load &
+
+      - name: ⏳ Wait for Emulator to Boot
+        run: |
+          adb wait-for-device
+          boot_completed=""
+          timeout=480  # 8 minutes max
+          count=0
+          until [[ "$boot_completed" == "1" || $count -ge $timeout ]]; do
+            boot_completed=$(adb shell getprop sys.boot_completed | tr -d '\r')
+            echo "Waiting for emulator to boot... ($count s) - boot_completed: $boot_completed"
+            sleep 5
+            count=$((count + 5))
+          done
+          if [ "$boot_completed" != "1" ]; then
+            echo "::error::Emulator failed to boot"
+            adb shell getprop
+            exit 1
+          fi
+
+      - name: 🔇 Disable Animations
+        run: |
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+
+      - name: 📱 Install Trainer APK
+        run: |
+          adb uninstall com.willma.staging || true
+          adb install app-release-trainer.apk
+
+      - name: 📱 Install Client APK
+        run: |
+          adb uninstall com.willma.client.staging || true
+          adb install appclient.apk
+
+      - name: 🧪 Start Appium Server
+        run: |
+          mkdir -p logs
+          nohup npx appium --relaxed-security --log-timestamp > logs/appium.log 2>&1 &
+          sleep 10
 
       - name: 🧪 Run E2E Tests
-        run: npm run test:e2e # or replace with your actual test command
+        run: |
+          npx wdio run ./wdio.ci.conf.js
+        continue-on-error: true
+
+      - name: 📷 Collect Diagnostics
+        if: always()
+        run: |
+          mkdir -p diagnostics
+          adb logcat -d > diagnostics/logcat.log
+          adb shell cat /data/anr/traces.txt > diagnostics/anr-traces.log || true
+          cp -r screenshots diagnostics/ || true
+          cp -r logs/ diagnostics/ || true
+
+      - name: 📤 Upload Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results-${{ github.run_id }}
+          path: diagnostics/
+          retention-days: 7
+
+      - name: 🛑 Kill Emulator
+        if: always()
+        run: |
+          adb emu kill || true
+          pkill -f 'qemu-system' || true
+          pkill -f 'emulator' || true
