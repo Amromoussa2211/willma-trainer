@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  android-e2e:
+  e2e-tests:
     runs-on: ubuntu-latest
     env:
       AVD_NAME: testAVD
@@ -17,32 +17,70 @@ jobs:
       - name: 📥 Checkout Code
         uses: actions/checkout@v3
 
-      - name: 🧰 Set up JDK 17
+      - name: 🧱 Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: 📦 Install Dependencies
+        run: npm install
+
+      - name: ☕ Set up Java
         uses: actions/setup-java@v3
         with:
-          distribution: "temurin"
-          java-version: 17
+          distribution: 'zulu'
+          java-version: '17'
 
-      - name: 🤖 Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: 📦 Download APKs
+      - name: 📦 Install Android SDK & Required Tools
         run: |
-          curl -L -o appclient.apk "https://drive.google.com/file/d/1moB6CyW6wC5MJDlDlfkT_TZ0QIfsuNEz/view?usp=drive_link"
-          curl -L -o app-release-trainer.apk "https://drive.google.com/file/d/1MKToOdsMRfzuX4yI18hhKRZWt8rCZWLH/view?usp=drive_link"
+          sudo apt-get update
+          sudo apt-get install -y unzip wget
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O tools.zip
+          unzip tools.zip -d $ANDROID_HOME/cmdline-tools
+          mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
 
-      - name: 📂 List APK Info
-        run: |
-          echo "--- app-release-trainer.apk ---"
-          ls -lh app-release-trainer.apk
-          aapt dump badging app-release-trainer.apk || true
-          echo "--- appclient.apk ---"
-          ls -lh appclient.apk
-          aapt dump badging appclient.apk || true
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
 
-      - name: 📱 Create Emulator
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install \
+            "platform-tools" \
+            "emulator" \
+            "platforms;android-34" \
+            "system-images;android-34;google_apis;x86_64" \
+            "build-tools;34.0.0"
+
+          echo "$ANDROID_HOME/emulator" >> $GITHUB_PATH
+          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+
+      - name: 🔧 KVM Setup
         run: |
-          echo "no" | avdmanager create avd -n "$AVD_NAME" -k "system-images;android-30;google_apis;x86_64" --force
+          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
+          sudo gpasswd -a $USER kvm
+          sudo chmod 666 /dev/kvm
+
+      - name: 📱 Create and Configure AVD
+        run: |
+          mkdir -p "$ANDROID_AVD_HOME"
+          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
+            --name "$AVD_NAME" \
+            --package "system-images;android-34;google_apis;x86_64" \
+            --device "pixel" --force
+
+          CONFIG_FILE="$ANDROID_AVD_HOME/${AVD_NAME}.avd/config.ini"
+          for i in {1..30}; do
+            [ -f "$CONFIG_FILE" ] && break
+            sleep 2
+          done
+
+          if [ -f "$CONFIG_FILE" ]; then
+            echo "hw.ramSize=4096" >> "$CONFIG_FILE"
+            echo "hw.gpu.enabled=yes" >> "$CONFIG_FILE"
+            echo "hw.gpu.mode=swiftshader_indirect" >> "$CONFIG_FILE"
+          else
+            echo "::error::AVD config.ini not found at $CONFIG_FILE"
+            ls -l "$ANDROID_AVD_HOME"
+            exit 1
+          fi
 
       - name: 🚀 Start Emulator
         run: |
@@ -52,7 +90,7 @@ jobs:
         run: |
           adb wait-for-device
           boot_completed=""
-          timeout=480
+          timeout=480  # 8 minutes max
           count=0
           until [[ "$boot_completed" == "1" || $count -ge $timeout ]]; do
             boot_completed=$(adb shell getprop sys.boot_completed | tr -d '\r')
@@ -72,6 +110,21 @@ jobs:
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
 
+      - name: 📦 Download APKs
+        run: |
+          curl -L -o appclient.apk "https://drive.google.com/file/d/1moB6CyW6wC5MJDlDlfkT_TZ0QIfsuNEz/view?usp=drive_link"
+          curl -L -o app-release-trainer.apk "https://drive.google.com/file/d/1MKToOdsMRfzuX4yI18hhKRZWt8rCZWLH/view?usp=drive_link"
+
+      - name: 📂 List APK Info
+        run: |
+          echo "--- app-release-trainer.apk ---"
+          ls -lh app-release-trainer.apk
+          aapt dump badging app-release-trainer.apk || true
+          echo "--- appclient.apk ---"
+          ls -lh appclient.apk
+          aapt dump badging appclient.apk || true
+
+     
       - name: 📲 Install APKs
         run: |
           adb install -r app-release-trainer.apk
