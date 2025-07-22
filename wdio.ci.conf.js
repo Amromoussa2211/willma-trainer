@@ -11,11 +11,12 @@ const handleSystemUIDialog = async () => {
       await closeButton.click();
       await browser.pause(3000); // Give time to recover
     }
-  } catch (err) {
+  } catch {
     // no dialog present
   }
 };
 
+// Override/Appium-specific capabilities
 const ciConfig = {
   capabilities: [{
     platformName: 'Android',
@@ -25,7 +26,7 @@ const ciConfig = {
     'appium:disableSuppressAccessibilityService': true,
     'appium:autoGrantPermissions': true,
     'appium:noReset': false,
-    'appium:fullReset': true,
+    'appium:fastReset': true,
     'appium:autoLaunch': true,
     'appium:newCommandTimeout': 1800,
     'appium:androidDeviceReadyTimeout': 1200,
@@ -44,14 +45,16 @@ const ciConfig = {
     try {
       execSync('adb shell pkill -f uiautomator', { stdio: 'ignore' });
       console.log('✅ Stale uiautomator processes killed');
-    } catch {}
+    } catch {
+      // nothing to kill
+    }
   },
 
   beforeTest: async function () {
-    // Clear app data to ensure fresh state
+    // Clear app data for a fresh start
     try {
       execSync('adb -s emulator-5554 shell pm clear com.willma.staging');
-      console.log('🧼 App data cleared');
+      console.log('🧼 Cleared app data');
     } catch {
       console.warn('⚠️ Could not clear app data');
     }
@@ -59,17 +62,17 @@ const ciConfig = {
     // Dismiss any system crash dialog
     await handleSystemUIDialog();
 
-    // Ensure the app is launched
+    // Launch the app
     try {
       console.log('🚀 Launching app');
       await driver.launchApp();
-    } catch (e) {
-      console.error('❌ Failed to launch app:', e.message);
+    } catch (err) {
+      console.error('❌ Failed to launch app:', err.message);
     }
   },
 
-  // Inherit other settings (reporters, framework, specs, mochaOpts) from baseConfig
   specFileRetries: 1,
 };
 
+// Merge and export the final WDIO config
 exports.config = { ...baseConfig.config, ...ciConfig };
