@@ -25,6 +25,8 @@ const ciConfig = {
     'appium:disableSuppressAccessibilityService': true,
     'appium:autoGrantPermissions': true,
     'appium:newCommandTimeout': 1800,
+    'appium:noReset': false,
+    'appium:fullReset': true,
     'appium:androidDeviceReadyTimeout': 1200,
     'appium:avdLaunchTimeout': 300000,
     'appium:avdReadyTimeout': 300000,
