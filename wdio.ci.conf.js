@@ -13,7 +13,7 @@ const ciConfig = {
     'appium:appActivity': 'com.willma.staging.MainActivity',
     'appium:app': process.env.apk_CI_PATH,
     'appium:noReset': false,
-    'appium:fullReset': true,
+    'appium:fullReset': false,
     'appium:autoGrantPermissions': true,
     'appium:newCommandTimeout': 1800,
     'appium:androidDeviceReadyTimeout': 1200,
