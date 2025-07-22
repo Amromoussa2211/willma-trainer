@@ -7,6 +7,7 @@ const ciConfig = {
     'appium:automationName': 'UiAutomator2',
     'appium:deviceName': 'emulator-5554',
     'appium:platformVersion': '14',
+    'appium:disableSuppressAccessibilityService': true,
     "appium:appPackage": "com.willma.staging",
     "appium:appActivity": "com.willma.staging.MainActivity",
     'appium:app': process.env.apk_CI_PATH,
