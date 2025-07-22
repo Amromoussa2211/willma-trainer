@@ -147,10 +147,19 @@ jobs:
         if: always()
         run: |
           mkdir -p diagnostics
-          adb logcat -d > diagnostics/logcat.log
-          adb shell cat /data/anr/traces.txt > diagnostics/anr-traces.log || true
+          echo "📥 Pulling logcat..."
+           adb logcat -d > diagnostics/logcat.log
+           echo "📥 Pulling ANR traces..."
+           adb shell cat /data/anr/traces.txt > diagnostics/anr-traces.log || true
+           echo "📸 Taking screenshot..."
+           adb shell screencap -p /sdcard/failure.png || true
+          adb pull /sdcard/failure.png diagnostics/device-screenshot.png || true
+          adb shell rm /sdcard/failure.png || true
+
+          echo "📦 Copying screenshots and logs (if any)..."
           cp -r screenshots diagnostics/ || true
-          cp -r logs/ diagnostics/ || true
+          cp -r logs diagnostics/ || true
+
 
       - name: 📤 Upload Artifacts
         if: always()
