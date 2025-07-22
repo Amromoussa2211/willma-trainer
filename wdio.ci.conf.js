@@ -10,18 +10,22 @@ exports.config = {
   protocol: 'http',
   port: 4723,
   path: '/',
+  
   specs: ['./test/specs/**/*.js'],
   maxInstances: 1,
+  
   logLevel: 'trace',
   bail: 0,
   waitforTimeout: 15000,
   connectionRetryTimeout: 200000,
+
   framework: 'mocha',
   mochaOpts: {
     ui: 'bdd',
     timeout: 360000,
     retries: 2
   },
+
   reporters: [
     'spec',
     ['allure', {
@@ -48,33 +52,29 @@ exports.config = {
   }],
 
   /**
-   * 1. onPrepare:
-   *    – Kill leftover UiAutomator sessions so we start clean.
+   * onPrepare: kill any stale UiAutomator2 processes before Appium starts
    */
   onPrepare: function () {
     console.log('📦 onPrepare: killing stale uiautomator…');
     try {
       execSync('adb shell pkill -f uiautomator', { stdio: 'ignore' });
       console.log('✅ uiautomator processes killed');
-    } catch (err) {
+    } catch {
       console.warn('⚠️ no uiautomator to kill');
     }
   },
 
   /**
-   * 2. beforeTest:
-   *    – Clear app data
-   *    – Dismiss any “Close app” crash dialogs before each test
+   * beforeTest: clear app data and dismiss any “Close app” crash dialog
    */
   beforeTest: async function () {
-    // clear staging app
     try {
       execSync('adb -s emulator-5554 shell pm clear com.willma.staging');
-    } catch (e) {
-      console.warn('⚠️ could not clear app data:', e.message);
+    } catch {
+      console.warn('⚠️ could not clear app data');
     }
 
-    // handle system UI crash dialog
+    // Dismiss system crash dialog if it appears
     try {
       const btn = await $('android=new UiSelector().textContains("Close")');
       if (await btn.isDisplayed()) {
@@ -82,71 +82,66 @@ exports.config = {
         await btn.click();
         await browser.pause(2000);
       }
-    } catch {}
+    } catch {
+      // no dialog present
+    }
   },
 
   /**
-   * 3. afterTest:
-   *    – Screenshot if session still alive
-   *    – Fallback to adb screencap if Appium screenshot fails
-   *    – Collect `logcat` & ANR traces
+   * afterTest: capture screenshot (Appium or ADB fallback) and collect logs
    */
   afterTest: async function (test, context, { error }) {
-    const timestamp = Date.now();
-    const sanitized = test.title.replace(/[^a-zA-Z0-9]/g, '_');
-    const screenshots = path.join(__dirname, 'screenshots');
-    if (!fs.existsSync(screenshots)) fs.mkdirSync(screenshots, { recursive: true });
+    const ts = Date.now();
+    const name = test.title.replace(/[^a-zA-Z0-9]/g, '_');
+    const screenshotsDir = path.join(__dirname, 'screenshots');
+    if (!fs.existsSync(screenshotsDir)) fs.mkdirSync(screenshotsDir, { recursive: true });
+    const screenshotPath = path.join(screenshotsDir, `${name}_${error ? 'FAILED' : 'PASSED'}_${ts}.png`);
 
-    const outPath = path.join(
-      screenshots,
-      `${sanitized}_${error ? 'FAILED' : 'PASSED'}_${timestamp}.png`
-    );
-
-    // Try Appium screenshot
+    // Try Appium screenshot if session alive
     if (browser.sessionId) {
       try {
-        await browser.saveScreenshot(outPath);
-        allure.createAttachment('Screenshot', Buffer.from(await browser.takeScreenshot(), 'base64'), 'image/png');
-      } catch (screenshotErr) {
-        console.warn('❌ Appium screenshot failed, falling back to adb:', screenshotErr.message);
+        await browser.saveScreenshot(screenshotPath);
+        allure.createAttachment(
+          'Screenshot',
+          Buffer.from(await browser.takeScreenshot(), 'base64'),
+          'image/png'
+        );
+      } catch (e) {
+        console.warn('❌ Appium screenshot failed, falling back to adb:', e.message);
         try {
-          execSync(`adb exec-out screencap -p > ${outPath}`);
-        } catch (adbErr) {
-          console.error('❌ adb screencap also failed:', adbErr.message);
+          execSync(`adb exec-out screencap -p > ${screenshotPath}`);
+        } catch {
+          console.error('❌ adb screencap fallback failed');
         }
       }
     } else {
-      console.warn('⚠️ No active session – skipping Appium screenshot');
-      // still attempt adb in case device is up
+      // Session dead—just try adb
       try {
-        execSync(`adb exec-out screencap -p > ${outPath}`);
-      } catch {}
+        execSync(`adb exec-out screencap -p > ${screenshotPath}`);
+      } catch {
+        console.error('❌ adb screencap failed (no session)');
+      }
     }
 
-    // Collect logs
-    const logs = path.join(__dirname, 'logs');
-    if (!fs.existsSync(logs)) fs.mkdirSync(logs, { recursive: true });
-
+    // Collect device logs
+    const logsDir = path.join(__dirname, 'logs');
+    if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
     try {
-      execSync(`adb logcat -d -v time > ${path.join(logs, `logcat_${timestamp}.log`)}`);
-      execSync(`adb shell cat /data/anr/traces.txt > ${path.join(logs, `anr_${timestamp}.txt`)}`);
-    } catch (logErr) {
-      console.warn('⚠️ Failed to collect logs:', logErr.message);
+      execSync(`adb logcat -d -v time > ${path.join(logsDir, `logcat_${ts}.log`)}`);
+      execSync(`adb shell cat /data/anr/traces.txt > ${path.join(logsDir, `anr_${ts}.txt`)}`);
+    } catch {
+      console.warn('⚠️ log collection failed');
     }
   },
 
   /**
-   * 4. onComplete:
-   *    – Generate Allure report
+   * onComplete: generate Allure report
    */
   onComplete: function () {
     console.log('📈 Generating Allure report…');
     const generation = allure(['generate', 'allure-results', '--clean']);
-    return new Promise((res, rej) => {
-      generation.on('exit', code => (code === 0 ? res() : rej(new Error('Allure report failed'))));
+    return new Promise((resolve, reject) => {
+      generation.on('exit', code => code === 0 ? resolve() : reject(new Error('Allure report failed')));
     });
   }
 };
-
-
-exports.config = { ...baseConfig.config, ...ciConfig };
