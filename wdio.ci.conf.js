@@ -16,7 +16,7 @@ const handleSystemUIDialog = async () => {
   }
 };
 
-// CI-specific overrides and hooks for installing both Trainer and Client APKs
+// CI-specific overrides and hooks
 const ciConfig = {
   capabilities: [{
     platformName: 'Android',
@@ -25,7 +25,7 @@ const ciConfig = {
     'appium:platformVersion': '14',
     'appium:autoGrantPermissions': true,
     'appium:noReset': true,
-    'appium:autoLaunch': false, // we'll manually launch in test
+    'appium:autoLaunch': false, // tests will manually launch apps
     'appium:newCommandTimeout': 1800,
     app: process.env.apk_CI_PATH,              // WILLMA Trainer APK
     'appium:appPackage': 'com.willma.staging',
@@ -38,39 +38,8 @@ const ciConfig = {
   },
 
   beforeTest: async function () {
-    // 1️⃣ Validate Trainer APK path
-    const trainerApk = process.env.apk_CI_PATH;
-    if (!trainerApk) {
-      throw new Error('❌ Missing required env var: apk_CI_PATH');
-    }
-
-    // 2️⃣ Install Trainer APK onto the emulator
-    try {
-      console.log('📥 Installing Trainer APK...');
-      await browser.installApp(trainerApk);
-    } catch (e) {
-      console.warn('⚠️ Trainer install failed:', e.message);
-    }
-
-    // 3️⃣ Clear any existing Trainer app data for a clean state
-    try {
-      console.log('🧹 Clearing Trainer app data');
-      execSync('adb -s emulator-5554 shell pm clear com.willma.staging');
-    } catch {
-      console.warn('⚠️ Could not clear Trainer app data');
-    }
-
-    // 4️⃣ Handle any System UI crash dialogs
+    // Only handle System UI crash dialogs before each test
     await handleSystemUIDialog();
-
-    // 5️⃣ Launch the Trainer app (tests will start Client app as needed)
-    try {
-      console.log('🚀 Launching WILLMA Trainer');
-      await browser.activateApp('com.willma.staging');
-      console.log('✅ Trainer app active');
-    } catch (e) {
-      console.error('❌ Failed to launch Trainer app:', e.message);
-    }
   },
 
   afterTest: async function (test, context, { error }) {
