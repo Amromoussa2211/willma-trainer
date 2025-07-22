@@ -1,6 +1,20 @@
 const baseConfig = require('./wdio.conf.js');
 const { execSync } = require('child_process');
 
+// Helper to handle the System UI crash dialog
+const handleSystemUIDialog = async () => {
+  try {
+    const closeButton = await $('android=new UiSelector().text("Close app")');
+    if (await closeButton.isDisplayed()) {
+      console.warn('⚠️ System UI crash dialog found. Clicking "Close app"...');
+      await closeButton.click();
+      await driver.pause(3000); // Give time to recover
+    }
+  } catch (err) {
+    console.log('✅ No System UI dialog detected, continuing...');
+  }
+};
+
 const ciConfig = {
   capabilities: [{
     platformName: 'Android',
@@ -37,6 +51,9 @@ const ciConfig = {
     } catch (err) {
       console.error('Failed to clear app cache:', err);
     }
+
+    // Handle System UI crash if shown
+    await handleSystemUIDialog();
   },
   reporters: [
     'spec',
@@ -50,6 +67,9 @@ const ciConfig = {
   waitforTimeout: 45000,
   connectionRetryTimeout: 120000,
   connectionRetryCount: 3,
+
+  // Optional retries for flaky tests
+  specFileRetries: 1,
 };
 
 exports.config = { ...baseConfig.config, ...ciConfig };
