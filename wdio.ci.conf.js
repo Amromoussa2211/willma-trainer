@@ -1,7 +1,7 @@
 const { execSync } = require('child_process');
 const baseConfig = require('./wdio.conf.js');
 
-// Helper to handle the System UI crash dialog
+// Handle System UI crash dialog if present
 const handleSystemUIDialog = async () => {
   try {
     const closeButton = await $('android=new UiSelector().text("Close app")');
@@ -12,11 +12,10 @@ const handleSystemUIDialog = async () => {
       await browser.pause(3000);
     }
   } catch {
-    // no dialog present
+    // No crash dialog
   }
 };
 
-// CI-specific overrides and hooks for a single session handling two apps
 const ciConfig = {
   capabilities: [{
     platformName: 'Android',
@@ -25,68 +24,74 @@ const ciConfig = {
     'appium:platformVersion': '14',
     'appium:autoGrantPermissions': true,
     'appium:noReset': true,
-    'appium:autoLaunch': false, // tests will launch via startActivity/activateApp
+    'appium:autoLaunch': false, // We'll manually activate the app
     'appium:newCommandTimeout': 1800,
-    app: process.env.apk_CI_PATH,              // WILLMA Trainer APK
+    app: process.env.apk_CI_PATH, // Trainer APK
     'appium:appPackage': 'com.willma.staging',
     'appium:appActivity': 'com.willma.staging.MainActivity',
   }],
-  
+
   onPrepare() {
-    console.log('📦 onPrepare: cleaning up before Appium starts');
-    try { execSync('adb shell pkill -f uiautomator', { stdio: 'ignore' }); } catch {}
-  },
-  
-  beforeTest: async function () {
-    // Install both apps
+    console.log('📦 Cleaning up before test');
     try {
-      console.log('📥 Installing both APKs...');
+      execSync('adb shell pkill -f uiautomator', { stdio: 'ignore' });
+    } catch (e) {}
+  },
+
+  beforeTest: async function () {
+    console.log('📥 Installing Trainer and Client APKs');
+    try {
       await driver.installApp(process.env.apk_CI_PATH);
       await driver.installApp(process.env.appclient_path);
     } catch (e) {
-      console.warn('⚠️ App install failed:', e.message);
+      console.warn('⚠️ Install failed:', e.message);
     }
-    
-    // Clear app data for a fresh start
+
+    // Clear app data
     try {
       execSync('adb -s emulator-5554 shell pm clear com.willma.staging');
       execSync('adb -s emulator-5554 shell pm clear com.client.app');
     } catch {}
-    
-    // Dismiss any System UI crash dialog
+
+    // Handle crash dialogs
     await handleSystemUIDialog();
-    
-    // Launch WILLMA Trainer
+
+    // Launch Trainer app
     try {
       console.log('🚀 Launching WILLMA Trainer');
       await driver.activateApp('com.willma.staging');
-      console.log('✅ WILLMA Trainer launched');
+      console.log('✅ Trainer app active');
     } catch (e) {
-      console.error('❌ Failed to launch WILLMA Trainer:', e.message);
+      console.error('❌ Failed to launch Trainer app:', e.message);
     }
-    
-    // Switch to Client App
+
+    // Launch Client app
     try {
-      console.log('🚀 Activating Client App');
+      console.log('🔁 Switching to Client App');
       await driver.activateApp('com.client.app');
-      console.log('✅ Client App activated');
+      console.log('✅ Client app active');
     } catch (e) {
-      console.error('❌ Failed to activate Client App:', e.message);
+      console.error('❌ Failed to switch to Client app:', e.message);
     }
   },
-  
+
   afterTest: async function (test, context, { error }) {
     try {
       if (browser && browser.sessionId) {
-        await browser.saveScreenshot(`./diagnostics/${test.title.replace(/\s+/g, '_')}.png`);
+        const fileName = `./diagnostics/${test.title.replace(/\s+/g, '_')}.png`;
+        await browser.saveScreenshot(fileName);
+        console.log(`📸 Saved screenshot: ${fileName}`);
       }
     } catch (err) {
       console.warn(`❌ Skipped screenshot: ${err.message}`);
     }
   },
-  
+
   specFileRetries: 1,
 };
 
-// Merge with base WDIO config
-exports.config = { ...baseConfig.config, ...ciConfig };
+// Merge with base config
+exports.config = {
+  ...baseConfig.config,
+  ...ciConfig,
+};
