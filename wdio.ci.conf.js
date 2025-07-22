@@ -38,6 +38,43 @@ const ciConfig = {
   },
 
   beforeTest: async function () {
+    // 1️⃣ Validate that both APK paths are provided
+    const trainerApk = process.env.apk_CI_PATH;
+    const clientApk  = process.env.appclient_path;
+    if (!trainerApk || !clientApk) {
+      throw new Error('❌ Missing required env vars: apk_CI_PATH and appclient_path');
+    }
+
+    // 2️⃣ Install both APKs onto the emulator
+    try {
+      console.log('📥 Installing Trainer APK...');
+      await browser.installApp(trainerApk);
+      console.log('📥 Installing Client APK...');
+      await browser.installApp(clientApk);
+    } catch (e) {
+      console.warn('⚠️ App install failed:', e.message);
+    }
+
+    // 3️⃣ Clear any existing app data for a clean state
+    try {
+      console.log('🧹 Clearing app data for both apps');
+      execSync('adb -s emulator-5554 shell pm clear com.willma.staging');
+      execSync('adb -s emulator-5554 shell pm clear com.client.app');
+    } catch {
+      console.warn('⚠️ Could not clear app data');
+    }
+
+    // 4️⃣ Handle any System UI crash dialogs
+    await handleSystemUIDialog();
+
+    // 5️⃣ Launch the Trainer app (tests can switch to client later)
+    try {
+      console.log('🚀 Launching WILLMA Trainer');
+      await browser.activateApp('com.willma.staging');
+      console.log('✅ Trainer app active');
+    } catch (e) {
+      console.error('❌ Failed to launch Trainer app:', e.message);
+    }
     const trainerApk = process.env.apk_CI_PATH;
     const clientApk  = process.env.appclient_path;
     if (!trainerApk || !clientApk) {
