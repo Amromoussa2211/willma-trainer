@@ -42,3 +42,5 @@ const ciConfig = {
   connectionRetryTimeout: 120000,
   connectionRetryCount: 3,
 };
+exports.config = { ...baseConfig.config, ...ciConfig }; // ✅ This line is required
+
