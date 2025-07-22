@@ -24,7 +24,7 @@ const ciConfig = {
   capabilities: [{
     platformName: 'Android',
     'appium:automationName': 'UiAutomator2',
-    'appium:deviceName': process.env.DEVICE_NAME || 'emulator-5554',
+    'appium:deviceName': 'emulator-5554',
     'appium:platformVersion': '14',
     'appium:autoGrantPermissions': true,
     'appium:noReset': true,
