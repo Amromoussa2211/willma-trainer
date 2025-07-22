@@ -1,9 +1,10 @@
 const { execSync } = require('child_process');
 const baseConfig = require('./wdio.conf.js');
 
+// Helper to handle the System UI crash dialog
 const handleSystemUIDialog = async () => {
   try {
-    const closeButton   = await $('android=new UiSelector().text("Close app")');
+    const closeButton = await $('android=new UiSelector().text("Close app")');
     if (await closeButton.isDisplayed()) {
       console.warn('⚠️ System UI crash dialog found. Clicking "Close app"...');
       await browser.pause(500);
@@ -15,62 +16,67 @@ const handleSystemUIDialog = async () => {
   }
 };
 
-// CI-specific overrides and hooks
+// CI-specific overrides and hooks for a single session handling two apps
 const ciConfig = {
-  capabilities: [
-    // WILLMA Trainer App
-    {
-      platformName: 'Android',
-      'appium:automationName': 'UiAutomator2',
-      'appium:deviceName': 'emulator-5554',
-      'appium:platformVersion': '14',
-      'appium:autoGrantPermissions': true,
-      'appium:noReset': true,
-      'appium:autoLaunch': false,   // tests will launch via startActivity
-      'appium:newCommandTimeout': 1800,
-      'appium:app': process.env.apk_CI_PATH,
-      'appium:appPackage': 'com.willma.staging',
-      'appium:appActivity': 'com.willma.staging.MainActivity',
-    },
-    // Client App
-    {
-      platformName: 'Android',
-      'appium:automationName': 'UiAutomator2',
-      'appium:deviceName': 'emulator-5554',
-      'appium:platformVersion': '14',
-      'appium:autoGrantPermissions': true,
-      'appium:noReset': true,
-      'appium:autoLaunch': false,
-      'appium:newCommandTimeout': 1800,
-      'appium:app': process.env.appclient_path,
-      'appium:appPackage': 'com.client.app',
-      'appium:appActivity': 'com.client.app.MainActivity',
-    }
-  ],
+  capabilities: [{
+    platformName: 'Android',
+    'appium:automationName': 'UiAutomator2',
+    'appium:deviceName': 'emulator-5554',
+    'appium:platformVersion': '14',
+    'appium:autoGrantPermissions': true,
+    'appium:noReset': true,
+    'appium:autoLaunch': false, // tests will launch via startActivity/activateApp
+    'appium:newCommandTimeout': 1800,
+    app: process.env.apk_CI_PATH,              // WILLMA Trainer APK
+    'appium:appPackage': 'com.willma.staging',
+    'appium:appActivity': 'com.willma.staging.MainActivity',
+  }],
 
-  onPrepare: function () {
+  onPrepare() {
     console.log('📦 onPrepare: cleaning up before Appium starts');
     try { execSync('adb shell pkill -f uiautomator', { stdio: 'ignore' }); } catch {}
   },
 
   beforeTest: async function () {
-    // clear both apps' data
+    // Install both apps
+    try {
+      console.log('📥 Installing both APKs...');
+      await driver.installApp(process.env.apk_CI_PATH);
+      await driver.installApp(process.env.appclient_path);
+    } catch (e) {
+      console.warn('⚠️ App install failed:', e.message);
+    }
+
+    // Clear app data for a fresh start
     try {
       execSync('adb -s emulator-5554 shell pm clear com.willma.staging');
       execSync('adb -s emulator-5554 shell pm clear com.client.app');
     } catch {}
+
+    // Dismiss any System UI crash dialog
     await handleSystemUIDialog();
 
-    // Launch WILLMA Trainer
+        // Launch WILLMA Trainer
     try {
-      console.log('🚀 Starting WILLMA Trainer: com.willma.staging/MainActivity');
-      await driver.startActivity('com.willma.staging', 'com.willma.staging.MainActivity');
+      console.log('🚀 Launching WILLMA Trainer');
+      await driver.activateApp('com.willma.staging');
+      console.log('✅ WILLMA Trainer launched');
     } catch (e) {
-      console.error('❌ Failed to start WILLMA Trainer:', e.message);
+      console.error('❌ Failed to launch WILLMA Trainer:', e.message);
+    }
+
+    // Switch to Client App
+    try {
+      console.log('🚀 Activating Client App');
+      await driver.activateApp('com.client.app');
+      console.log('✅ Client App activated');
+    } catch (e) {
+      console.error('❌ Failed to activate Client App:', e.message);
     }
   },
 
   specFileRetries: 1,
 };
 
+// Merge with base WDIO config
 exports.config = { ...baseConfig.config, ...ciConfig };
