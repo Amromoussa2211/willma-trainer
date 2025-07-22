@@ -15,6 +15,7 @@ const handleSystemUIDialog = async () => {
   }
 };
 
+
 const ciConfig = {
   capabilities: [{
     platformName: 'Android',
