@@ -1,4 +1,4 @@
-config const baseConfig = require('./wdio.conf.js');
+const baseConfig = require('./wdio.conf.js');
 const { execSync } = require('child_process');
 
 const ciConfig = {
