@@ -20,7 +20,7 @@ const ciConfig = {
     "appium:appActivity": "com.client.app.MainActivity",
     'appium:app': process.env.appclient_path,
     'appium:noReset': false,
-    'appium:fullReset': false,
+    'appium:fullReset': true,
     'appium:autoGrantPermissions': true,
     'appium:newCommandTimeout': 1800,
     'appium:androidDeviceReadyTimeout': 1200,
