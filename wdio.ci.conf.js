@@ -1,10 +1,9 @@
 const { execSync } = require('child_process');
 const baseConfig = require('./wdio.conf.js');
 
-// Helper to handle the System UI crash dialog
 const handleSystemUIDialog = async () => {
   try {
-    const closeButton = await $('android=new UiSelector().text("Close app")');
+    const closeButton   = await $('android=new UiSelector().text("Close app")');
     if (await closeButton.isDisplayed()) {
       console.warn('⚠️ System UI crash dialog found. Clicking "Close app"...');
       await browser.pause(500);
@@ -19,94 +18,59 @@ const handleSystemUIDialog = async () => {
 // CI-specific overrides and hooks
 const ciConfig = {
   capabilities: [
-    // App Under Test: WILLMA Trainer
+    // WILLMA Trainer App
     {
       platformName: 'Android',
       'appium:automationName': 'UiAutomator2',
       'appium:deviceName': 'emulator-5554',
       'appium:platformVersion': '14',
       'appium:autoGrantPermissions': true,
-      'appium:fastReset': true,
-      'appium:autoLaunch': false,
+      'appium:noReset': true,
+      'appium:autoLaunch': false,   // tests will launch via startActivity
       'appium:newCommandTimeout': 1800,
-      'appium:androidDeviceReadyTimeout': 1200,
-      'appium:avdLaunchTimeout': 300000,
-      'appium:avdReadyTimeout': 300000,
       'appium:app': process.env.apk_CI_PATH,
       'appium:appPackage': 'com.willma.staging',
       'appium:appActivity': 'com.willma.staging.MainActivity',
-      'appium:appWaitPackage': 'com.willma.staging',
-      'appium:appWaitActivity': 'com.willma.staging.MainActivity',
-      'appium:appWaitDuration': 20000,
     },
-    // App Under Test: Client App
+    // Client App
     {
       platformName: 'Android',
       'appium:automationName': 'UiAutomator2',
       'appium:deviceName': 'emulator-5554',
       'appium:platformVersion': '14',
       'appium:autoGrantPermissions': true,
-      'appium:fastReset': true,
+      'appium:noReset': true,
       'appium:autoLaunch': false,
       'appium:newCommandTimeout': 1800,
-      'appium:androidDeviceReadyTimeout': 1200,
-      'appium:avdLaunchTimeout': 300000,
-      'appium:avdReadyTimeout': 300000,
       'appium:app': process.env.appclient_path,
       'appium:appPackage': 'com.client.app',
       'appium:appActivity': 'com.client.app.MainActivity',
-      'appium:appWaitPackage': 'com.client.app',
-      'appium:appWaitActivity': 'com.client.app.MainActivity',
-      'appium:appWaitDuration': 20000,
     }
   ],
 
   onPrepare: function () {
     console.log('📦 onPrepare: cleaning up before Appium starts');
-    try {
-      execSync('adb shell pkill -f uiautomator', { stdio: 'ignore' });
-      console.log('✅ Stale uiautomator processes killed');
-    } catch {
-      // nothing to kill
-    }
+    try { execSync('adb shell pkill -f uiautomator', { stdio: 'ignore' }); } catch {}
   },
 
   beforeTest: async function () {
-    // Clear app data for a fresh start
+    // clear both apps' data
     try {
       execSync('adb -s emulator-5554 shell pm clear com.willma.staging');
       execSync('adb -s emulator-5554 shell pm clear com.client.app');
-      console.log('🧼 Cleared app data for both apps');
-    } catch {
-      console.warn('⚠️ Could not clear app data');
-    }
-
-    // Dismiss any system crash dialog
+    } catch {}
     await handleSystemUIDialog();
 
-    // Confirm first app is running before switch
+    // Launch WILLMA Trainer
     try {
-      const menuBtn = await $('android=new UiSelector().description("Menu")');
-      await menuBtn.waitForDisplayed({ timeout: 15000 });
-      console.log('✅ com.willma.staging app is running');
-    } catch (err) {
-      console.error('❌ com.willma.staging did not start as expected:', err.message);
-    }
-
-    // Switch to second app context
-    try {
-      console.log('🚀 Activating com.client.app');
-      await driver.activateApp('com.client.app');
-      const homeBtn = await $('android=new UiSelector().description("Home")');
-      await homeBtn.waitForDisplayed({ timeout: 15000 });
-      console.log('✅ com.client.app is running');
-    } catch (err) {
-      console.error('❌ com.client.app did not start as expected:', err.message);
+      console.log('🚀 Starting WILLMA Trainer: com.willma.staging/MainActivity');
+      await driver.startActivity('com.willma.staging', 'com.willma.staging.MainActivity');
+    } catch (e) {
+      console.error('❌ Failed to start WILLMA Trainer:', e.message);
     }
   },
 
   specFileRetries: 1,
 };
 
-// Merge with base WDIO config
 exports.config = { ...baseConfig.config, ...ciConfig };
