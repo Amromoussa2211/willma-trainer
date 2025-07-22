@@ -2,7 +2,7 @@ const { execSync } = require('child_process');
 const baseConfig = require('./wdio.conf.js');
 
 // Helper to handle the System UI crash dialog
-tconst handleSystemUIDialog = async () => {
+const handleSystemUIDialog = async () => {
   try {
     const closeButton = await $('android=new UiSelector().text("Close app")');
     if (await closeButton.isDisplayed()) {
