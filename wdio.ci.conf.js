@@ -31,12 +31,12 @@ const ciConfig = {
     'appium:appPackage': 'com.willma.staging',
     'appium:appActivity': 'com.willma.staging.MainActivity',
   }],
-
+  
   onPrepare() {
     console.log('📦 onPrepare: cleaning up before Appium starts');
     try { execSync('adb shell pkill -f uiautomator', { stdio: 'ignore' }); } catch {}
   },
-
+  
   beforeTest: async function () {
     // Install both apps
     try {
@@ -46,17 +46,17 @@ const ciConfig = {
     } catch (e) {
       console.warn('⚠️ App install failed:', e.message);
     }
-
+    
     // Clear app data for a fresh start
     try {
       execSync('adb -s emulator-5554 shell pm clear com.willma.staging');
       execSync('adb -s emulator-5554 shell pm clear com.client.app');
     } catch {}
-
+    
     // Dismiss any System UI crash dialog
     await handleSystemUIDialog();
-
-        // Launch WILLMA Trainer
+    
+    // Launch WILLMA Trainer
     try {
       console.log('🚀 Launching WILLMA Trainer');
       await driver.activateApp('com.willma.staging');
@@ -64,7 +64,7 @@ const ciConfig = {
     } catch (e) {
       console.error('❌ Failed to launch WILLMA Trainer:', e.message);
     }
-
+    
     // Switch to Client App
     try {
       console.log('🚀 Activating Client App');
@@ -74,7 +74,8 @@ const ciConfig = {
       console.error('❌ Failed to activate Client App:', e.message);
     }
   },
-afterTest: async function (test, context, { error }) {
+  
+  afterTest: async function (test, context, { error }) {
     try {
       if (browser && browser.sessionId) {
         await browser.saveScreenshot(`./diagnostics/${test.title.replace(/\s+/g, '_')}.png`);
@@ -84,9 +85,6 @@ afterTest: async function (test, context, { error }) {
     }
   },
   
-  specFileRetries: 1,
-};
-
   specFileRetries: 1,
 };
 
