@@ -9,7 +9,7 @@ const handleSystemUIDialog = async () => {
       console.warn('⚠️ System UI crash dialog found. Clicking "Close app"...');
       await browser.pause(500);
       await closeButton.click();
-      await browser.pause(3000); // Give time to recover
+      await browser.pause(3000);
     }
   } catch {
     // no dialog present
@@ -27,18 +27,17 @@ const ciConfig = {
     'appium:autoGrantPermissions': true,
     'appium:noReset': false,
     'appium:fastReset': true,
-    'appium:autoLaunch': false, // we'll launch manually in hook
+    'appium:autoLaunch': true, // let Appium install & launch
     'appium:newCommandTimeout': 1800,
     'appium:androidDeviceReadyTimeout': 1200,
     'appium:avdLaunchTimeout': 300000,
     'appium:avdReadyTimeout': 300000,
-    'appium:app': process.env.apk_CI_PATH,
+    'appium:app': process.env.apk_CI_PATH, // ensure this is set in CI env
     'appium:appPackage': 'com.willma.staging',
     'appium:appActivity': 'com.willma.staging.MainActivity',
     'appium:appWaitPackage': 'com.willma.staging',
     'appium:appWaitActivity': 'com.willma.staging.MainActivity',
     'appium:appWaitDuration': 20000,
-    'appium:appWaitForLaunch': true,
   }],
 
   onPrepare: function () {
@@ -63,19 +62,13 @@ const ciConfig = {
     // Dismiss any system crash dialog
     await handleSystemUIDialog();
 
-    // Install and launch the app
+    // Confirm app is running
     try {
-      console.log('🚀 Installing and launching app');
-      // Ensure APK is installed
-      await driver.installApp(process.env.apk_CI_PATH);
-      // Launch the app
-      await driver.activateApp('com.willma.staging');
-      // Wait for main element
       const menuBtn = await $('android=new UiSelector().description("Menu")');
       await menuBtn.waitForDisplayed({ timeout: 15000 });
-      console.log('✅ App launched successfully');
+      console.log('✅ App is running');
     } catch (err) {
-      console.error('❌ Failed to install/launch app:', err.message);
+      console.error('❌ App did not start as expected:', err.message);
     }
   },
 
