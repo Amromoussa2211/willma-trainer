@@ -74,6 +74,18 @@ const ciConfig = {
       console.error('❌ Failed to activate Client App:', e.message);
     }
   },
+afterTest: async function (test, context, { error }) {
+    try {
+      if (browser && browser.sessionId) {
+        await browser.saveScreenshot(`./diagnostics/${test.title.replace(/\s+/g, '_')}.png`);
+      }
+    } catch (err) {
+      console.warn(`❌ Skipped screenshot: ${err.message}`);
+    }
+  },
+  
+  specFileRetries: 1,
+};
 
   specFileRetries: 1,
 };
