@@ -35,24 +35,32 @@ exports.config = {
         console.log('📦 Preparing test environment');
     },
     afterTest: async function (test, context, { error }) {
-        const screenshotDir = path.join(__dirname, 'screenshots');
-        if (!fs.existsSync(screenshotDir)) fs.mkdirSync(screenshotDir, { recursive: true });
+    const screenshotDir = path.join(__dirname, 'screenshots');
+    if (!fs.existsSync(screenshotDir)) fs.mkdirSync(screenshotDir, { recursive: true });
 
-        const fileName = path.join(screenshotDir, `${test.title.replace(/[^a-zA-Z0-9]/g, '_')}_${error ? 'FAILED' : 'PASSED'}.png`);
-        try {
+    const fileName = path.join(screenshotDir, `${test.title.replace(/[^a-zA-Z0-9]/g, '_')}_${error ? 'FAILED' : 'PASSED'}.png`);
+
+    try {
+        // Check if browser session is alive
+        const sessionActive = await browser.getSession();
+        if (sessionActive) {
             await browser.saveScreenshot(fileName);
             await allure.createAttachment('Screenshot', Buffer.from(await browser.takeScreenshot(), 'base64'), 'image/png');
-        } catch (err) {
-            console.error(`❌ Failed to save screenshot: ${err.message}`);
         }
+    } catch (err) {
+        console.error(`❌ Skipped screenshot: App crashed or session closed: ${err.message}`);
+    }
 
-        const logDir = path.join(__dirname, 'logs');
-        if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
-        const logFile = path.join(logDir, `device_failure_${Date.now()}.log`);
-        try {
-            execSync(`adb logcat -d -v time > ${logFile}`);
-        } catch (err) {
-            console.error(`❌ Failed to fetch logcat: ${err.message}`);
-        }
+    const logDir = path.join(__dirname, 'logs');
+    if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
+
+    const logFile = path.join(logDir, `device_failure_${Date.now()}.log`);
+    try {
+        execSync(`adb logcat -d -v time > ${logFile}`);
+    } catch (err) {
+        console.error(`❌ Failed to fetch logcat: ${err.message}`);
+    }
+}
+
     }
 };
