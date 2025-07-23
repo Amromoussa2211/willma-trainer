@@ -127,12 +127,7 @@ await el3.click();
         await waitAndClick('accessibility id:View Packages');
 
         // Logout
-        const targetElement = await $('//android.widget.FrameLayout//com.horcrux.svg.PathView');
-        if (await targetElement.isDisplayed()) await targetElement.click();
-
-        const instance13 = await $('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(13)');
-        await instance13.waitForDisplayed({ timeout: 60000 });
-        await instance13.click();
+     
 
         await driver.back();
         await waitAndClick('accessibility id:Logout');

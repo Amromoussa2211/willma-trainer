@@ -26,13 +26,18 @@ describe('Signup Flow', () => {
     });
 
     it('should sign up successfully with fake data and select any photo', async () => {
-       
- const signUpText = await $('android=new UiSelector().className("android.widget.TextView").text("Don\'t have an account? Sign Up")');
-await signUpText.waitForDisplayed({ timeout: 30000 });
-await signUpText.click(); // may or may not work depending on spans
-
-
-         
-         
+        // Try partial text match
+        let signUpText;
+        try {
+            signUpText = await $('android=new UiSelector().className("android.widget.TextView").textContains("Sign Up")');
+            await signUpText.waitForDisplayed({ timeout: 30000 });
+            await signUpText.click();
+        } catch (e) {
+            // Fallback: try XPath for partial text
+            signUpText = await $('//android.widget.TextView[contains(@text, "Sign Up")]');
+            await signUpText.waitForDisplayed({ timeout: 30000 });
+            await signUpText.click();
+        }
+        // ...continue test...
     });
 });

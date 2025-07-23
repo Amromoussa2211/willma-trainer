@@ -31,7 +31,7 @@ const ciConfig = {
     'appium:autoLaunch': false, // tests will manually launch apps
     'appium:newCommandTimeout': 1800,
     'appium:adbExecTimeout': 60000,
-    app: process.env.apk_CI_PATH,              // WILLMA Trainer APK
+    'appium:app': process.env.apk_CI_PATH,              // WILLMA Trainer APK
     'appium:appPackage': 'com.willma.staging',
     'appium:appActivity': 'com.willma.staging.MainActivity',
   }],

@@ -34,8 +34,13 @@ describe('template workout and promo code creation', () => {
         const el1 = await $('~Create New Promo Code');
         await clickWithRetry(el1);
 
+        // Generate random promo code starting with 'auto' and a random number
+        const randomNumber = Math.floor(Math.random() * 100000);
+        const promoCodeValue = `auto${randomNumber}`;
+        const promocode = { value: promoCodeValue };
+
         const el2 = await $('~name-input');
-        await setValueWithRetry(el2, 'auto');
+        await setValueWithRetry(el2, promocode.value);
 
         const el3 = await $('-android uiautomator:new UiSelector().text("Select Type")');
         await clickWithRetry(el3);
@@ -85,7 +90,7 @@ describe('template workout and promo code creation', () => {
 
         const el13 = await $('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(0)');
         await clickWithRetry(el13);
-        await clickWithRetry(el13); // Double click if needed
+       
 
         const el14 = await $('~Logout');
         await clickWithRetry(el14);
@@ -94,3 +99,4 @@ describe('template workout and promo code creation', () => {
         await clickWithRetry(el15);
     });
 });
+

@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import { remote } from 'webdriverio';
 import { faker } from '@faker-js/faker';
 
+
 const waitAndRetry = async (fn, retries = 3, waitMs = 1000) => {
   let lastErr;
   for (let i = 0; i < retries; i++) {
@@ -13,6 +14,12 @@ const waitAndRetry = async (fn, retries = 3, waitMs = 1000) => {
     }
   }
   throw lastErr;
+};
+
+// Utility: Wait for element to be displayed, then click
+const waitForDisplayedAndClick = async (el, timeout = 10000) => {
+  await el.waitForDisplayed({ timeout });
+  await el.click();
 };
 
 describe('App Launch and Login Flow', () => {
@@ -33,15 +40,15 @@ describe('App Launch and Login Flow', () => {
       const lastName = faker.name.lastName();
 
       const el1 = await waitAndRetry(() => driver.$('-android uiautomator:new UiSelector().resourceId("signup-button")'));
-      await waitAndRetry(() => el1.click());
+      await waitForDisplayedAndClick(el1);
 
       const el2 = await waitAndRetry(() => driver.$('-android uiautomator:new UiSelector().resourceId("username-input")'));
-      await waitAndRetry(() => el2.click());
+      await waitForDisplayedAndClick(el2);
       await waitAndRetry(() => el2.addValue(username));
 
       const el3 = await waitAndRetry(() => driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(13)'));
-      await waitAndRetry(() => el3.click());
-      await waitAndRetry(() => el3.click());
+      await waitForDisplayedAndClick(el3);
+      await waitForDisplayedAndClick(el3);
 
       const el4 = await waitAndRetry(() => driver.$('-android uiautomator:new UiSelector().resourceId("password-input")'));
       await waitAndRetry(() => el4.addValue("Abc@1234"));
@@ -50,16 +57,16 @@ describe('App Launch and Login Flow', () => {
       await waitAndRetry(() => el5.addValue(email));
 
       const el6 = await waitAndRetry(() => driver.$('-android uiautomator:new UiSelector().text("I agree to the ")'));
-      await waitAndRetry(() => el6.click());
+      await waitForDisplayedAndClick(el6);
 
       const el7 = await waitAndRetry(() => driver.$('accessibility id:Sign Up'));
-      await waitAndRetry(() => el7.click());
+      await waitForDisplayedAndClick(el7);
 
       const el8 = await waitAndRetry(() => driver.$('id:android:id/button1'));
-      await waitAndRetry(() => el8.click());
+      await waitForDisplayedAndClick(el8);
 
       const el9 = await waitAndRetry(() => driver.$('accessibility id:Terms and Conditions.'));
-      await waitAndRetry(() => el9.click());
+      await waitForDisplayedAndClick(el9);
 
       // Scrolls
       await waitAndRetry(() => driver.action('pointer').move({ duration: 0, x: 545, y: 1634 }).down({ button: 0 }).move({ duration: 1000, x: 567, y: 478 }).up({ button: 0 }).perform());
@@ -67,21 +74,21 @@ describe('App Launch and Login Flow', () => {
       await waitAndRetry(() => driver.action('pointer').move({ duration: 0, x: 396, y: 1914 }).down({ button: 0 }).move({ duration: 1000, x: 403, y: 537 }).up({ button: 0 }).perform());
 
       const el10 = await waitAndRetry(() => driver.$('class name:com.horcrux.svg.SvgView'));
-      await waitAndRetry(() => el10.click());
+      await waitForDisplayedAndClick(el10);
 
       await waitAndRetry(() => driver.action('pointer').move({ duration: 0, x: 67, y: 1414 }).down({ button: 0 }).pause(50).up({ button: 0 }).perform());
 
       const signupp = await waitAndRetry(() => driver.$("accessibility id:Sign Up"));
-      await waitAndRetry(() => signupp.click());
+      await waitForDisplayedAndClick(signupp);
 
       const otp = await waitAndRetry(() => driver.$("class name:android.widget.EditText"));
       await waitAndRetry(() => otp.addValue("111111"));
 
       const Verifyotp = await waitAndRetry(() => driver.$("accessibility id:Verify"));
-      await waitAndRetry(() => Verifyotp.click());
+      await waitForDisplayedAndClick(Verifyotp);
 
       const start = await waitAndRetry(() => driver.$("accessibility id:Awesome, let’s start!"));
-      await waitAndRetry(() => start.click());
+      await waitForDisplayedAndClick(start);
 
       const first = await waitAndRetry(() => driver.$('-android uiautomator:new UiSelector().resourceId("first-name-input")'));
       await waitAndRetry(() => first.addValue(firstName));
@@ -90,60 +97,60 @@ describe('App Launch and Login Flow', () => {
       await waitAndRetry(() => lastname.addValue(lastName));
 
       const next = await waitAndRetry(() => driver.$("accessibility id:Next"));
-      await waitAndRetry(() => next.click());
-
+      await waitForDisplayedAndClick(next);
+driver.pause(2000); // Pause to ensure the next screen loads properly
       const Skip = await waitAndRetry(() => driver.$("accessibility id:Skip"));
-      await waitAndRetry(() => Skip.click());
+      await waitForDisplayedAndClick(Skip);
 
       const el11 = await waitAndRetry(() => driver.$("accessibility id:Male"));
-      await waitAndRetry(() => el11.click());
+      await waitForDisplayedAndClick(el11);
 
       const el12 = await waitAndRetry(() => driver.$("accessibility id:Next"));
-      await waitAndRetry(() => el12.click());
+      await waitForDisplayedAndClick(el12);
       const el13 = await waitAndRetry(() => driver.$("accessibility id:Next"));
-      await waitAndRetry(() => el13.click());
+      await waitForDisplayedAndClick(el13);
       const el14 = await waitAndRetry(() => driver.$("accessibility id:Next"));
-      await waitAndRetry(() => el14.click());
+      await waitForDisplayedAndClick(el14);
       const el15 = await waitAndRetry(() => driver.$("accessibility id:Next"));
-      await waitAndRetry(() => el15.click());
+      await waitForDisplayedAndClick(el15);
 
       const el16 = await waitAndRetry(() => driver.$('-android uiautomator:new UiSelector().text("Lose Weight")'));
-      await waitAndRetry(() => el16.click());
+      await waitForDisplayedAndClick(el16);
 
       const el17 = await waitAndRetry(() => driver.$("accessibility id:Next"));
-      await waitAndRetry(() => el17.click());
+      await waitForDisplayedAndClick(el17);
 
       const el18 = await waitAndRetry(() => driver.$("accessibility id:No"));
-      await waitAndRetry(() => el18.click());
+      await waitForDisplayedAndClick(el18);
 
       const el19 = await waitAndRetry(() => driver.$('-android uiautomator:new UiSelector().resourceId("step8-button-label")'));
-      await waitAndRetry(() => el19.click());
+      await waitForDisplayedAndClick(el19);
 
       const el20 = await waitAndRetry(() => driver.$("accessibility id:Next"));
-      await waitAndRetry(() => el20.click());
+      await waitForDisplayedAndClick(el20);
 
       const el21 = await waitAndRetry(() => driver.$("accessibility id:No"));
-      await waitAndRetry(() => el21.click());
+      await waitForDisplayedAndClick(el21);
 
       const el22 = await waitAndRetry(() => driver.$('-android uiautomator:new UiSelector().resourceId("step9-button-label")'));
-      await waitAndRetry(() => el22.click());
+      await waitForDisplayedAndClick(el22);
 
       const el23 = await waitAndRetry(() => driver.$("accessibility id:No"));
-      await waitAndRetry(() => el23.click());
+      await waitForDisplayedAndClick(el23);
 
       const el24 = await waitAndRetry(() => driver.$("accessibility id:Next"));
-      await waitAndRetry(() => el24.click());
+      await waitForDisplayedAndClick(el24);
 
       const el25 = await waitAndRetry(() => driver.$("accessibility id:Start exploring"));
-      await waitAndRetry(() => el25.click());
+      await waitForDisplayedAndClick(el25);
 
       const el26 = await waitAndRetry(() => driver.$('-android uiautomator:new UiSelector().text("Skip")'));
-      await waitAndRetry(() => el26.click());
+      await waitForDisplayedAndClick(el26);
 
       console.log('Signup flow completed successfully with user:', { username, email, firstName, lastName });
 
       const consultantsTab = await waitAndRetry(() => driver.$("accessibility id:Consultants"));
-      await waitAndRetry(() => consultantsTab.click());
+      await waitForDisplayedAndClick(consultantsTab);
 
       await waitAndRetry(() =>
         driver.action('pointer')
@@ -154,19 +161,22 @@ describe('App Launch and Login Flow', () => {
           .perform()
       );
 
-      await waitAndRetry(() => consultantsTab.click());
+      await waitForDisplayedAndClick(consultantsTab);
 
       const consultantsTextOption = await waitAndRetry(() => driver.$('-android uiautomator:new UiSelector().text("Consultants")'));
-      await waitAndRetry(() => consultantsTextOption.click());
+      await waitForDisplayedAndClick(consultantsTextOption);
 
       const searchInput = await waitAndRetry(() => driver.$("class name:android.widget.EditText"));
       await waitAndRetry(() => searchInput.addValue("traineramr"));
 
       const selectConsultant = await waitAndRetry(() => driver.$('-android uiautomator:new UiSelector().text("trainerAmr")'));
-      await waitAndRetry(() => selectConsultant.click());
+      await waitForDisplayedAndClick(selectConsultant);
+
+      // Pause before clicking Packages
+      await driver.pause(2000); // pause for 2 seconds
 
       const packagesButton = await waitAndRetry(() => driver.$("accessibility id:Packages"));
-      await waitAndRetry(() => packagesButton.click());
+      await waitForDisplayedAndClick(packagesButton);
 
       await waitAndRetry(() =>
         driver.action('pointer')
@@ -178,48 +188,66 @@ describe('App Launch and Login Flow', () => {
       );
 
       const selectPackage = await waitAndRetry(() => driver.$('-android uiautomator:new UiSelector().text("تتت")'));
-      await waitAndRetry(() => selectPackage.click());
+      await waitForDisplayedAndClick(selectPackage);
 
       const subscribeNowBtn = await waitAndRetry(() => driver.$("accessibility id:Subscribe Now"));
-      await waitAndRetry(() => subscribeNowBtn.click());
+      await waitForDisplayedAndClick(subscribeNowBtn);
 
       const confirmPhonePopupBtn = await waitAndRetry(() => driver.$("id:android:id/button1"));
-      await waitAndRetry(() => confirmPhonePopupBtn.click());
+      await waitForDisplayedAndClick(confirmPhonePopupBtn);
 
       const phoneInput = await waitAndRetry(() => driver.$("class name:android.widget.EditText"));
-      await waitAndRetry(() => phoneInput.addValue("045684621325644"));
+      const randomPhone = Math.floor(10000000000 + Math.random() * 90000000000).toString();
+      await waitAndRetry(() => phoneInput.addValue(randomPhone));
 
       const changePhoneBtn = await waitAndRetry(() => driver.$("accessibility id:Change My Phone Number"));
-      await waitAndRetry(() => changePhoneBtn.click());
+      await waitForDisplayedAndClick(changePhoneBtn);
+            await waitForDisplayedAndClick(selectPackage);
+           await waitForDisplayedAndClick(subscribeNowBtn);
 
-      const backIcon = await waitAndRetry(() => driver.$('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(0)'));
-      await waitAndRetry(() => backIcon.click());
 
-      // const retryPackage = await waitAndRetry(() => driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(40)'));
-      // await waitAndRetry(() => retryPackage.click());
 
-      const retrySubscribeNow = await waitAndRetry(() => driver.$("accessibility id:Subscribe Now"));
-      await waitAndRetry(() => retrySubscribeNow.click());
+   
+
 
       const promoCodeInput = await waitAndRetry(() => driver.$("class name:android.widget.EditText"));
       await waitAndRetry(() => promoCodeInput.addValue("PR10"));
 
-      const applyPromoBtn = await waitAndRetry(() => driver.$("accessibility id:Apply Promo Code"));
-      await waitAndRetry(() => applyPromoBtn.click());
+     const applyPromoBtn = await waitAndRetry(() =>
+  driver.$('-android uiautomator:new UiSelector().text("Apply")')
+);
+await waitForDisplayedAndClick(applyPromoBtn);
 
       const totalElement = await waitAndRetry(() => driver.$('-android uiautomator:new UiSelector().text("Total")'));
-      for (let i = 0; i < 9; i++) {
-        await waitAndRetry(() => totalElement.click());
-      }
+      
+        await waitForDisplayedAndClick(totalElement);
+              await waitForDisplayedAndClick(totalElement);
+        await waitForDisplayedAndClick(totalElement);
+        await waitForDisplayedAndClick(totalElement);
+        await waitForDisplayedAndClick(totalElement);
+        await waitForDisplayedAndClick(totalElement);
+        await waitForDisplayedAndClick(totalElement);
+
 
       const goToFormSubmissionBtn = await waitAndRetry(() => driver.$("accessibility id:Go To Form Submission"));
-      await waitAndRetry(() => goToFormSubmissionBtn.click());
+      await waitForDisplayedAndClick(goToFormSubmissionBtn);
 
       const formQuestion = await waitAndRetry(() => driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(27)'));
-      await waitAndRetry(() => formQuestion.click());
+      await waitForDisplayedAndClick(formQuestion);
 
       const submitFormBtn = await waitAndRetry(() => driver.$("accessibility id:Submit Form"));
-      await waitAndRetry(() => submitFormBtn.click());
+      await waitForDisplayedAndClick(submitFormBtn);
+      driver.pause(3000); // Pause to ensure the form submission is processed
+
+
+      const menuBtn = await waitAndRetry(() => driver.$("accessibility id:Menu"));
+await waitForDisplayedAndClick(menuBtn);
+
+const logoutBtn = await waitAndRetry(() => driver.$("accessibility id:Logout"));
+await waitForDisplayedAndClick(logoutBtn);
+
+const confirmYesBtn = await waitAndRetry(() => driver.$("accessibility id:Yes"));
+await waitForDisplayedAndClick(confirmYesBtn);
 
     } catch (error) {
       console.error('Signup flow failed:', error.message);
