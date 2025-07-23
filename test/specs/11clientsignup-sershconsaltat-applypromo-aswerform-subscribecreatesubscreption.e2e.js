@@ -98,7 +98,7 @@ describe('App Launch and Login Flow', () => {
 
       const next = await waitAndRetry(() => driver.$("accessibility id:Next"));
       await waitForDisplayedAndClick(next);
-driver.pause(5000); // Pause to ensure the next screen loads properly
+driver.pause(2000); // Pause to ensure the next screen loads properly
       const Skip = await waitAndRetry(() => driver.$("accessibility id:Skip"));
       await waitForDisplayedAndClick(Skip);
 
