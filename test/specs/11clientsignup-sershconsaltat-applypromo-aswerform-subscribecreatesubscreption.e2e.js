@@ -98,7 +98,7 @@ describe('App Launch and Login Flow', () => {
 
       const next = await waitAndRetry(() => driver.$("accessibility id:Next"));
       await waitForDisplayedAndClick(next);
-driver.pause(2000); // Pause to ensure the next screen loads properly
+driver.pause(5000); // Pause to ensure the next screen loads properly
       const Skip = await waitAndRetry(() => driver.$("accessibility id:Skip"));
       await waitForDisplayedAndClick(Skip);
 
@@ -237,7 +237,7 @@ await waitForDisplayedAndClick(applyPromoBtn);
 
       const submitFormBtn = await waitAndRetry(() => driver.$("accessibility id:Submit Form"));
       await waitForDisplayedAndClick(submitFormBtn);
-      driver.pause(3000); // Pause to ensure the form submission is processed
+      driver.pause(5000); // Pause to ensure the form submission is processed
 
 
       const menuBtn = await waitAndRetry(() => driver.$("accessibility id:Menu"));

@@ -27,7 +27,8 @@ const ciConfig = {
     'appium:deviceName': 'emulator-5554',
     'appium:platformVersion': '14',
     'appium:autoGrantPermissions': true,
-    'appium:noReset': true,
+    'appium:noReset': false,
+  "appium:fullrest": true, // ✅ if it's required by Appium (verify this)
     'appium:autoLaunch': false, // tests will manually launch apps
     'appium:newCommandTimeout': 1800,
     'appium:adbExecTimeout': 60000,
