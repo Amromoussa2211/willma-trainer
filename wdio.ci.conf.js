@@ -17,69 +17,77 @@ const CLIENT_APK  = path.resolve(__dirname, 'appclient.apk');
   }
 });
 
-// ─── CI + LOCAL RUNNER MERGED CONFIG ─────────────────────────────────────────
+// ─── MERGED CONFIG WITH RETAINED INSTRUMENTATION ──────────────────────────────
 exports.config = {
-  // Runner & connection
-  runner: 'local',
+  runner:   'local',
   hostname: 'localhost',
-  port: 4723,
+  port:     4723,
   protocol: 'http',
-  path: '/',
-  specs: ['./test/specs/**/*.js'],
-  exclude: [],
+  path:     '/',
+
+  specs:    ['./test/specs/**/*.js'],
   maxInstances: 1,
 
-  // Capabilities
   capabilities: [{
-    platformName: 'Android',
+    platformName:            'Android',
     'appium:automationName': 'UiAutomator2',
-    'appium:deviceName': 'emulator-5554',
-    'appium:udid': 'emulator-5554',
+    'appium:deviceName':     'emulator-5554',
+    'appium:udid':           'emulator-5554',
     'appium:autoGrantPermissions': true,
-    'appium:noReset': false,
-    'appium:fullReset': false,
-    'appium:autoLaunch': false,
-    'appium:newCommandTimeout': 1800,
-    'appium:adbExecTimeout': 60000,
+
+    // KEEP instrumentation installed across specs:
+    'appium:noReset':        true,
+    'appium:fullReset':      false,
+
+    // speed up initialization & avoid reinstalling server
+    'appium:skipDeviceInitialization': true,
+    'appium:skipServerInstallation':  true,
+    'appium:skipUnlock':              true,
+
+    'appium:autoLaunch':           false,
+    'appium:newCommandTimeout':    1800,
+    'appium:adbExecTimeout':       60000,
     'appium:waitForDeviceReadyTimeout': 300000,
-    'appium:app': process.env.TEST_TARGET === 'client' ? CLIENT_APK : TRAINER_APK,
+
+    'appium:app': process.env.TEST_TARGET === 'client'
+      ? CLIENT_APK
+      : TRAINER_APK,
   }],
 
-  // Test framework & timeouts
   logLevel: 'trace',
-  bail: 0,
-  waitforTimeout: 15000,
+  bail:     0,
+  waitforTimeout:         15000,
   connectionRetryTimeout: 200000,
-  connectionRetryCount: 3,
+  connectionRetryCount:   3,
 
   framework: 'mocha',
   mochaOpts: {
-    ui: 'bdd',
+    ui:      'bdd',
     timeout: 360000,
     retries: 2,
   },
 
-  // Reporters
   reporters: [
     'spec',
     ['allure', {
       outputDir: 'allure-results',
-      disableWebdriverStepsReporting: false,
+      disableWebdriverStepsReporting:     false,
       disableWebdriverScreenshotsReporting: false,
     }]
   ],
 
-  // Hooks
   onPrepare: async function () {
     console.log('📦 onPrepare: cleaning up before Appium starts');
     try { execSync('adb shell pkill -f uiautomator'); } catch {}
-    ['diagnostics', 'screenshots', 'logs'].forEach(dir => {
+    [ 'diagnostics', 'screenshots', 'logs' ].forEach(dir => {
       const d = path.join(__dirname, dir);
       if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
     });
   },
 
   beforeTest: async function () {
+    // ensure each spec starts with fresh app state:
+    await driver.reset();
     try {
       const btn = await $('android=new UiSelector().textContains("Close")');
       if (await btn.isDisplayed()) {
@@ -101,19 +109,17 @@ exports.config = {
       console.log(`📸 Screenshot saved to ${screenshotFile}`);
     } catch (err) {
       console.warn(`❌ WebDriver screenshot failed: ${err.message}`);
-      // fallback to ADB screencap
       try {
-        const tmpPath = '/sdcard/failure.png';
-        execSync(`adb shell screencap -p ${tmpPath}`);
+        const tmp = '/sdcard/failure.png';
+        execSync(`adb shell screencap -p ${tmp}`);
         const local = path.join(__dirname, 'screenshots', `${titleSafe}_ADB.png`);
-        execSync(`adb pull ${tmpPath} ${local}`);
-        execSync(`adb shell rm ${tmpPath}`);
+        execSync(`adb pull ${tmp} ${local}`);
+        execSync(`adb shell rm ${tmp}`);
         console.log(`📸 Fallback ADB screenshot saved to ${local}`);
       } catch (adbErr) {
         console.error(`❌ ADB screencap fallback failed: ${adbErr.message}`);
       }
     }
-
     const logFile = path.join(__dirname, 'logs', `logcat_${Date.now()}.txt`);
     try {
       execSync(`adb logcat -d -v time > ${logFile}`);
@@ -125,14 +131,12 @@ exports.config = {
 
   onComplete: async function () {
     console.log('📝 Generating Allure report…');
-    return new Promise((resolve, reject) => {
-      const generation = allure(['generate', 'allure-results', '--clean']);
-      generation.on('exit', code => code === 0 ? resolve() : reject(new Error('Allure generation failed')));
+    return new Promise((res, rej) => {
+      const gen = allure(['generate','allure-results','--clean']);
+      gen.on('exit', code => code === 0 ? res() : rej(new Error('Allure generation failed')));
     });
   },
 };
-
-
 
 // const { execSync } = require('child_process');
 // const fs = require('fs');
