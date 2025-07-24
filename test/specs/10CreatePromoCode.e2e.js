@@ -1,99 +1,86 @@
 import { expect } from 'chai';
 
 async function clickWithRetry(element) {
-  await element.waitForDisplayed({ timeout: 60000 });
-  await element.click();
+    await element.waitForDisplayed({ timeout: 60000 });
+    await element.click();
 }
 
 async function setValueWithRetry(element, value) {
-  await element.waitForDisplayed({ timeout: 60000 });
-  await element.setValue(value);
+    await element.waitForDisplayed({ timeout: 60000 });
+    await element.setValue(value);
 }
 
 describe('template workout and promo code creation', () => {
-  before(async () => {
-    // launch the app’s main activity
-    await driver.startActivity('com.willma.staging', 'com.willma.staging.MainActivity');
-    // wait for the login button to ensure the app is ready
-    const loginBtn = await $('android=new UiSelector().resourceId("login-button")');
-    await loginBtn.waitForDisplayed({ timeout: 60000 });
-  });
+    before(async () => {
+        // Launch and wait for login screen
+        await driver.startActivity('com.willma.staging', 'com.willma.staging.MainActivity');
+        const loginBtn = await $('android=new UiSelector().resourceId("login-button")');
+        await loginBtn.waitForDisplayed({ timeout: 60000 });
+    });
 
-  it('should sign in and create a promo code', async () => {
-    // 1) Login
-    const emailInput = await $('android=new UiSelector().resourceId("email-input")');
-    await setValueWithRetry(emailInput, 'amr@test.test');
+    it('should sign in and create a promo code', async () => {
+        // 1) Login
+        await setValueWithRetry(await $('android=new UiSelector().resourceId("email-input")'), 'amr@test.test');
+        await setValueWithRetry(await $('android=new UiSelector().resourceId("password-input")'), 'Abc@1234');
+        await clickWithRetry(await $('android=new UiSelector().resourceId("login-button")'));
 
-    const passwordInput = await $('android=new UiSelector().resourceId("password-input")');
-    await setValueWithRetry(passwordInput, 'Abc@1234');
+        // 2) Wait for home and open menu
+        const homeReady = await $('~Menu');
+        await homeReady.waitForDisplayed({ timeout: 60000 });
+        await clickWithRetry(homeReady);
 
-    const signInButton = await $('android=new UiSelector().resourceId("login-button")');
-    await clickWithRetry(signInButton);
+        // 3) Navigate to Promo Code Center
+        const promoCodeCenter = await $('android=new UiSelector().text("Promo Code Center")');
+        await clickWithRetry(promoCodeCenter);
 
-    // give the home screen a moment to settle
-    await driver.pause(5000);
+        // 4) Create new promo
+        await clickWithRetry(await $('~Create New Promo Code'));
+        const promoCodeValue = `auto${Math.floor(Math.random() * 100000)}`;
+        await setValueWithRetry(await $('~name-input'), promoCodeValue);
+        await clickWithRetry(await $('android=new UiSelector().text("Select Type")'));
+        await clickWithRetry(await $('android=new UiSelector().text("Percentage")'));
+        await setValueWithRetry(await $('~discount-value-input'), '50');
+        
+        // 5) Select package
+        await clickWithRetry(await $('~package-button'));
+        await clickWithRetry(await $('android=new UiSelector().className("android.view.ViewGroup").instance(23)'));
 
-    // 2) Open the menu via accessibility id
-    const menuButton = await $('~Menu');
-    await clickWithRetry(menuButton);
+        // 6) Apply
+        await clickWithRetry(await $('~Apply'));
 
-    // 3) Navigate to Promo Code Center
-    const promoCodeCenter = await $('android=new UiSelector().text("Promo Code Center")');
-    await clickWithRetry(promoCodeCenter);
+        // 7) Set valid-until date
+        await clickWithRetry(await $('~valid-until-button'));
+        await driver.action('pointer')
+            .move({ x: 724, y: 1343 })
+            .down()
+            .move({ x: 728, y: 1078, duration: 1000 })
+            .up()
+            .perform();
+        await clickWithRetry(await $('id:android:id/button1'));
 
-    // 4) Create a new promo code
-    await clickWithRetry(await $('~Create New Promo Code'));
+        // 8) Finalize
+        await clickWithRetry(await $('android=new UiSelector().resourceId("create-promo-button-label")'));
 
-    const randomNumber = Math.floor(Math.random() * 100000);
-    const promoCodeValue = `auto${randomNumber}`;
+        // 9) Swipe to refresh
+        await driver.action('pointer')
+            .move({ x: 463, y: 1552 })
+            .down()
+            .move({ x: 463, y: 608, duration: 1000 })
+            .up()
+            .perform();
 
-    await setValueWithRetry(await $('~name-input'), promoCodeValue);
-    await clickWithRetry(await $('android=new UiSelector().text("Select Type")'));
-    await clickWithRetry(await $('android=new UiSelector().text("Percentage")'));
-    await setValueWithRetry(await $('~discount-value-input'), '50');
+        // 10) Verify promo exists by checking list item
+        const createdItem = await $(`android=new UiSelector().textContains("${promoCodeValue}")`);
+        await createdItem.waitForDisplayed({ timeout: 60000 });
+        expect(await createdItem.isDisplayed()).to.be.true;
 
-    // 5) Select a package
-    await clickWithRetry(await $('~package-button'));
-    await clickWithRetry(await $('android=new UiSelector().className("android.view.ViewGroup").instance(23)'));
-
-    // 6) Apply the promo code
-    await clickWithRetry(await $('~Apply'));
-
-    // 7) Pick a valid-until date
-    await clickWithRetry(await $('~valid-until-button'));
-    // swipe the date picker
-    await driver
-      .action('pointer')
-      .move({ x: 724, y: 1343 })
-      .down()
-      .move({ x: 728, y: 1078, duration: 1000 })
-      .up()
-      .perform();
-    await clickWithRetry(await $('id:android:id/button1'));
-
-    // 8) Finalize creation
-    await clickWithRetry(await $('android=new UiSelector().resourceId("create-promo-button-label")'));
-
-    // 9) Scroll up to refresh and verify
-    await driver
-      .action('pointer')
-      .move({ x: 463, y: 1552 })
-      .down()
-      .move({ x: 463, y: 608, duration: 1000 })
-      .up()
-      .perform();
-
-    // 10) Optionally tap the newly created item
-    await clickWithRetry(await $('android=new UiSelector().className("android.view.ViewGroup").instance(18)'));
-
-    // 11) Tap the icon to edit or inspect
-    await clickWithRetry(await $('android=new UiSelector().className("com.horcrux.svg.PathView").instance(0)'));
-
-    // 12) Logout
-    await clickWithRetry(await $('~Logout'));
-    await clickWithRetry(await $('~Yes'));
-  });
+        // 11) Logout
+        await clickWithRetry(await $('~Menu'));
+        await clickWithRetry(await $('~Logout'));
+        await clickWithRetry(await $('~Yes'));
+    });
 });
+
 
 
 
