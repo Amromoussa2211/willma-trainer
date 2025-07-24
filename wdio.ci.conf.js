@@ -39,10 +39,7 @@ exports.config = {
     'appium:noReset':        true,
     'appium:fullReset':      false,
 
-    // speed up initialization & avoid reinstalling server
-    'appium:skipDeviceInitialization': true,
-    'appium:skipServerInstallation':  true,
-    'appium:skipUnlock':              true,
+    // remove skip flags that prevent proper instrumentation installation
 
     'appium:autoLaunch':           false,
     'appium:newCommandTimeout':    1800,
@@ -77,7 +74,7 @@ exports.config = {
   ],
 
   onPrepare: async function () {
-    console.log('📦 onPrepare: cleaning up before Appium starts');
+    console.log('📦 onPrepare: killing stray processes');
     try { execSync('adb shell pkill -f uiautomator'); } catch {}
     [ 'diagnostics', 'screenshots', 'logs' ].forEach(dir => {
       const d = path.join(__dirname, dir);
@@ -137,6 +134,7 @@ exports.config = {
     });
   },
 };
+
 
 // const { execSync } = require('child_process');
 // const fs = require('fs');
