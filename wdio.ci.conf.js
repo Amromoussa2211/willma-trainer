@@ -1,86 +1,133 @@
 // wdio.ci.conf.js
-const { execSync } = require('child_process');
-const fs         = require('fs');
 const path       = require('path');
+const fs         = require('fs');
+const { execSync } = require('child_process');
 const baseConfig = require('./wdio.conf.js').config;
+const allure     = require('allure-commandline');
 
-//
-// CI overrides:
-//
-const ciConfig = {
-  //
-  // Run one instance at a time:
-  //
-  maxInstances: 1,
+// ─── APK SANITY CHECK ───────────────────────────────────────────────────────────
+const TRAINER_APK = path.resolve(__dirname, 'app-release-trainer.apk');
+const CLIENT_APK  = path.resolve(__dirname, 'appclient.apk');
 
-  //
-  // Point at your APK(s), but don't auto‑launch:
-  //
+[ TRAINER_APK, CLIENT_APK ].forEach(p => {
+  console.log(`🔍 Checking for APK at ${p}`);
+  if (!fs.existsSync(p)) {
+    console.error(`❌ APK not found at ${p}!`);
+    process.exit(1);
+  }
+});
+
+// ─── CI + LOCAL RUNNER MERGED CONFIG ────────────────────────────────────────────
+exports.config = {
+  // ── Runner & connection ─────────────────────────────────────────────────────
+  runner:          'local',
+  hostname:        'localhost',
+  port:            4723,
+  protocol:        'http',
+  path:            '/',
+  specs:           ['./test/specs/**/*.js'],
+  exclude:         [],
+  maxInstances:    1,
+
+  // ── Capabilities ─────────────────────────────────────────────────────────────
   capabilities: [{
-    platformName:           'Android',
-    'appium:automationName':'UiAutomator2',
-    'appium:deviceName':    'emulator-5554',
-    'appium:platformVersion':'14',
+    platformName:            'Android',
+    'appium:automationName': 'UiAutomator2',
+    'appium:deviceName':     'emulator-5554',
+    'appium:udid':           'emulator-5554',
     'appium:autoGrantPermissions': true,
-    'appium:noReset':       false,
-    'appium:fullReset':     true,
-    'appium:autoLaunch':    false,
-    'appium:newCommandTimeout': 1800,
-    'appium:adbExecTimeout':    60000,
-    // you can mount both APKs here but only one will be launched
+    'appium:noReset':        false,
+    'appium:fullReset':      true,
+    'appium:autoLaunch':     false,
+    'appium:newCommandTimeout':    1800,
+    'appium:adbExecTimeout':       60000,
+    'appium:waitForDeviceReadyTimeout': 300000,
+    // choose the APK based on TEST_TARGET
     'appium:app': process.env.TEST_TARGET === 'client'
-      ? './appclient.apk'
-      : './app-release-trainer.apk',
+      ? CLIENT_APK
+      : TRAINER_APK,
   }],
 
-  connectionRetryTimeout: 120_000,
+  // ── Test framework & timeouts ────────────────────────────────────────────────
+  logLevel:               'trace',
+  bail:                   0,
+  waitforTimeout:         15000,
+  connectionRetryTimeout: 200000,
   connectionRetryCount:   3,
-  specFileRetries:        1,
 
-  //
-  // before Appium launches, clear any stray uiAutomator:
-  //
-  onPrepare() {
-    console.log('📦 onPrepare: cleaning up before Appium starts');
-    try {
-      execSync('adb shell pkill -f uiautomator', { stdio: 'ignore' });
-    } catch {}
-    // ensure diagnostics folder exists
-    const diagDir = path.join(__dirname, 'diagnostics');
-    if (!fs.existsSync(diagDir)) {
-      fs.mkdirSync(diagDir, { recursive: true });
-    }
+  framework: 'mocha',
+  mochaOpts: {
+    ui:      'bdd',
+    timeout: 360000,
+    retries: 2,
   },
 
-  //
-  // Handle a System UI crash dialog if it pops up:
-  //
+  // ── Reporters ────────────────────────────────────────────────────────────────
+  reporters: [
+    'spec',
+    ['allure', {
+      outputDir:                      'allure-results',
+      disableWebdriverStepsReporting: false,
+      disableWebdriverScreenshotsReporting: false,
+    }],
+  ],
+
+  // ── Hooks ────────────────────────────────────────────────────────────────────
+  onPrepare: async function () {
+    console.log('📦 onPrepare: cleaning up before Appium starts');
+    // kill stray UIAutomator
+    try { execSync('adb shell pkill -f uiautomator'); } catch { /* ignore */ }
+
+    // ensure diagnostics & screenshots directories exist
+    [ 'diagnostics', 'screenshots', 'logs' ].forEach(dir => {
+      const p = path.join(__dirname, dir);
+      if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
+    });
+  },
+
   beforeTest: async function () {
+    // handle System‑UI “Close app” crash dialogs
     try {
-      const closeBtn = await $('android=new UiSelector().text("Close app")');
-      if (await closeBtn.isDisplayed()) {
-        console.warn('⚠️ System UI crash dialog found. Clicking…');
+      const btn = await $('android=new UiSelector().textContains("Close")');
+      if (await btn.isDisplayed()) {
+        console.warn('⚠️ Found crash dialog, clicking Close…');
         await browser.pause(500);
-        await closeBtn.click();
+        await btn.click();
         await browser.pause(3000);
       }
-    } catch { /* ignore if not there */ }
+    } catch { /* no dialog */ }
   },
 
-  //
-  // Always capture a screenshot on failure:
-  //
   afterTest: async function (test, context, { error }) {
-    if (error && browser.sessionId) {
-      const safe = test.title.replace(/[^a-zA-Z0-9]/g, '_');
-      await browser.saveScreenshot(`diagnostics/${safe}.png`);
+    const titleSafe = test.title.replace(/[^a-zA-Z0-9]/g, '_');
+    // 1) screenshot
+    const screenshotFile = path.join(__dirname, 'screenshots', `${titleSafe}_${error?'FAILED':'PASSED'}.png`);
+    try {
+      await browser.saveScreenshot(screenshotFile);
+      // attach to Allure
+      const png = await browser.takeScreenshot();
+      allure.createAttachment('Screenshot', Buffer.from(png, 'base64'), 'image/png');
+    } catch (err) {
+      console.warn(`❌ Skipped screenshot: ${err.message}`);
+    }
+
+    // 2) adb logcat dump
+    const logFile = path.join(__dirname, 'logs', `logcat_${Date.now()}.txt`);
+    try {
+      execSync(`adb logcat -d -v time > ${logFile}`);
+      console.log(`📄 Logcat saved to ${logFile}`);
+    } catch (err) {
+      console.error(`❌ Failed to dump logcat: ${err.message}`);
     }
   },
-};
 
-exports.config = {
-  ...baseConfig,
-  ...ciConfig,
+  onComplete: async function () {
+    console.log('📝 Generating Allure report…');
+    return new Promise((resolve, reject) => {
+      const generation = allure(['generate', 'allure-results', '--clean']);
+      generation.on('exit', code => code === 0 ? resolve() : reject(new Error('Allure report failed')));
+    });
+  },
 };
 
 
