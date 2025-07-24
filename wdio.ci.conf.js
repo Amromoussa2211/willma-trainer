@@ -8,23 +8,19 @@ const allure = require('allure-commandline');
 // ─── APK SANITY CHECK ─────────────────────────────────────────────────────────
 const TRAINER_APK = path.resolve(__dirname, 'app-release-trainer.apk');
 const CLIENT_APK  = path.resolve(__dirname, 'appclient.apk');
-
 [ TRAINER_APK, CLIENT_APK ].forEach(p => {
-  console.log(`🔍 Checking for APK at ${p}`);
   if (!fs.existsSync(p)) {
-    console.error(`❌ APK not found at ${p}!`);
+    console.error(`❌ APK not found at ${p}`);
     process.exit(1);
   }
 });
 
-// ─── MERGED CONFIG WITH RETAINED INSTRUMENTATION ──────────────────────────────
 exports.config = {
   runner:   'local',
   hostname: 'localhost',
   port:     4723,
   protocol: 'http',
   path:     '/',
-
   specs:    ['./test/specs/**/*.js'],
   maxInstances: 1,
 
@@ -34,106 +30,71 @@ exports.config = {
     'appium:deviceName':     'emulator-5554',
     'appium:udid':           'emulator-5554',
     'appium:autoGrantPermissions': true,
-
-    // KEEP instrumentation installed across specs:
     'appium:noReset':        true,
     'appium:fullReset':      false,
-
-    // remove skip flags that prevent proper instrumentation installation
-
-    'appium:autoLaunch':           false,
-    'appium:newCommandTimeout':    1800,
-    'appium:adbExecTimeout':       60000,
-    'appium:waitForDeviceReadyTimeout': 300000,
-
-    'appium:app': process.env.TEST_TARGET === 'client'
-      ? CLIENT_APK
-      : TRAINER_APK,
+    'appium:autoLaunch':     true,
+    'appium:appWaitActivity': 'com.willma.*',
+    'appium:appWaitPackage':  process.env.TEST_TARGET === 'client' ? 'com.willma.client' : 'com.willma.staging',
+    'appium:appWaitDuration': 20000,
+    'appium:app': process.env.TEST_TARGET === 'client' ? CLIENT_APK : TRAINER_APK,
   }],
 
   logLevel: 'trace',
   bail:     0,
-  waitforTimeout:         15000,
+  waitforTimeout:         20000,
   connectionRetryTimeout: 200000,
   connectionRetryCount:   3,
 
   framework: 'mocha',
-  mochaOpts: {
-    ui:      'bdd',
-    timeout: 360000,
-    retries: 2,
-  },
+  mochaOpts: { ui: 'bdd', timeout: 360000, retries: 2 },
 
   reporters: [
     'spec',
-    ['allure', {
-      outputDir: 'allure-results',
-      disableWebdriverStepsReporting:     false,
-      disableWebdriverScreenshotsReporting: false,
-    }]
+    ['allure', { outputDir:'allure-results', disableWebdriverStepsReporting:false, disableWebdriverScreenshotsReporting:false }]
   ],
 
-  onPrepare: async function () {
-    console.log('📦 onPrepare: killing stray processes');
-    try { execSync('adb shell pkill -f uiautomator'); } catch {}
-    [ 'diagnostics', 'screenshots', 'logs' ].forEach(dir => {
+  onPrepare: function () {
+    execSync('adb shell pkill -f uiautomator');
+    ['diagnostics','screenshots','logs'].forEach(dir => {
       const d = path.join(__dirname, dir);
       if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
     });
   },
 
-  beforeTest: async function () {
-    // ensure each spec starts with fresh app state:
-    await driver.reset();
+  before: async function () {
+    const pkg = process.env.TEST_TARGET==='client'?'com.willma.client':'com.willma.staging';
+    const act = `${pkg}.MainActivity`;
+    await driver.startActivity(pkg, act);
+    // handle potential crash dialog immediately
     try {
-      const btn = await $('android=new UiSelector().textContains("Close")');
-      if (await btn.isDisplayed()) {
-        console.warn('⚠️ Found crash dialog, clicking Close…');
-        await browser.pause(500);
-        await btn.click();
-        await browser.pause(3000);
+      const closeBtn = await $('android=new UiSelector().textContains("Close app")');
+      if (await closeBtn.waitForDisplayed({ timeout:5000 })) {
+        await closeBtn.click();
+        await driver.pause(3000);
       }
-    } catch {}
+    } catch {};
+  },
+
+  beforeTest: async function () {
+    // ensure fresh login state
+    await driver.reset();
   },
 
   afterTest: async function (test, context, { error }) {
-    const titleSafe = test.title.replace(/[^a-zA-Z0-9]/g, '_');
-    const screenshotFile = path.join(__dirname, 'screenshots', `${titleSafe}_${error?'FAILED':'PASSED'}.png`);
-    try {
-      await browser.saveScreenshot(screenshotFile);
-      const png = await browser.takeScreenshot();
-      allure.createAttachment('Screenshot', Buffer.from(png, 'base64'), 'image/png');
-      console.log(`📸 Screenshot saved to ${screenshotFile}`);
-    } catch (err) {
-      console.warn(`❌ WebDriver screenshot failed: ${err.message}`);
-      try {
-        const tmp = '/sdcard/failure.png';
-        execSync(`adb shell screencap -p ${tmp}`);
-        const local = path.join(__dirname, 'screenshots', `${titleSafe}_ADB.png`);
-        execSync(`adb pull ${tmp} ${local}`);
-        execSync(`adb shell rm ${tmp}`);
-        console.log(`📸 Fallback ADB screenshot saved to ${local}`);
-      } catch (adbErr) {
-        console.error(`❌ ADB screencap fallback failed: ${adbErr.message}`);
-      }
-    }
-    const logFile = path.join(__dirname, 'logs', `logcat_${Date.now()}.txt`);
-    try {
-      execSync(`adb logcat -d -v time > ${logFile}`);
-      console.log(`📄 Logcat saved to ${logFile}`);
-    } catch (err) {
-      console.error(`❌ Failed to dump logcat: ${err.message}`);
-    }
+    const safe = test.title.replace(/[^a-zA-Z0-9]/g,'_');
+    const shot = path.join(__dirname,'screenshots',`${safe}_${error?'FAIL':'PASS'}.png`);
+    try { await browser.saveScreenshot(shot); } catch {}
+    try { execSync(`adb logcat -d -v time > ${path.join(__dirname,'logs',`logcat_${Date.now()}.txt`)}`); } catch {}
   },
 
-  onComplete: async function () {
-    console.log('📝 Generating Allure report…');
-    return new Promise((res, rej) => {
+  onComplete: function () {
+    return new Promise((res,rej)=>{
       const gen = allure(['generate','allure-results','--clean']);
-      gen.on('exit', code => code === 0 ? res() : rej(new Error('Allure generation failed')));
+      gen.on('exit', code => code===0?res():rej(new Error('Allure failed')));
     });
-  },
+  }
 };
+
 
 
 // const { execSync } = require('child_process');
