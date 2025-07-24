@@ -37,7 +37,7 @@ exports.config = {
     'appium:udid': 'emulator-5554',
     'appium:autoGrantPermissions': true,
     'appium:noReset': false,
-    'appium:fullReset': true,
+    'appium:fullReset': false,
     'appium:autoLaunch': false,
     'appium:newCommandTimeout': 1800,
     'appium:adbExecTimeout': 60000,
