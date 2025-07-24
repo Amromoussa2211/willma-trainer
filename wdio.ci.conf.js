@@ -66,13 +66,27 @@ exports.config = {
     const act = `${pkg}.MainActivity`;
     await driver.startActivity(pkg, act);
     // handle potential crash dialog immediately
-    try {
+   try {
       const closeBtn = await $('android=new UiSelector().textContains("Close app")');
       if (await closeBtn.waitForDisplayed({ timeout:5000 })) {
         await closeBtn.click();
         await driver.pause(3000);
       }
-    } catch {};
+    } catch {}
+
+    // ─── New: handle Android runtime permission prompt ───────────────────
+    try {
+      // look for the “Allow” button on the permission dialog
+      const allowBtn = await $('android=new UiSelector().text("Allow")');
+      if (await allowBtn.waitForDisplayed({ timeout: 5000 })) {
+        await allowBtn.click();
+        // optionally pause a tad to let the dialog dismiss
+        await driver.pause(1000);
+      }
+    } catch (err) {
+      // if it's not there, just move on
+    }
+    // ─────────────────────────────────────────────────────────────────────
   },
 
   beforeTest: async function () {
