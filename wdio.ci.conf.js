@@ -61,14 +61,22 @@ exports.config = {
     }]
   ],
 
-  // ─── Set implicit wait = waitforTimeout ─────────────────────────────────────
   beforeSession: function (config, capabilities, specs) {
-    // once driver is initialized, set Appium implicit wait
     driver.setTimeout({ implicit: config.waitforTimeout });
   },
 
   onPrepare: function () {
+    // ─── kill any stray UiAutomator process ───────────────────────────────
     execSync('adb shell pkill -f uiautomator');
+
+    // ─── clear old screenshots from the Gallery folder ────────────────────
+    execSync('adb shell rm -f /sdcard/DCIM/Camera/*.png');
+
+    // ─── take a device‑side screenshot into the Gallery path ─────────────
+    //      '-p' ensures PNG format; this lands in /sdcard/DCIM/Camera
+    execSync('adb shell screencap -p /sdcard/DCIM/Camera/onPrepare.png');
+
+    // ─── recreate host dirs for logs/screenshots/etc. ────────────────────
     ['diagnostics','screenshots','logs'].forEach(dir => {
       const d = path.join(__dirname, dir);
       if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
@@ -102,7 +110,6 @@ exports.config = {
   },
 
   beforeTest: async function () {
-    // instead of full reset, just restart the app for a fresh state
     await driver.closeApp();
     await driver.launchApp();
   },
@@ -123,6 +130,133 @@ exports.config = {
     });
   }
 };
+
+
+// // wdio.ci.conf.js
+// const path        = require('path');
+// const fs          = require('fs');
+// const { execSync }= require('child_process');
+// const baseConfig  = require('./wdio.conf.js').config;
+// const allure      = require('allure-commandline');
+
+// // ─── APK SANITY CHECK ─────────────────────────────────────────────────────────
+// const TRAINER_APK = path.resolve(__dirname, 'app-release-trainer.apk');
+// const CLIENT_APK  = path.resolve(__dirname, 'appclient.apk');
+// [ TRAINER_APK, CLIENT_APK ].forEach(p => {
+//   if (!fs.existsSync(p)) {
+//     console.error(`❌ APK not found at ${p}`);
+//     process.exit(1);
+//   }
+// });
+
+// exports.config = {
+//   runner:   'local',
+//   hostname: 'localhost',
+//   port:     4723,
+//   protocol: 'http',
+//   path:     '/',
+//   specs:    ['./test/specs/**/*.js'],
+//   maxInstances: 1,
+
+//   capabilities: [{
+//     platformName:            'Android',
+//     'appium:automationName': 'UiAutomator2',
+//     'appium:deviceName':     'emulator-5554',
+//     'appium:udid':           'emulator-5554',
+//     'appium:autoGrantPermissions': true,
+//     'appium:noReset':        true,
+//     'appium:fullReset':      false,
+//     'appium:autoLaunch':     true,
+//     'appium:appWaitActivity': 'com.willma.*',
+//     'appium:appWaitPackage':  process.env.TEST_TARGET==='client'
+//                               ? 'com.willma.client'
+//                               : 'com.willma.staging',
+//     'appium:appWaitDuration': 20000,
+//     'appium:app': process.env.TEST_TARGET==='client'
+//                    ? CLIENT_APK
+//                    : TRAINER_APK,
+//   }],
+
+//   logLevel:               'trace',
+//   bail:                   0,
+//   waitforTimeout:         20000,
+//   connectionRetryTimeout: 200000,
+//   connectionRetryCount:   3,
+
+//   framework: 'mocha',
+//   mochaOpts: { ui: 'bdd', timeout: 360000, retries: 2 },
+
+//   reporters: [
+//     'spec',
+//     ['allure', {
+//       outputDir:                       'allure-results',
+//       disableWebdriverStepsReporting:  false,
+//       disableWebdriverScreenshotsReporting: false
+//     }]
+//   ],
+
+//   // ─── Set implicit wait = waitforTimeout ─────────────────────────────────────
+//   beforeSession: function (config, capabilities, specs) {
+//     // once driver is initialized, set Appium implicit wait
+//     driver.setTimeout({ implicit: config.waitforTimeout });
+//   },
+
+//   onPrepare: function () {
+//     execSync('adb shell pkill -f uiautomator');
+//     ['diagnostics','screenshots','logs'].forEach(dir => {
+//       const d = path.join(__dirname, dir);
+//       if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+//     });
+//   },
+
+//   before: async function () {
+//     const pkg = process.env.TEST_TARGET==='client'
+//                 ? 'com.willma.client'
+//                 : 'com.willma.staging';
+//     const act = `${pkg}.MainActivity`;
+//     await driver.startActivity(pkg, act);
+
+//     // handle potential crash dialog
+//     try {
+//       const closeBtn = await $('android=new UiSelector().textContains("Close app")');
+//       if (await closeBtn.waitForDisplayed({ timeout: 5000 })) {
+//         await closeBtn.click();
+//         await driver.pause(3000);
+//       }
+//     } catch {}
+
+//     // handle Android runtime permission prompt (“Allow”)
+//     try {
+//       const allowBtn = await $('android=new UiSelector().text("Allow")');
+//       if (await allowBtn.waitForDisplayed({ timeout: 5000 })) {
+//         await allowBtn.click();
+//         await driver.pause(1000);
+//       }
+//     } catch {}
+//   },
+
+//   beforeTest: async function () {
+//     // instead of full reset, just restart the app for a fresh state
+//     await driver.closeApp();
+//     await driver.launchApp();
+//   },
+
+//   afterTest: async function (test, context, { error }) {
+//     const safe = test.title.replace(/[^a-zA-Z0-9]/g, '_');
+//     const shot = path.join(__dirname, 'screenshots', `${safe}_${error ? 'FAIL' : 'PASS'}.png`);
+//     try { await browser.saveScreenshot(shot); } catch {}
+//     try {
+//       execSync(`adb logcat -d -v time > ${path.join(__dirname, 'logs', `logcat_${Date.now()}.txt`)}`);
+//     } catch {}
+//   },
+
+//   onComplete: function () {
+//     return new Promise((res, rej) => {
+//       const gen = allure(['generate','allure-results','--clean']);
+//       gen.on('exit', code => code === 0 ? res() : rej(new Error('Allure report generation failed')));
+//     });
+//   }
+// };
 
 
 
