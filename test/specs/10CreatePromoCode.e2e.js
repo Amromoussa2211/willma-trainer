@@ -10,7 +10,7 @@ async function setValueWithRetry(element, value) {
     await element.setValue(value);
 }
 
-describe('template workout and promo code creation', () => {
+describe(' promo code creation', () => {
     before(async () => {
         // Launch and wait for login screen
         await driver.startActivity('com.willma.staging', 'com.willma.staging.MainActivity');
@@ -26,7 +26,7 @@ describe('template workout and promo code creation', () => {
 
         // 2) Wait for home and open menu
         const homeReady = await $('~Menu');
-        await homeReady.waitForDisplayed({ timeout: 60000 });
+        // await homeReady.waitForDisplayed({ timeout: 60000 });
         await clickWithRetry(homeReady);
 
         // 3) Navigate to Promo Code Center
