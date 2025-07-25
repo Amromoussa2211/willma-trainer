@@ -32,7 +32,7 @@ exports.config = {
     'appium:autoGrantPermissions': true,
     'appium:noReset':        true,
     'appium:fullReset':      false,
-    'appium:autoLaunch':     true,
+    'appium:autoLaunch':     false,
     'appium:appWaitActivity': 'com.willma.*',
     'appium:appWaitPackage':  process.env.TEST_TARGET==='client'
                               ? 'com.willma.client'
