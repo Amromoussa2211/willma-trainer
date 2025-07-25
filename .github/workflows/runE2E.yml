@@ -192,3 +192,26 @@ jobs:
           adb emu kill || true
           pkill -f 'qemu-system' || true
           pkill -f 'emulator'      || true
+      
+      - name: 📧 Send test email
+        uses: dawidd6/action-send-mail@v3
+        if: always()
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "🔔 [Test] GitHub Actions Email — ${{ github.event_name }}"
+          to: amr.ibrahim@willma.life
+          from: amr.ibrahim@willma.life
+          reply_to: amr.ibrahim@willma.life
+          body: |
+            Hello,
+
+            This is a test email sent from GitHub Actions.
+
+            **Event:** ${{ github.event_name }}
+            **Workflow:** ${{ github.workflow }}
+            **Run ID:** ${{ github.run_id }}
+
+            — Your friendly GitHub Actions Bot
