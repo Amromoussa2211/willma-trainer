@@ -106,6 +106,7 @@ exports.config = {
       // no logout button found
     }
   },
+  
 
   afterTest: async (test, context, { error }) => {
     const safeName = test.title.replace(/[^a-zA-Z0-9]/g, '_');
