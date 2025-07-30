@@ -159,6 +159,7 @@ describe('Create Plan Flow', () => {
         await selectForm.click();
       }
 
+      //
       const flowForm = await $('android=new UiSelector().className("android.view.ViewGroup").instance(1)');
       await flowForm.waitForDisplayed({ timeout: 10000 });
       await flowForm.click();
