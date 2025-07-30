@@ -45,6 +45,11 @@ exports.config = {
 
     beforeTest: async function () {
         // Optionally reset app state or launch cleanly
+        beforeTest: async () => {
+  // ensure we always launch from scratch
+  await driver.reset();
+}
+
     },
 
     afterTest: async function (test, context, { error }) {
