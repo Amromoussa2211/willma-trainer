@@ -18,7 +18,7 @@ async function deleteUser(userId, authToken) {
         deletedAt
       }
     }
-  `;
+  `; 
 
   const response = await fetch(endpoint, {
     method: 'POST',
