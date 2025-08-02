@@ -45,7 +45,7 @@ describe('Create Plan Flow', () => {
       let retries = 3;
       while (retries > 0) {
         try {
-          const clientMenuBtn = await $('android=new UiSelector().resourceId("client-management-tab")');
+const clientMenuBtn = await $('android=new UiSelector().resourceId("client-management-tab")');
           await clientMenuBtn.waitForDisplayed({ timeout: 10000 });
           await clientMenuBtn.click();
           break;

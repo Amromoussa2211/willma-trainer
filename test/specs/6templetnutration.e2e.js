@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-
+import { faker } from '@faker-js/faker'; // Uncomment if needed
 async function clickWithRetry(element, retries = 3) {
     while (retries > 0) {
         try {
@@ -7,64 +7,45 @@ async function clickWithRetry(element, retries = 3) {
             await element.click();
             return;
         } catch (error) {
-            console.error('Error clicking element:', error);
             retries--;
-            if (retries === 0) throw error;
             await driver.pause(1000);
         }
     }
+    throw new Error('Element not clickable after retries.');
 }
 
-async function setValueWithRetry(element, value, retries = 3) {
-    while (retries > 0) {
-        try {
-            await element.waitForDisplayed({ timeout: 60000 });
-            await element.setValue(value);
-            return;
-        } catch (error) {
-            console.error('Error setting value:', error);
-            retries--;
-            if (retries === 0) throw error;
-            await driver.pause(1000);
-        }
-    }
+async function setValueWithRetry(element, value) {
+    await element.waitForDisplayed({ timeout: 60000 });
+    await element.setValue(value);
 }
 
-async function restartUiAutomator2Server() {
-    console.log('Restarting UiAutomator2 server...');
-    await driver.deleteSession();
-    await driver.startSession();
-    console.log('UiAutomator2 server restarted.');
-}
-
-describe('Signup Flow', () => {
+describe('templet workout', () => {
     before(async () => {
-        try {
-            await driver.startActivity('com.willma.staging', 'com.willma.staging.MainActivity');
-            console.log('App launched successfully.');
-        } catch (error) {
-            console.error('Error launching the app:', error);
-            await restartUiAutomator2Server();
-        }
+        await driver.startActivity('com.willma.staging', 'com.willma.staging.MainActivity');
     });
 
-    it('should sign up successfully and create nutrition template', async () => {
-        try {
-            const emailInput = await $('android=new UiSelector().resourceId("email-input")');
-            await setValueWithRetry(emailInput, 'amr@test.test');
+    it('should sign up successfully and create workout templet', async () => {
+        const emailInput = await $('android=new UiSelector().resourceId("email-input")');
+        await setValueWithRetry(emailInput, 'amr@test.test');
 
-            const passwordInput = await $('android=new UiSelector().resourceId("password-input")');
-            await setValueWithRetry(passwordInput, 'Abc@1234');
+        const passwordInput = await $('android=new UiSelector().resourceId("password-input")');
+        await setValueWithRetry(passwordInput, 'Abc@1234');
 
-            const signInButton = await $('android=new UiSelector().resourceId("login-button")');
-            await clickWithRetry(signInButton);
+        const signInButton = await $('android=new UiSelector().resourceId("login-button")');
+        await clickWithRetry(signInButton);
 
-            await clickWithRetry(await $('accessibility id:Menu'));
-            await clickWithRetry(await $('accessibility id:Template Center'));
-            await clickWithRetry(await $('android=new UiSelector().text("Nutrition")'));
-            await clickWithRetry(await $('accessibility id:New Template'));
-            const newTemplateButton = await $('android=new UiSelector().text("New Nutrition Template")');
-            await clickWithRetry(newTemplateButton);
+        const menuButton = await $('~menu-tab');
+        await clickWithRetry(menuButton);
+
+        const templateCenterButton = await $('~templates-button');
+await clickWithRetry(templateCenterButton);
+const newTemplateBtn = await driver.$('accessibility id:New Template');
+await clickWithRetry(newTemplateBtn);
+
+
+       const newNutritionTemplateButton = await driver.$('accessibility id:New Nutrition Template');
+await clickWithRetry(newNutritionTemplateButton);
+
 
             const planNameInput = await $('android=new UiSelector().text("Enter plan name")');
             await clickWithRetry(planNameInput);
@@ -100,19 +81,17 @@ await el2.click();
             await clickWithRetry(await $('id:android:id/button1'));
             await clickWithRetry(await $('accessibility id:Next'));
             await clickWithRetry(await $('accessibility id:Create Template'));
+     const backToHomeButton = await driver.$('-android uiautomator:new UiSelector().description("Back To Home")');
+await clickWithRetry(backToHomeButton);
 
-            await clickWithRetry(await $('accessibility id:Home'));
+const menuTabButton = await driver.$('-android uiautomator:new UiSelector().resourceId("menu-tab")');
+await clickWithRetry(menuTabButton);
 
-            // Logout flow
-            await clickWithRetry(await $('accessibility id:Menu'));
-            await clickWithRetry(await $('accessibility id:Logout'));
-            await clickWithRetry(await $('accessibility id:Yes'));
+const logoutButton = await driver.$('-android uiautomator:new UiSelector().description("logout-button")');
+await clickWithRetry(logoutButton);
 
-            console.log('✅ Test completed successfully.');
-        } catch (error) {
-            console.error('❌ Test failed:', error);
-            await driver.saveScreenshot('./error-nutrition-template.png');
-            throw error;
-        }
+const confirmLogoutButton = await driver.$('-android uiautomator:new UiSelector().description("logout-confirmation-yes-button")');
+await clickWithRetry(confirmLogoutButton);
+
     });
 });

@@ -85,7 +85,7 @@ describe('Signup & Create Package Flow', () => {
         await signInButton.click();
 
         // Navigate to Packages
-        await waitAndClick('//android.view.View[@content-desc="Menu"]');
+        await waitAndClick('~menu-tab');
         await waitAndClick('android=new UiSelector().text("Packages")');
         await waitAndClick('//android.view.ViewGroup[@content-desc="New Package"]');
 
@@ -98,28 +98,27 @@ describe('Signup & Create Package Flow', () => {
         await waitAndClick('android=new UiSelector().text("Workout")');
         await waitAndClick('android=new UiSelector().text("Nutrition")');
         await waitAndClick("accessibility id:select-type");
-       
-        // Add Tags
 
- await waitAndClick("-android uiautomator:new UiSelector().text(\"Strength Training\")");
+        // Add Tags
+        await waitAndClick("-android uiautomator:new UiSelector().text(\"Strength Training\")");
+
         // Proceed
         await waitAndClick('android=new UiSelector().description("Next")');
         await waitAndClick('-android uiautomator:new UiSelector().text("Select item")');
         await waitAndClick('-android uiautomator:new UiSelector().text("pkform").instance(0)');
         await waitAndClick('accessibility id:Next');
         await waitAndType('class name:android.widget.EditText', '1000');
-        await waitAndClick('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(16)');
-        await waitAndClick('accessibility id:Next');
+        // await waitAndClick('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(16)');
+await waitAndClick('~Next');
 
         // Upload Image
         await scrollToText('Upload file, PNG, JPG (max size 5MB)');
-        // await waitAndClick('//android.view.ViewGroup[@content-desc="Upload file, PNG, JPG (max size 5MB)"]');
-const el1 = await driver.$("accessibility id:Upload file, PNG, JPG (max size 15MB)");
-await el1.click();
-const el2 = await driver.$("id:com.google.android.providers.media.module:id/icon_thumbnail");
-await el2.click();
-const el3 = await driver.$("accessibility id:Crop");
-await el3.click();
+        const el1 = await driver.$("accessibility id:Upload file, PNG, JPG (max size 15MB)");
+        await el1.click();
+        const el2 = await driver.$("id:com.google.android.providers.media.module:id/icon_thumbnail");
+        await el2.click();
+        const el3 = await driver.$("accessibility id:Crop");
+        await el3.click();
 
         // Finalize Package
         await scrollToText('Next');
@@ -127,11 +126,11 @@ await el3.click();
         await waitAndClick('accessibility id:View Packages');
 
         // Logout
-     
-
         await driver.back();
-        await waitAndClick('accessibility id:Logout');
-        await waitAndClick('accessibility id:Yes');
+                await driver.back();
+
+        await waitAndClick('~logout-button', 20000);
+        await waitAndClick('~logout-confirmation-yes-button', 20000);
         console.log('✅ Logged out successfully');
     });
 });

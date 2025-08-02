@@ -53,9 +53,9 @@ describe('Signup Flow', () => {
 
             await waitAndClick('android=new UiSelector().resourceId("login-button")');
 
-            await waitAndClick('accessibility id:Menu');
+await waitAndClick('~menu-tab');
 
-            await waitAndClick('-android uiautomator:new UiSelector().description("trainerAmr, View my Profile")');
+await waitAndClick('-android uiautomator:new UiSelector().text("View my Profile")');
 
             await driver.pause(2000);
 
@@ -125,8 +125,8 @@ await el4.click();
            
 
             // Logout flow with waits and assertions
-            await waitAndClick('accessibility id:Logout', 20000);
-            await waitAndClick('accessibility id:Yes', 20000);
+await waitAndClick('~logout-button', 20000);
+await waitAndClick('~logout-confirmation-yes-button', 20000);
 
             // Assertion: Check if login screen is displayed after logout
             const loginScreen = await driver.$('android=new UiSelector().resourceId("login-button")');

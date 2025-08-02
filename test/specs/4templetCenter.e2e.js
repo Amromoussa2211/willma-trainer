@@ -34,17 +34,17 @@ describe('templet workout', () => {
         const signInButton = await $('android=new UiSelector().resourceId("login-button")');
         await clickWithRetry(signInButton);
 
-        const menuButton = await $('//android.view.View[@content-desc="Menu"]');
+        const menuButton = await $('~menu-tab');
         await clickWithRetry(menuButton);
 
-        const templateCenterButton = await $('//android.view.ViewGroup[@content-desc="Template Center"]');
-        await clickWithRetry(templateCenterButton);
+        const templateCenterButton = await $('~templates-button');
+await clickWithRetry(templateCenterButton);
 
         const newTemplateButton = await $('//android.view.ViewGroup[@content-desc="New Template"]');
         await clickWithRetry(newTemplateButton);
 
-        const newWorkoutTemplateButton = await $('//android.view.ViewGroup[@content-desc="New Workout Template"]');
-        await clickWithRetry(newWorkoutTemplateButton);
+     const newTemplateButtonn = await $('~New Template');
+await clickWithRetry(newTemplateButtonn);
 
         const planNameInput = await $('//android.widget.EditText[@text="Enter plan name"]');
         const randomPlanName = `auto${Math.floor(100 + Math.random() * 900)}`;
@@ -62,14 +62,16 @@ describe('templet workout', () => {
         const addExercisesButton = await driver.$('accessibility id:Add Exercise/s');
         await clickWithRetry(addExercisesButton);
 
-        const firstExercise = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(35)');
+        const firstExercise = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(36)');
         await clickWithRetry(firstExercise);
 
-        const secondExercise = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(42)');
+        const secondExercise = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(43)');
         await clickWithRetry(secondExercise);
 
-        const addTwoExercises = await driver.$('accessibility id:Add 2 Exercises');
-        await clickWithRetry(addTwoExercises);
+       const addTwoExercises = await $('~Add 2 Exercises');
+await clickWithRetry(addTwoExercises);
+
+
 
         const svgPathView = await driver.$('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(2)');
         await clickWithRetry(svgPathView);
@@ -81,9 +83,9 @@ describe('templet workout', () => {
         await clickWithRetry(updateBtn);
 
         const confirmUpdateBtn = await driver.$('id:android:id/button1');
-        if (await confirmUpdateBtn.isDisplayed().catch(() => false)) {
+    //    await confirmUpdateBtn.isDisplayed()
             await clickWithRetry(confirmUpdateBtn);
-        }
+        
 
         const duplicatePathView = await driver.$('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(3)');
         await clickWithRetry(duplicatePathView);
@@ -91,11 +93,12 @@ describe('templet workout', () => {
         const duplicateTextButton = await driver.$('-android uiautomator:new UiSelector().text("Duplicate")');
         await clickWithRetry(duplicateTextButton);
 
-        const viewGroup29 = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(29)');
-        await clickWithRetry(viewGroup29);
+        // const viewGroup29 = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(29)');
+        // await clickWithRetry(viewGroup29);
 
-        const week1Button = await driver.$('accessibility id:Week 1');
-        await clickWithRetry(week1Button);
+        const week1Button = await $('~Week 1');
+await clickWithRetry(week1Button);
+
 
         for (let i = 2; i <= 7; i++) {
             const dayButton = await driver.$(`-android uiautomator:new UiSelector().description("Day ${i}").instance(0)`);
@@ -121,17 +124,17 @@ describe('templet workout', () => {
         // ✅ Wait until the button disappears
         await createTemplateBtn.waitForExist({ timeout: 30000, reverse: true });
 
-        const homeButton = await driver.$('-android uiautomator:new UiSelector().description("Home")');
-        await homeButton.waitForDisplayed({ timeout: 30000 });
-        await clickWithRetry(homeButton);
+       const backToHomeButton = await driver.$('-android uiautomator:new UiSelector().description("Back To Home")');
+await clickWithRetry(backToHomeButton);
 
-        const homeBtn = await driver.$('-android uiautomator:new UiSelector().resourceId("menu-tab")');
-        await clickWithRetry(homeBtn);
+const menuTabButton = await driver.$('-android uiautomator:new UiSelector().resourceId("menu-tab")');
+await clickWithRetry(menuTabButton);
 
-        const logoutBtn = await driver.$('accessibility id:Logout');
-        await clickWithRetry(logoutBtn);
+const logoutButton = await driver.$('-android uiautomator:new UiSelector().description("logout-button")');
+await clickWithRetry(logoutButton);
 
-        const yesBtn = await driver.$('accessibility id:Yes');
-        await clickWithRetry(yesBtn);
+const confirmLogoutButton = await driver.$('-android uiautomator:new UiSelector().description("logout-confirmation-yes-button")');
+await clickWithRetry(confirmLogoutButton);
+
     });
 });

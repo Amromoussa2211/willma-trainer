@@ -38,7 +38,7 @@ exports.config = {
     'appium:autoLaunch': false,
     'appium:newCommandTimeout': 1800,
     'appium:adbExecTimeout': 60000,
-    'appium:app': process.env.apk_CI_PATH,
+    //'appium:app': process.env.apk_CI_PATH,
     'appium:appPackage': 'com.willma.staging',
     'appium:appActivity': 'com.willma.staging.MainActivity',
   }],
@@ -71,40 +71,40 @@ exports.config = {
     } catch {
       // no permission dialog
     }
-    try {
-      const emailInput = await $('android=new UiSelector().resourceId("email-input")');
-      if (await emailInput.waitForDisplayed({ timeout: 2000 })) {
-        return;
-      }
-    } catch {
-      // login screen not detected, proceed
-    }
+    // try {
+    //   const emailInput = await $('android=new UiSelector().resourceId("email-input")');
+    //   if (await emailInput.waitForDisplayed({ timeout: 2000 })) {
+    //     return;
+    //   }
+    // } catch {
+    //   // login screen not detected, proceed
+    // }
 
-    // If already logged in, log out first
-    try {
-      // open the menu
-      const menu = await $('android=new UiSelector().className("android.view.ViewGroup").instance(28)');
-      if (await menu.waitForDisplayed({ timeout: 2000 })) {
-        await menu.click();
-      }
-    } catch {
-      // fallback via XPath
-      try {
-        const menuXPath = await $('//android.view.View[@content-desc="Menu"]/android.view.ViewGroup');
-        if (await menuXPath.waitForDisplayed({ timeout: 2000 })) {
-          await menuXPath.click();
-        }
-      } catch {}
-    }
+    // // If already logged in, log out first
+    // try {
+    //   // open the menu
+    //   const menu = await $('android=new UiSelector().className("android.view.ViewGroup").instance(28)');
+    //   if (await menu.waitForDisplayed({ timeout: 2000 })) {
+    //     await menu.click();
+    //   }
+    // } catch {
+    //   // fallback via XPath
+    //   try {
+    //     const menuXPath = await $('//android.view.View[@content-desc="Menu"]/android.view.ViewGroup');
+    //     if (await menuXPath.waitForDisplayed({ timeout: 2000 })) {
+    //       await menuXPath.click();
+    //     }
+    //   } catch {}
+    // }
     
-    try {
-      // click 'Logout' and confirm
-      await waitAndClick('accessibility id:Logout');
-      await waitAndClick('accessibility id:Yes');
-      console.log('✅ Logged out successfully');
-    } catch {
-      // no logout button found
-    }
+    // try {
+    //   // click 'Logout' and confirm
+    //   await waitAndClick('accessibility id:Logout');
+    //   await waitAndClick('accessibility id:Yes');
+    //   console.log('✅ Logged out successfully');
+    // } catch {
+    //   // no logout button found
+    // }
   },
   
 

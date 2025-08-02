@@ -163,7 +163,7 @@ describe('Create Plan Flow', () => {
             await homeBtn.waitForDisplayed({ timeout: 60000 });
             await homeBtn.click();
 
-            const menu = await $('~Menu');
+            const menu = await $('~menu-tab');
             await menu.waitForDisplayed({ timeout: 60000 });
             await menu.click();
 
