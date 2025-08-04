@@ -62,8 +62,12 @@ await clickWithRetry(newTemplateButtonn);
         const addExercisesButton = await driver.$('accessibility id:Add Exercise/s');
         await clickWithRetry(addExercisesButton);
 
-        const firstExercise = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(36)');
-        await clickWithRetry(firstExercise);
+        // await driver.pause(3000); // Optional: wait before next element
+
+const firstExercise = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(50)');
+
+await firstExercise.waitForDisplayed({ timeout: 5000 }); // wait max 5 sec
+await clickWithRetry(firstExercise);
 
         const secondExercise = await driver.$('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(43)');
         await clickWithRetry(secondExercise);

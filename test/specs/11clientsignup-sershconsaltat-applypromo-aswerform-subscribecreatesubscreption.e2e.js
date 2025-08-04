@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { remote } from 'webdriverio';
 import { faker } from '@faker-js/faker';
 
-const waitAndRetry = async (fn, retries = 3, waitMs = 1000) => {
+const waitAndRetry = async (fn, retries = 1, waitMs = 1000) => {
   let lastErr;
   for (let i = 0; i < retries; i++) {
     try {

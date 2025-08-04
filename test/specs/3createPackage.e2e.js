@@ -127,7 +127,7 @@ await waitAndClick('~Next');
 
         // Logout
         await driver.back();
-                await driver.back();
+              //  await driver.back();
 
         await waitAndClick('~logout-button', 20000);
         await waitAndClick('~logout-confirmation-yes-button', 20000);

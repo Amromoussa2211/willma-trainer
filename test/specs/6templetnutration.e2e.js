@@ -19,7 +19,7 @@ async function setValueWithRetry(element, value) {
     await element.setValue(value);
 }
 
-describe('templet workout', () => {
+describe('templet Nutration', () => {
     before(async () => {
         await driver.startActivity('com.willma.staging', 'com.willma.staging.MainActivity');
     });
