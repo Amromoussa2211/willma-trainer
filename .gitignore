@@ -29,7 +29,7 @@ yarn-error.log*
 # Dependencies
 node_modules/
 .env
-*
+
 logs/*
 # Ignore coverage reports
 coverage/   
