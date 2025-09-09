@@ -104,9 +104,8 @@ describe('Signup & Create Package Flow', () => {
 
         // Proceed
         await waitAndClick('android=new UiSelector().description("Next")');
-        await waitAndClick('-android uiautomator:new UiSelector().text("Select item")');
-        await waitAndClick('-android uiautomator:new UiSelector().text("pkform").instance(0)');
-        await waitAndClick('accessibility id:Next');
+        await waitAndClick('accessibility id:Initial Form: Workout and Nutrition, Initial Form');
+        await waitAndClick('accessibility id:Attach Form');
         await waitAndType('class name:android.widget.EditText', '1000');
         // await waitAndClick('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(16)');
 await waitAndClick('~Next');
@@ -122,13 +121,18 @@ await waitAndClick('~Next');
 
         // Finalize Package
         await scrollToText('Next');
-        await waitAndClick('accessibility id:Next');
+        await waitAndClick('accessibility id:Create Package');
         await waitAndClick('accessibility id:View Packages');
 
         // Logout
         await driver.back();
-              //  await driver.back();
 
+              //  await driver.back();
+            await waitAndClick('-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(14)');
+            
+            await waitAndClick('accessibility id:main-profile-button');
+            await waitAndClick('-android uiautomator:new UiSelector().className("com.horcrux.svg.SvgView").instance(0)');
+            await waitAndClick('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(5)');
         await waitAndClick('~logout-button', 20000);
         await waitAndClick('~logout-confirmation-yes-button', 20000);
         console.log('✅ Logged out successfully');

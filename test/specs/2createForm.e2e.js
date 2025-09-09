@@ -1,29 +1,51 @@
 import { expect } from 'chai';
 import { faker } from '@faker-js/faker';
 
-// 🛠️ Reusable helper to wait for an element and click
-async function waitAndClick(selector, timeout = 10000) {
-  let element;
-
+// 🔍 Universal element finder
+async function findElement(selector) {
   if (selector.startsWith('~')) {
-    // accessibility id shorthand
-    element = await $(`accessibility id:${selector.slice(1)}`);
-  } else if (selector.startsWith('accessibility id:')) {
-    element = await $(selector);
-  } else if (selector.startsWith('-android uiautomator:')) {
-    element = await $(selector);
-  } else if (selector.startsWith('//')) {
-    element = await $(selector); // XPath
-  } else if (selector.startsWith('class name:')) {
-    element = await $(selector); // class name
-  } else {
-    element = await $(selector); // fallback
+    return await $(`accessibility id:${selector.slice(1)}`);
   }
-
-  await element.waitForDisplayed({ timeout });
-  await element.click();
+  return await $(selector);
 }
 
+// 🛠️ Wait and click helper
+async function waitAndClick(selector, timeout = 10000) {
+  const el = await findElement(selector);
+  await el.waitForDisplayed({ timeout });
+  await el.click();
+  return el;
+}
+
+// ⏳ Simple wait
+async function wait(ms = 1000) {
+  await driver.pause(ms);
+}
+
+// 📱 Gestures
+async function swipe(startX, startY, endX, endY, duration = 1000) {
+  await driver
+    .action('pointer')
+    .move({ duration: 0, x: startX, y: startY })
+    .down({ button: 0 })
+    .move({ duration, x: endX, y: endY })
+    .up({ button: 0 })
+    .perform();
+  await wait(800); // allow UI to settle
+}
+
+async function tapAt(x, y) {
+  await driver
+    .action('pointer')
+    .move({ duration: 0, x, y })
+    .down({ button: 0 })
+    .pause(50)
+    .up({ button: 0 })
+    .perform();
+  await wait(500); // small buffer after tap
+}
+
+// 🔄 Restart UiAutomator2 if needed
 async function restartUiAutomator2Server() {
   console.log('Restarting UiAutomator2 server...');
   await driver.deleteSession();
@@ -45,82 +67,150 @@ describe('Signup Flow', () => {
     }
   });
 
-  it('makeform', async () => {
-    await $('android=new UiSelector().resourceId("email-input")').setValue('amr@test.test');
-    await $('android=new UiSelector().resourceId("password-input")').setValue('Abc@1234');
-    await $('android=new UiSelector().resourceId("login-button")').click();
+  it('should create, copy,search ,and delete a form', async () => {
+    // 🔑 Login
+    await $(
+      'android=new UiSelector().resourceId("email-input")'
+    ).setValue('amr@test.test');
+    await $(
+      'android=new UiSelector().resourceId("password-input")'
+    ).setValue('Abc@1234');
+    await waitAndClick(
+      'android=new UiSelector().resourceId("login-button")'
+    );
 
+    // Wait for home screen
+    await wait(2000);
+
+    // 📂 Navigate to Form Center
     await waitAndClick('~menu-tab');
-    await waitAndClick('-android uiautomator:new UiSelector().text("Form Center")');
-    await waitAndClick('~New Form');
-
-    await $('-android uiautomator:new UiSelector().text("Form Name....")')
-      .setValue('packegeAmrForm AUto');
-      await driver.hideKeyboard(); // Optional, to avoid overlapping UI
-
-    await $('-android uiautomator:new UiSelector().text("Enter Form Description")')
-      .setValue('this is mydescription ofPAck');
-    await waitAndClick('-android uiautomator:new UiSelector().text("Add A Question")');
-
-    const questionTextInput = await $('//android.widget.EditText[@text="Enter question text"]');
-    await questionTextInput.waitForDisplayed({ timeout: 5000 });
-    await questionTextInput.setValue('Automated Question');
-await driver.hideKeyboard(); // Optional, to avoid overlapping UI
-
-    const chooseTypeElement = await $('-android uiautomator:new UiSelector().description("Choose type")');
-    await chooseTypeElement.scrollIntoView();
-    await chooseTypeElement.click();
-
-    const numericElement = await $('~Numeric');
-    await numericElement.waitForDisplayed({ timeout: 5000 });
-    await numericElement.click();
-
-const saveFormButton = await $('android=new UiSelector().description("Save Form")');
-    await saveFormButton.waitForDisplayed({ timeout: 5000 });
-    await saveFormButton.click();
-    console.log('✅ Clicked on "Save Form".');
-await driver.hideKeyboard(); // Optional, to avoid overlapping UI
-
-    // await driver.refresh();
-    const el1 = await $('-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(0)');
-    await el1.click();
+    await waitAndClick(
+      '-android uiautomator:new UiSelector().text("Form Center")'
+    );
+    await wait(2000);
   });
+it('view inithial form', async () => {
+    // 📝 Start new form creation
+    await waitAndClick(
+      '-android uiautomator:new UiSelector().className("com.horcrux.svg.SvgView").instance(3)'
+    );
+    await waitAndClick('~view-template-button');
+    await wait(2000);
 
-  it('assign form to client', async () => {
-    const svgViewElement = await $('-android uiautomator:new UiSelector().className("com.horcrux.svg.SvgView").instance(3)');
-    await svgViewElement.waitForDisplayed({ timeout: 5000 });
-    await svgViewElement.click();
+    // 📲 Perform drag/drop gestures
+    await swipe(476, 623, 499, 2052);
+    await swipe(591, 1598, 573, 2089);
+    await swipe(829, 1603, 802, 2217);
+    await swipe(664, 485, 673, 2217);
+    await swipe(650, 678, 641, 2235);
+    await swipe(568, 820, 614, 2226);
+    await swipe(614, 2226, 614, 641);
+    await swipe(701, 2061, 710, 344);
+    await swipe(742, 1791, 728, 275);
+    await swipe(802, 2162, 811, 440);
 
-    await waitAndClick('~Send To Client');
+    // ✅ Assign template
+    await waitAndClick(
+      '-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(0)'
+    );
+    await waitAndClick(
+      '-android uiautomator:new UiSelector().className("com.horcrux.svg.SvgView").instance(5)'
+    );
+    await waitAndClick('~assign-template-button');
+    await waitAndClick(
+      '-android uiautomator:new UiSelector().className("android.view.ViewGroup").instance(28)'
+    );
+    await waitAndClick('~assign-package-button');
+    await wait(1500);
 
-    const editText = await $('android.widget.EditText');
-    await editText.waitForDisplayed({ timeout: 5000 });
-    expect(await editText.isDisplayed()).to.be.true;
+    // 📚 Open My Forms
+    await waitAndClick(
+      '-android uiautomator:new UiSelector().text("My Forms")'
+    );
+    await waitAndClick(
+      '-android uiautomator:new UiSelector().text("By Willma")'
+    );
+    await waitAndClick('-android uiautomator:new UiSelector().text("All")');
+    await wait(1500);
+      });
 
-    await waitAndClick('~Select All');
-    await waitAndClick('~Select a package');
-    await waitAndClick('-android uiautomator:new UiSelector().text("Send to client")');
-await waitAndClick('-android uiautomator:new UiSelector().className("com.horcrux.svg.SvgView").instance(0)',2000);
-await driver.back();
+it('make copy', async () => {
+    // 📑 Copy template
+   await waitAndClick(
+  '-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(3)'
+);
+await waitAndClick('~copy-template-button');
 
-await waitAndClick('~logout-button', 20000);
-    await waitAndClick('~logout-confirmation-yes-button', 20000);
+// 🔄 Wait for input to appear
+const formTitleInput = await $('~form-title-input');
+await formTitleInput.waitForDisplayed({ timeout: 15000 });
 
-  });
+// Focus, clear, and type
+await formTitleInput.click();
+await formTitleInput.clearValue();
+const fakeTitle = `autoin${faker.datatype.number({ min: 10, max: 99 })}`;
+await formTitleInput.addValue(fakeTitle);
 
-  it('search for form', async () => {
+// Save
+await waitAndClick('~save-duplicate-button');
+await driver.pause(2000);
+    // 🔄 Perform some scrolls & taps
+    await swipe(540, 2153, 540, 472);
+    await swipe(646, 733, 627, 2203);
+    await swipe(605, 605, 623, 2139);
     
-    // Optional: add text input here later
+await driver.pause(2000);
   });
 
-  it('edit form and logout', async () => {
-  
+it('search for copyform', async () => {
+  const el2 = await driver.$("accessibility id:search-input");
+await el2.click();
+await el2.addValue("auto");
+await waitAndClick('~form-0-button');
+    // ❌ Delete form
+    await waitAndClick(
+      '-android uiautomator:new UiSelector().className("com.horcrux.svg.PathView").instance(3)'
+    );
+    await waitAndClick('~delete-form-button');
+    await waitAndClick('~Delete');
 
-    console.log('✅ Clicked on "Save Form".');
+    // Wait for list refresh
+    await wait(2000);
 
-   
+    // 🧾 Validation
+    const myFormsTab = await $(
+      '-android uiautomator:new UiSelector().text("My Forms")'
+    );
+    await myFormsTab.waitForDisplayed({ timeout: 5000 });
+    expect(await myFormsTab.isDisplayed()).to.be.true;
+      });
+it('assign form to client', async () => {
+  const el1 = await driver.$("-android uiautomator:new UiSelector().text(\"By Willma\")");
+await el1.click();
+const el2 = await driver.$("-android uiautomator:new UiSelector().text(\"All\")");
+await el2.click();
+const el3 = await driver.$("accessibility id:search-input");
+await el3.click();
+await el3.addValue(" ");
+const el4 = await driver.$("-android uiautomator:new UiSelector().text(\"By Willma\")");
+await el4.click();
+const el5 = await driver.$("-android uiautomator:new UiSelector().className(\"com.horcrux.svg.PathView\").instance(9)");
+await el5.click();
+const el6 = await driver.$("accessibility id:send-template-button");
+await el6.click();
+const el7 = await driver.$("-android uiautomator:new UiSelector().className(\"android.view.ViewGroup\").instance(2)");
+await el7.click();
+const el8 = await driver.$("-android uiautomator:new UiSelector().className(\"android.view.ViewGroup\").instance(27)");
+await el8.click();
+await el8.click();
+const el9 = await driver.$("-android uiautomator:new UiSelector().className(\"com.horcrux.svg.PathView\").instance(0)");
+await el9.click();
+const el10 = await driver.$("-android uiautomator:new UiSelector().className(\"com.horcrux.svg.SvgView\").instance(0)");
+await el10.click();
+const el11 = await driver.$("accessibility id:logout-button");
+await el11.click();
+const el12 = await driver.$("accessibility id:logout-confirmation-yes-button");
+await el12.click();
 
-    // 🔁 Updated logout steps:
-    
   });
 });
