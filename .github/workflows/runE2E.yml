@@ -1,6 +1,5 @@
 name: Android E2E Tests
 
-# 👇 Change trigger to manual/API dispatch instead of push
 on:
   workflow_dispatch:
 
@@ -110,12 +109,8 @@ jobs:
       - name: 📦 Install gdown and Download APKs
         run: |
           pip install --user gdown
-          ~/.local/bin/gdown --fuzzy \
-            "https://drive.google.com/file/d/1moB6CyW6wC5MJDlDlfkT_TZ0QIfsuNEz/view?usp=drive_link" \
-            -O appclient.apk
-          ~/.local/bin/gdown --fuzzy \
-            "https://drive.google.com/file/d/1MKToOdsMRfzuX4yI18hhKRZWt8rCZWLH/view?usp=drive_link" \
-            -O app-release-trainer.apk
+          ~/.local/bin/gdown --fuzzy "https://drive.google.com/file/d/1moB6CyW6wC5MJDlDlfkT_TZ0QIfsuNEz/view?usp=drive_link" -O appclient.apk
+          ~/.local/bin/gdown --fuzzy "https://drive.google.com/file/d/1MKToOdsMRfzuX4yI18hhKRZWt8rCZWLH/view?usp=drive_link" -O app-release-trainer.apk
 
       - name: 📲 Install APKs
         run: |
@@ -127,10 +122,6 @@ jobs:
           mkdir -p logs
           nohup npx appium --relaxed-security --log-timestamp > logs/appium.log 2>&1 &
           sleep 10
-
-      - name: 🧹 Kill leftover UiAutomator processes (if any)
-        run: |
-          adb shell pkill -f uiautomator || echo "No UiAutomator process to kill"
 
       - name: 🧪 Run E2E Tests
         run: npx wdio run ./wdio.ci.conf.js
@@ -164,33 +155,3 @@ jobs:
           name: e2e-results-${{ github.run_id }}
           path: diagnostics/
           retention-days: 7
-
-      - name: 🛑 Kill Emulator
-        if: always()
-        run: |
-          adb emu kill || true
-          pkill -f 'qemu-system' || true
-          pkill -f 'emulator' || true
-
-      - name: 📧 Send test email
-        uses: dawidd6/action-send-mail@v3
-        if: always()
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          username: ${{ secrets.EMAIL_USERNAME }}
-          password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: "📱 Android E2E Tests Result — ${{ github.run_id }}"
-          to: fady@wilma.life, amr.ibrahim@willma.life
-          from: amr.ibrahim@willma.life
-          body: |
-            Hello Team,
-
-            ✅ Workflow Triggered Successfully by WILLMA-Business-UI repo.
-            Run ID: ${{ github.run_id }}
-
-            You can download the Allure report artifact from the workflow run:
-            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-            Regards,
-            GitHub Actions Bot 🤖
